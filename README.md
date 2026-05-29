@@ -4,7 +4,7 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)
 ![Redis](https://img.shields.io/badge/Redis-cache-red)
-![RabbitMQ](https://img.shields.io/badge/RabbitMQ-message--broker-orange)
+![Kafka](https://img.shields.io/badge/Apache%20Kafka-event--streaming-black)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 Library Service is a library management system designed to automate catalog search, material reservation, book loans, returns, fine calculation and payment processing.
@@ -15,59 +15,59 @@ The project was developed as a system analysis and software design project. It i
 
 The system is intended for three main user groups:
 
-- **Readers** — search materials, reserve books, view active loans and pay fines.
-- **Librarians** — manage the catalog, process reservations, register book loans and returns.
-- **System administrators** — configure the system, monitor its operation and manage technical settings.
+* **Readers** — search materials, reserve books, view active loans and pay fines.
+* **Librarians** — manage the catalog, process reservations, register book loans and returns.
+* **System administrators** — configure the system, monitor its operation and manage technical settings.
 
 The main goal of the project is to automate common library workflows and provide a centralized service for managing materials, users, reservations, loans, returns, fines and notifications.
 
 ## Features
 
-- User registration and authentication
-- Catalog search with filtering and sorting
-- Material reservation and waiting queue
-- Book loan processing
-- Book return processing
-- Fine calculation for overdue materials
-- Fine payment through an external payment service
-- Email/SMS notifications
-- Audit logging for critical operations
-- Basic reporting and monitoring support
+* User registration and authentication
+* Catalog search with filtering and sorting
+* Material reservation and waiting queue
+* Book loan processing
+* Book return processing
+* Fine calculation for overdue materials
+* Fine payment through an external payment service
+* Email/SMS notifications
+* Audit logging for critical operations
+* Basic reporting and monitoring support
 
 ## Tech Stack
 
 ### Backend
 
-- Java 17+
-- Spring Boot
-- Spring Web
-- Spring Security
-- Spring Data JPA / Hibernate
-- PostgreSQL
-- Redis
-- RabbitMQ
-- Maven
+* Java 17+
+* Spring Boot
+* Spring Web
+* Spring Security
+* Spring Data JPA / Hibernate
+* PostgreSQL
+* Redis
+* Apache Kafka
+* Maven
 
 ### Infrastructure
 
-- Docker Compose
-- REST API
-- JSON
-- Logging and monitoring infrastructure
-- External payment service integration
-- External email/SMS notification service integration
+* Docker Compose
+* REST API
+* JSON
+* Logging and monitoring infrastructure
+* External payment service integration
+* External email/SMS notification service integration
 
 ### Planned Client Applications
 
-- Web App: React, Redux, TypeScript
-- Mobile App: Flutter
-- Desktop App: Kotlin Compose Multiplatform
+* Web App: React, Redux, TypeScript
+* Mobile App: Flutter
+* Desktop App: Kotlin Compose Multiplatform
 
 ## Architecture
 
 The system follows a client-server architecture with a centralized backend API.
 
-The main backend service is implemented as a Java Spring REST API. It communicates with PostgreSQL for persistent storage, Redis for caching and rate limiting, RabbitMQ for asynchronous events, and external services for payments and notifications.
+The main backend service is implemented as a Java Spring REST API. It communicates with PostgreSQL for persistent storage, Redis for caching and rate limiting, Apache Kafka for asynchronous event streaming, and external services for payments and notifications.
 
 <details>
 <summary><b>Context Diagram</b></summary>
@@ -133,3 +133,4 @@ library-service/
 ├── docker-compose.yml    # Local infrastructure
 ├── README.md
 └── LICENSE
+```
