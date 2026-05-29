@@ -21,6 +21,7 @@ bottom=20mm
 
 \usepackage{tabularx}
 \usepackage{array}
+\usepackage{makecell}
 
 \emergencystretch=2em
 
@@ -501,36 +502,41 @@ bottom=20mm
 	
 	\begin{table}[h]
 		\centering
-		\begin{tabularx}{\textwidth}{|>{\raggedright\arraybackslash}p{6.2cm}|>{\raggedright\arraybackslash}X|}
+		\small
+		\begin{tabularx}{\textwidth}{
+				|>{\raggedright\arraybackslash}p{4.2cm}
+				|>{\raggedright\arraybackslash}X
+				|>{\raggedright\arraybackslash}p{2.5cm}|
+			}
 			\hline
-			\textbf{Идентификатор} & \textbf{Функция системы} \\
+			\textbf{Идентификатор} & \textbf{Функция системы} & \textbf{Приоритет MoSCoW} \\
 			\hline
-			LS.AUTH & Авторизация, регистрация и активация учётной записи \\
+			LS.AUTH & Авторизация, регистрация и активация учётной записи & Must have \\
 			\hline
-			LS.USER\_MANAGEMENT & Управление пользователями, ролями, статусами учётных записей и предупреждениями \\
+			\makecell[l]{LS.USER\_\\MANAGEMENT} & Управление пользователями, ролями, статусами учётных записей и предупреждениями & Must have \\
 			\hline
-			LS.CATALOG & Поиск, фильтрация, сортировка и просмотр материалов каталога \\
+			LS.CATALOG & Поиск, фильтрация, сортировка и просмотр материалов каталога & Must have \\
 			\hline
-			LS.RESERVATION & Оформление брони, отмена бронирования и обработка статусов брони \\
+			LS.RESERVATION & Оформление брони, отмена бронирования и обработка статусов брони & Must have \\
 			\hline
-			LS.LOAN & Оформление выдачи физического экземпляра материала пользователю \\
+			LS.LOAN & Оформление выдачи физического экземпляра материала пользователю & Must have \\
 			\hline
-			LS.RETURN & Регистрация возврата материала, фиксация просрочек, повреждений и утраты \\
+			LS.RETURN & Регистрация возврата материала, фиксация просрочек, повреждений и утраты & Must have \\
 			\hline
-			LS.FINE & Просмотр, оплата и ручная фиксация погашения штрафов \\
+			LS.FINE & Просмотр, оплата и ручная фиксация погашения штрафов & Should have \\
 			\hline
-			LS.CATALOG\_MANAGEMENT & Управление каталогом материалов, карточками материалов и экземплярами \\
+			\makecell[l]{LS.CATALOG\_\\MANAGEMENT} & Управление каталогом материалов, карточками материалов и экземплярами & Must have \\
 			\hline
-			LS.RENEWAL & Продление срока выдачи материала пользователем или библиотекарем \\
+			LS.RENEWAL & Продление срока выдачи материала пользователем или библиотекарем & Should have \\
 			\hline
-			LS.LIBRARY\_MANAGEMENT & Управление подключёнными библиотеками, филиалами и правилами обслуживания \\
+			\makecell[l]{LS.LIBRARY\_\\MANAGEMENT} & Управление подключёнными библиотеками, филиалами и правилами обслуживания & Should have \\
 			\hline
-			LS.NOTIFICATION & Создание, отправка, просмотр и настройка уведомлений \\
+			LS.NOTIFICATION & Создание, отправка, просмотр и настройка уведомлений & Should have \\
 			\hline
-			LS.REPORTING & Формирование, просмотр и экспорт отчётов по данным библиотечного сервиса \\
+			LS.REPORTING & Формирование, просмотр и экспорт отчётов по данным библиотечного сервиса & Could have \\
 			\hline
 		\end{tabularx}
-		\caption{Основные функции системы Library Service}
+		\caption{Основные функции системы Library Service и их приоритеты}
 		\label{tab:system-features}
 	\end{table}
 	
