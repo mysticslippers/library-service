@@ -18,6 +18,8 @@ bottom=20mm
 \setlength{\parindent}{1.25cm}
 
 \usepackage{graphicx}
+\usepackage{pdflscape}
+\usepackage{geometry}
 
 \usepackage{xltabular}
 \usepackage{tabularx}
@@ -5627,7 +5629,26 @@ bottom=20mm
 	для определения границ системы и проверки полноты функциональных требований,
 	описанных в разделе System features.
 	
-	\clearpage
+\clearpage
+\newgeometry{left=5mm,right=5mm,top=5mm,bottom=7mm}
+
+\subsection{ER-diagram}
+
+\begin{center}
+	\includegraphics[
+	origin=c,
+	width=0.72\textheight,
+	keepaspectratio
+	]{ER-diagram.png}
+	
+	\vspace{0.2cm}
+	
+	\captionof{figure}{ER-диаграмма базы данных Library Service}
+	\label{fig:er-diagram}
+\end{center}
+
+\restoregeometry
+\clearpage
 	
 	\newcommand{\ucsection}[1]{%
 		\multicolumn{2}{|>{\raggedright\arraybackslash}p{\dimexpr\textwidth-2\tabcolsep-2\arrayrulewidth\relax}|}{\textbf{#1}} \\
