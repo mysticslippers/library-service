@@ -1,4 +1,3 @@
-docs/srs.tex linguist-documentation=false
 *.sql linguist-detectable=true
 *.sql linguist-language=PLpgSQL
 *.sql text
