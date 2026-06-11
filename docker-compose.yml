@@ -1,0 +1,45 @@
+services:
+  library-db:
+    image: postgres:16-alpine
+    container_name: library-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: library_service
+      POSTGRES_USER: mysticslippers
+      POSTGRES_PASSWORD: "QDwZ)9433"
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - library_db_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mysticslippers -d library_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: library-pgadmin
+    restart: unless-stopped
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+
+    ports:
+      - "5050:80"
+
+    depends_on:
+      library-db:
+        condition: service_healthy
+
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  library_db_data:
+  pgadmin_data:
