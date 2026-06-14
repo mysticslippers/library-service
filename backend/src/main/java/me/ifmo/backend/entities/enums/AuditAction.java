@@ -1,0 +1,29 @@
+package me.ifmo.backend.entities.enums;
+
+public enum AuditAction {
+    CREATE,
+    UPDATE,
+    DELETE,
+    ARCHIVE,
+    RESTORE,
+
+    LOGIN,
+    LOGOUT,
+    ROLE_CHANGED,
+    STATUS_CHANGED,
+
+    BLOCK,
+    UNBLOCK,
+    WARNING_CREATED,
+
+    RESERVATION_CREATED,
+    RESERVATION_CANCELLED,
+
+    LOAN_CREATED,
+    LOAN_RETURNED,
+
+    FINE_CREATED,
+    FINE_CANCELLED,
+
+    PAYMENT_STATUS_CHANGED
+}
