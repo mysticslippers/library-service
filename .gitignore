@@ -28,10 +28,6 @@ $RECYCLE.BIN/
 *.ipr
 out/
 
-# Если вдруг решим хранить project settings IntelliJ в git,
-# тогда можно будет заменить .idea/ на более тонкую настройку.
-# Пока для учебного/личного проекта проще игнорировать полностью.
-
 
 # =========================
 # VS Code
@@ -150,18 +146,15 @@ frontend/.env.*
 # Docker / Database local files
 # =========================
 
-# Локальные дампы БД
 *.dump
 *.sql.gz
 *.backup
 
-# Если будешь складывать локальные volume/data внутрь проекта
 docker-data/
 postgres-data/
 pgdata/
 data/
 
-# Но SQL-скрипты миграций и init-скрипты НЕ игнорируем:
 !scripts/
 !scripts/**/*.sql
 !backend/src/main/resources/db/migration/
