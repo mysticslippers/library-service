@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: library-service-backend
+
+  profiles:
+    active: local
+
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+
+  jackson:
+    time-zone: UTC
+
+  mvc:
+    servlet:
+      path: /api
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:library_service}
+    username: ${POSTGRES_USER:mysticslippers}
+    password: ${POSTGRES_PASSWORD:mysticslippers}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:database/migration
+    baseline-on-migrate: true
+
+server:
+  port: ${SERVER_PORT:1234}
+
+logging:
+  pattern:
+    dateformat: "yyyy-MM-dd HH:mm:ss"
+
+  level:
+    root: INFO
+    me.ifmo.backend: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.orm.jdbc.bind: INFO
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
