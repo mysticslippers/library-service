@@ -5,8 +5,9 @@ import lombok.*;
 import me.ifmo.backend.entities.enums.BranchStatus;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
-import org.hibernate.type.descriptor.jdbc.JsonJdbcType;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -31,7 +32,7 @@ public class Branch {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @JdbcType(JsonJdbcType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "address", nullable = false, columnDefinition = "jsonb")
     private String address;
 
