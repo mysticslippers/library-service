@@ -11,6 +11,7 @@ import java.util.Objects;
 @Getter
 @Setter
 @Builder
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "genres")
@@ -29,16 +30,6 @@ public class Genre {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @Override
-    public String toString() {
-        return "Genre{" +
-                "id=" + id +
-                ", code='" + code + '\'' +
-                ", name='" + name + '\'' +
-                ", createdAt=" + createdAt +
-                '}';
-    }
 
     @Override
     public boolean equals(Object object) {
