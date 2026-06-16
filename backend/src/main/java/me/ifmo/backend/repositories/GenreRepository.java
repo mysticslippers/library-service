@@ -16,4 +16,6 @@ public interface GenreRepository extends JpaRepository<Genre, Long> {
     Optional<Genre> findByNameIgnoreCase(String name);
 
     boolean existsByNameIgnoreCase(String name);
+
+    Page<Genre> findByNameContainingIgnoreCase(String name, Pageable pageable);
 }
