@@ -16,4 +16,6 @@ public interface MaterialGenreRepository extends JpaRepository<MaterialGenre, Ma
     Optional<MaterialGenre> findByMaterial_IdAndGenre_Id(Long materialId, Long genreId);
 
     boolean existsByMaterial_IdAndGenre_Id(Long materialId, Long genreId);
+
+    void deleteByMaterial_Id(Long materialId);
 }
