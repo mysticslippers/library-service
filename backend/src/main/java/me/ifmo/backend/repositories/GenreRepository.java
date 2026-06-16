@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface GenreRepository extends JpaRepository<Genre, Long> {
 
     Optional<Genre> findByCode(String code);
+
+    boolean existsByCode(String code);
 }
