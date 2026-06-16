@@ -13,4 +13,6 @@ public interface LibraryRepository extends JpaRepository<Library, Long> {
     Optional<Library> findByCode(String code);
 
     boolean existsByCode(String code);
+
+    Page<Library> findByStatus(LibraryStatus status, Pageable pageable);
 }
