@@ -22,4 +22,6 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
     Page<Material> findByMaterialType(MaterialType type, Pageable pageable);
 
     Page<Material> findByStatusAndMaterialType(MaterialStatus status, MaterialType type, Pageable pageable);
+
+    Page<Material> findByPublicationYear(Integer publicationYear, Pageable pageable);
 }
