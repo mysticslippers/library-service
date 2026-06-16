@@ -21,4 +21,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByPhone(String phone);
 
     Page<User> findByStatus(UserStatus status, Pageable pageable);
+
+    Page<User> findByBranchId(Long branchId, Pageable pageable);
 }
