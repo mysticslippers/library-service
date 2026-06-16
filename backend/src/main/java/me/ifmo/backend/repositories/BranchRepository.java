@@ -14,4 +14,6 @@ public interface BranchRepository extends JpaRepository<Branch, Long> {
     List<Branch> findByLibrary_Id(Long libraryId);
 
     Page<Branch> findByLibrary_Id(Long libraryId, Pageable pageable);
+
+    Page<Branch> findByStatus(BranchStatus status, Pageable pageable);
 }
