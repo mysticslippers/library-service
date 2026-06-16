@@ -16,4 +16,6 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
     Optional<Material> findByIsbn(String isbn);
 
     boolean existsByIsbn(String isbn);
+
+    Page<Material> findByStatus(MaterialStatus status, Pageable pageable);
 }
