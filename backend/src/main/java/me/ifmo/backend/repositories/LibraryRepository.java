@@ -15,4 +15,6 @@ public interface LibraryRepository extends JpaRepository<Library, Long> {
     boolean existsByCode(String code);
 
     Page<Library> findByStatus(LibraryStatus status, Pageable pageable);
+
+    Page<Library> findByNameContainingIgnoreCase(String name, Pageable pageable);
 }
