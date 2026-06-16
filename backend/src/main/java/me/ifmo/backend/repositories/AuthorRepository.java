@@ -22,4 +22,15 @@ public interface AuthorRepository extends JpaRepository<Author, Long> {
     Optional<Author> findByFullName(@Param("firstName") String firstName,
                                     @Param("middleName") String middleName,
                                     @Param("lastName") String lastName);
+
+    @Query("""
+           SELECT CASE WHEN count(author) > 0 THEN TRUE ELSE FALSE END 
+               FROM Author author
+               WHERE lower(author.firstName) = lower(:firstName)
+                   AND lower(coalesce(author.middleName, '')) = lower(coalesce(:middleName, '')) 
+                   AND lower(author.lastName) = lower(:lastName) 
+    """)
+    boolean existsByFullName(@Param("firstName") String firstName,
+                             @Param("middleName") String middleName,
+                             @Param("lastName") String lastName);
 }
