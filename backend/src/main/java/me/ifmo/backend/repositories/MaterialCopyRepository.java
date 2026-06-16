@@ -18,4 +18,6 @@ public interface MaterialCopyRepository extends JpaRepository<MaterialCopy, Long
     boolean existsByInventoryNumber(String inventoryNumber);
 
     List<MaterialCopy> findByMaterial_Id(Long materialId);
+
+    Page<MaterialCopy> findByMaterial_Id(Long materialId, Pageable pageable);
 }
