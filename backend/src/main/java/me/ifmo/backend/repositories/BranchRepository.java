@@ -12,4 +12,6 @@ import java.util.Optional;
 public interface BranchRepository extends JpaRepository<Branch, Long> {
 
     List<Branch> findByLibrary_Id(Long libraryId);
+
+    Page<Branch> findByLibrary_Id(Long libraryId, Pageable pageable);
 }
