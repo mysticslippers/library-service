@@ -16,4 +16,6 @@ public interface MaterialAuthorRepository extends JpaRepository<MaterialAuthor, 
     Optional<MaterialAuthor> findByMaterial_IdAndAuthor_Id(Long materialId, Long authorId);
 
     boolean existsByMaterial_IdAndAuthor_Id(Long materialId, Long authorId);
+
+    void deleteByMaterial_Id(Long materialId);
 }
