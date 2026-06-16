@@ -18,4 +18,16 @@ public interface LibraryRuleRepository extends JpaRepository<LibraryRule, Long> 
     Optional<LibraryRule> findByBranch_IdAndStatus(Long branchId, LibraryRuleStatus status);
 
     Page<LibraryRule> findByBranch_IdAndStatus(Long branchId, LibraryRuleStatus status, Pageable pageable);
+
+    @Query("""
+            SELECT libraryRule FROM LibraryRule libraryRule
+                WHERE libraryRule.branch.id = :branchId
+                    AND libraryRule.status = :status
+                    AND libraryRule.validFrom <= :dateTime
+                    AND (libraryRule.validTo IS NULL OR libraryRule.validTo > :dateTime)
+                ORDER BY libraryRule.validFrom DESC
+    """)
+    Optional<LibraryRule> findActualByBranchIdAndStatus(@Param("branchId") Long branchId,
+                                                        @Param("status") LibraryRuleStatus status,
+                                                        @Param("dateTime") LocalDateTime dateTime);
 }
