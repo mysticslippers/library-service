@@ -14,4 +14,6 @@ import java.util.Optional;
 public interface MaterialCopyRepository extends JpaRepository<MaterialCopy, Long> {
 
     Optional<MaterialCopy> findByInventoryNumber(String inventoryNumber);
+
+    boolean existsByInventoryNumber(String inventoryNumber);
 }
