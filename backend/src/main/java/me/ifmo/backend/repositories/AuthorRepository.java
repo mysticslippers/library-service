@@ -33,4 +33,13 @@ public interface AuthorRepository extends JpaRepository<Author, Long> {
     boolean existsByFullName(@Param("firstName") String firstName,
                              @Param("middleName") String middleName,
                              @Param("lastName") String lastName);
+
+    @Query("""
+           SELECT author FROM Author author
+               WHERE (:query IS NULL OR :query = ''
+                   OR lower(author.firstName) LIKE lower(concat('%', :query, '%')) 
+                   OR lower(coalesce(author.middleName, '')) LIKE lower(concat('%', :query, '%')) 
+                   OR lower(author.lastName) LIKE lower(concat('%', :query, '%'))) 
+    """)
+    Page<Author> search(@Param("query") String query, Pageable pageable);
 }
