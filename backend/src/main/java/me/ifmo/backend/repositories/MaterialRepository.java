@@ -14,4 +14,6 @@ import java.util.Optional;
 public interface MaterialRepository extends JpaRepository<Material, Long> {
 
     Optional<Material> findByIsbn(String isbn);
+
+    boolean existsByIsbn(String isbn);
 }
