@@ -24,4 +24,6 @@ public interface MaterialCopyRepository extends JpaRepository<MaterialCopy, Long
     Page<MaterialCopy> findByBranch_Id(Long branchId, Pageable pageable);
 
     Page<MaterialCopy> findByStatus(CopyStatus status, Pageable pageable);
+
+    Page<MaterialCopy> findByMaterial_IdAndBranch_Id(Long materialId, Long branchId, Pageable pageable);
 }
