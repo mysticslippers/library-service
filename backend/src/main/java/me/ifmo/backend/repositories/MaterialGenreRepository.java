@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface MaterialGenreRepository extends JpaRepository<MaterialGenre, MaterialGenreId> {
 
     List<MaterialGenre> findByMaterial_Id(Long materialId);
+
+    List<MaterialGenre> findByGenre_Id(Long genreId);
 }
