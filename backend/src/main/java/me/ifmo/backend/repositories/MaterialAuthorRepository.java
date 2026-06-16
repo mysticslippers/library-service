@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface MaterialAuthorRepository extends JpaRepository<MaterialAuthor, MaterialAuthorId> {
 
     List<MaterialAuthor> findByMaterial_IdOrderByAuthorOrderAsc(Long materialId);
+
+    List<MaterialAuthor> findByAuthor_Id(Long authorId);
 }
