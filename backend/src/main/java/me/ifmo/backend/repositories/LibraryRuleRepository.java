@@ -16,4 +16,6 @@ public interface LibraryRuleRepository extends JpaRepository<LibraryRule, Long> 
     Page<LibraryRule> findByBranch_Id(Long branchId, Pageable pageable);
 
     Optional<LibraryRule> findByBranch_IdAndStatus(Long branchId, LibraryRuleStatus status);
+
+    Page<LibraryRule> findByBranch_IdAndStatus(Long branchId, LibraryRuleStatus status, Pageable pageable);
 }
