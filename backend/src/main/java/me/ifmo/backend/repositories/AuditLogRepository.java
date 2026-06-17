@@ -22,4 +22,6 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     Page<AuditLog> findByTypeAndAction(AuditEntityType type, AuditAction action, Pageable pageable);
 
     Page<AuditLog> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    Page<AuditLog> findByUser_IdAndCreatedAtBetween(Long userId, LocalDateTime from, LocalDateTime to, Pageable pageable);
 }
