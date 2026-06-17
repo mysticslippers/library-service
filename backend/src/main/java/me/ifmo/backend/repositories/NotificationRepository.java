@@ -1,6 +1,7 @@
 package me.ifmo.backend.repositories;
 
 import me.ifmo.backend.entities.Notification;
+import me.ifmo.backend.entities.enums.NotificationChannel;
 import me.ifmo.backend.entities.enums.NotificationStatus;
 import me.ifmo.backend.entities.enums.NotificationType;
 import org.springframework.data.domain.Page;
@@ -24,4 +25,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByStatusInAndCreatedAtBeforeOrderByCreatedAtAsc(Collection<NotificationStatus> statuses, LocalDateTime createdAt);
 
     Page<Notification> findByType(NotificationType type, Pageable pageable);
+
+    Page<Notification> findByChannelAndStatus(NotificationChannel channel, NotificationStatus status, Pageable pageable);
 }
