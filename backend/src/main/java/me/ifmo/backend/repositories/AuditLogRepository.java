@@ -1,6 +1,7 @@
 package me.ifmo.backend.repositories;
 
 import me.ifmo.backend.entities.AuditLog;
+import me.ifmo.backend.entities.enums.AuditAction;
 import me.ifmo.backend.entities.enums.AuditEntityType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,4 +14,6 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     Page<AuditLog> findByType(AuditEntityType type, Pageable pageable);
 
     Page<AuditLog> findByTypeAndEntityId(AuditEntityType type, Long entityId, Pageable pageable);
+
+    Page<AuditLog> findByAction(AuditAction action, Pageable pageable);
 }
