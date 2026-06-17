@@ -1,4 +1,5 @@
 docs/**/*.tex linguist-vendored=true
-*.sql linguist-detectable=true
-*.sql linguist-language=PLpgSQL
+scripts/database/**/*.sql linguist-detectable=true
+scripts/database/**/*.sql linguist-language=PLpgSQL
+backend/src/main/resources/database/migration/**/*.sql linguist-generated=true
 *.sql text
