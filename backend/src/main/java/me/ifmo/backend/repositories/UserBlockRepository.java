@@ -13,4 +13,6 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
     Page<UserBlock> findByUser_Id(Long userId, Pageable pageable);
 
     Optional<UserBlock> findByUser_IdAndStatus(Long userId, UserBlockStatus status);
+
+    boolean existsByUser_IdAndStatus(Long userId, UserBlockStatus status);
 }
