@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public interface LoanRepository extends JpaRepository<Loan, Long> {
 
@@ -18,5 +19,5 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
 
     Page<Loan> findByBranch_IdAndStatus(Long branchId, LoanStatus status, Pageable pageable);
 
-    Page<Loan> findByCopy_IdAndStatusIn(Long copyId, Collection<LoanStatus> statuses, Pageable pageable);
+    Optional<Loan> findByCopy_IdAndStatusIn(Long copyId, Collection<LoanStatus> statuses);
 }
