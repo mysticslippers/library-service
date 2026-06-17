@@ -7,6 +7,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
     Page<Notification> findByUser_Id(Long userId, Pageable pageable);
@@ -16,4 +20,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> findByUser_IdAndType(Long userId, NotificationType type, Pageable pageable);
 
     Page<Notification> findByStatus(NotificationStatus status, Pageable pageable);
+
+    List<Notification> findByStatusInAndCreatedAtBeforeOrderByCreatedAtAsc(Collection<NotificationStatus> statuses, LocalDateTime createdAt);
 }
