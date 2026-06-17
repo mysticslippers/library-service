@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface PaymentTransactionRepository extends CrudRepository<PaymentTransaction, Long> {
 
     Optional<PaymentTransaction> findByExternalPayment(String externalPayment);
+
+    boolean existsByExternalPayment(String externalPayment);
 }
