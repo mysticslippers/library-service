@@ -31,4 +31,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> findByReservation_Id(Long reservationId, Pageable pageable);
 
     Page<Notification> findByLoan_Id(Long loanId, Pageable pageable);
+
+    Page<Notification> findByFine_Id(Long fineId, Pageable pageable);
 }
