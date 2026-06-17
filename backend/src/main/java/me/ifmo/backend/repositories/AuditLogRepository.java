@@ -16,4 +16,6 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     Page<AuditLog> findByTypeAndEntityId(AuditEntityType type, Long entityId, Pageable pageable);
 
     Page<AuditLog> findByAction(AuditAction action, Pageable pageable);
+
+    Page<AuditLog> findByTypeAndAction(AuditEntityType type, AuditAction action, Pageable pageable);
 }
