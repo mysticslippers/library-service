@@ -11,6 +11,8 @@ import java.util.Optional;
 
 public interface FineTariffRepository extends JpaRepository<FineTariff, Long> {
 
+    Page<FineTariff> findByStatus(FineTariffStatus status, Pageable pageable);
+
     Optional<FineTariff> findByViolationTypeAndStatus(ViolationType violationType, FineTariffStatus status);
 
     Page<FineTariff> findByViolationType(ViolationType violationType, Pageable pageable);
