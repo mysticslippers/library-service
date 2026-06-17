@@ -19,4 +19,6 @@ public interface PaymentTransactionRepository extends CrudRepository<PaymentTran
     Page<PaymentTransaction> findByFine_IdAndStatus(Long fineId, PaymentStatus status, Pageable pageable);
 
     Optional<PaymentTransaction> findByFine_IdAndStatus(Long fineId, PaymentStatus status);
+
+    Page<PaymentTransaction> findByStatus(PaymentStatus status, Pageable pageable);
 }
