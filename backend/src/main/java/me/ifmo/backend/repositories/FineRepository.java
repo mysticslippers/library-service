@@ -24,4 +24,6 @@ public interface FineRepository extends JpaRepository<Fine, Long> {
     Optional<Fine> findByLoan_IdAndReasonAndStatus(Long loanId, ViolationType reason, FineStatus status);
 
     Page<Fine> findByReasonAndStatus(ViolationType reason, FineStatus status, Pageable pageable);
+
+    Long countByUser_IdAndStatus(Long userId, FineStatus status);
 }
