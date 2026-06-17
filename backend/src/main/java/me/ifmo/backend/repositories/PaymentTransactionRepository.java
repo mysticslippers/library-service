@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.CrudRepository;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface PaymentTransactionRepository extends CrudRepository<PaymentTransaction, Long> {
@@ -21,4 +23,6 @@ public interface PaymentTransactionRepository extends CrudRepository<PaymentTran
     Optional<PaymentTransaction> findByFine_IdAndStatus(Long fineId, PaymentStatus status);
 
     Page<PaymentTransaction> findByStatus(PaymentStatus status, Pageable pageable);
+
+    Page<PaymentTransaction> findByStatusInAndCreatedAtBefore(Collection<PaymentStatus> statuses, LocalDateTime createdAt, Pageable pageable);
 }
