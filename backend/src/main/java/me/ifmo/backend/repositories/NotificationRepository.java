@@ -22,4 +22,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     Page<Notification> findByStatus(NotificationStatus status, Pageable pageable);
 
     List<Notification> findByStatusInAndCreatedAtBeforeOrderByCreatedAtAsc(Collection<NotificationStatus> statuses, LocalDateTime createdAt);
+
+    Page<Notification> findByType(NotificationType type, Pageable pageable);
 }
