@@ -1,6 +1,7 @@
 package me.ifmo.backend.repositories;
 
 import me.ifmo.backend.entities.PaymentTransaction;
+import me.ifmo.backend.entities.enums.PaymentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.CrudRepository;
@@ -14,4 +15,6 @@ public interface PaymentTransactionRepository extends CrudRepository<PaymentTran
     boolean existsByExternalPayment(String externalPayment);
 
     Page<PaymentTransaction> findByFine_Id(Long fineId, Pageable pageable);
+
+    Page<PaymentTransaction> findByFine_IdAndStatus(Long fineId, PaymentStatus status, Pageable pageable);
 }
