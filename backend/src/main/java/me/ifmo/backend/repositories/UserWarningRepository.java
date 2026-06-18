@@ -21,4 +21,6 @@ public interface UserWarningRepository extends JpaRepository<UserWarning, Long> 
     Page<UserWarning> findByCreatedByUser_Id(Long createdByUserId, Pageable pageable);
 
     Page<UserWarning> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    Page<UserWarning> findByStatusAndExpiresAtBefore(UserWarningStatus status, LocalDateTime expiresAt, Pageable pageable);
 }
