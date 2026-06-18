@@ -22,4 +22,6 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
     Page<UserBlock> findByCreatedByUser_Id(Long createdByUserId, Pageable pageable);
 
     Page<UserBlock> findByBlockedAtBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    Page<UserBlock> findByStatusAndExpiresAtBefore(UserBlockStatus status, LocalDateTime expiresAt, Pageable pageable);
 }
