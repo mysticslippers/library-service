@@ -11,4 +11,6 @@ public interface UserWarningRepository extends JpaRepository<UserWarning, Long> 
     Page<UserWarning> findByUser_Id(Long userId, Pageable pageable);
 
     Page<UserWarning> findByUser_IdAndStatus(Long userId, UserWarningStatus status, Pageable pageable);
+
+    Long countByUser_IdAndStatus(Long userId, UserWarningStatus status);
 }
