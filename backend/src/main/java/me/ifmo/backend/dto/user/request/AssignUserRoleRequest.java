@@ -1,4 +1,4 @@
-package me.ifmo.backend.DTO.user.request;
+package me.ifmo.backend.dto.user.request;
 
 import jakarta.validation.constraints.NotNull;
 import me.ifmo.backend.entities.enums.RoleCode;

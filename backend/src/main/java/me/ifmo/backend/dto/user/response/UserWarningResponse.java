@@ -1,4 +1,4 @@
-package me.ifmo.backend.DTO.user.response;
+package me.ifmo.backend.dto.user.response;
 
 import me.ifmo.backend.entities.enums.UserWarningStatus;
 
