@@ -3,6 +3,7 @@ package me.ifmo.backend.mappers;
 import me.ifmo.backend.dto.auth.request.RegisterRequest;
 import me.ifmo.backend.dto.user.request.CreateUserRequest;
 import me.ifmo.backend.dto.user.request.UpdateUserRequest;
+import me.ifmo.backend.dto.user.response.UserShortResponse;
 import me.ifmo.backend.entities.User;
 import org.mapstruct.*;
 
@@ -38,4 +39,6 @@ public interface UserMapper {
         @Mapping(target = "lockedUntil", ignore = true)
         @Mapping(target = "branch", ignore = true)
         void updateEntity(UpdateUserRequest request, @MappingTarget User user);
+
+        UserShortResponse toShortResponse(User user);
 }
