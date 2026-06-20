@@ -7,6 +7,9 @@ import me.ifmo.backend.dto.library.response.LibraryShortResponse;
 import me.ifmo.backend.entities.Library;
 import org.mapstruct.*;
 
+import java.util.Collection;
+import java.util.List;
+
 @Mapper(nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface LibraryMapper {
 
@@ -24,4 +27,6 @@ public interface LibraryMapper {
     LibraryResponse toResponse(Library library);
 
     LibraryShortResponse toShortResponse(Library library);
+
+    List<LibraryResponse> toResponseList(Collection<Library> libraries);
 }
