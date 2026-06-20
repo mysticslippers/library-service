@@ -29,4 +29,6 @@ public interface LibraryMapper {
     LibraryShortResponse toShortResponse(Library library);
 
     List<LibraryResponse> toResponseList(Collection<Library> libraries);
+
+    List<LibraryShortResponse> toShortResponseList(Collection<Library> libraries);
 }
