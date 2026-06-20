@@ -3,9 +3,11 @@ package me.ifmo.backend.mappers;
 import me.ifmo.backend.dto.auth.request.RegisterRequest;
 import me.ifmo.backend.dto.user.request.CreateUserRequest;
 import me.ifmo.backend.dto.user.request.UpdateUserRequest;
+import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.dto.user.response.UserShortResponse;
 import me.ifmo.backend.entities.User;
+import me.ifmo.backend.entities.UserRole;
 import me.ifmo.backend.entities.enums.RoleCode;
 import org.mapstruct.*;
 
@@ -53,4 +55,9 @@ public interface UserMapper {
         @Mapping(target = "homeBranchName", source = "user.branch.name")
         @Mapping(target = "roles", source = "roles")
         UserProfileResponse toProfileResponse(User user, Collection<RoleCode> roles);
+
+        @Mapping(target = "homeBranchId", source = "user.branch.id")
+        @Mapping(target = "homeBranchName", source = "user.branch.name")
+        @Mapping(target = "roles", source = "userRoles")
+        UserAdminResponse toAdminResponse(User user, Collection<UserRole> userRoles);
 }
