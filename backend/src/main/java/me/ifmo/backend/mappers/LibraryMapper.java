@@ -2,6 +2,7 @@ package me.ifmo.backend.mappers;
 
 import me.ifmo.backend.dto.library.request.CreateLibraryRequest;
 import me.ifmo.backend.dto.library.request.UpdateLibraryRequest;
+import me.ifmo.backend.dto.library.response.LibraryResponse;
 import me.ifmo.backend.entities.Library;
 import org.mapstruct.*;
 
@@ -18,4 +19,6 @@ public interface LibraryMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     void updateEntity(UpdateLibraryRequest request, @MappingTarget Library library);
+
+    LibraryResponse toResponse(Library library);
 }
