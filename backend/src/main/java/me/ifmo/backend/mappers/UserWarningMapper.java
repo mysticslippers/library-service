@@ -6,6 +6,9 @@ import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.UserWarning;
 import org.mapstruct.*;
 
+import java.util.Collection;
+import java.util.List;
+
 @Mapper(uses = UserMapper.class,
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface UserWarningMapper {
@@ -19,4 +22,6 @@ public interface UserWarningMapper {
     UserWarning toEntity(CreateUserWarningRequest request, User user, User createdByUser);
 
     UserWarningResponse toResponse(UserWarning userWarning);
+
+    List<UserWarningResponse> toResponseList(Collection<UserWarning> userWarnings);
 }
