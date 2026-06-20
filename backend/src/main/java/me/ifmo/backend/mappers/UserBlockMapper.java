@@ -9,6 +9,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.NullValueMappingStrategy;
 
+import java.util.Collection;
+import java.util.List;
+
 @Mapper(uses = UserMapper.class,
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface UserBlockMapper {
@@ -21,4 +24,6 @@ public interface UserBlockMapper {
     UserBlock toEntity(CreateUserBlockRequest request, User user, User createdByUser);
 
     UserBlockResponse toResponse(UserBlock userBlock);
+
+    List<UserBlockResponse> toResponseList(Collection<UserBlock> userBlocks);
 }
