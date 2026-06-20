@@ -8,6 +8,9 @@ import me.ifmo.backend.entities.Branch;
 import me.ifmo.backend.entities.Library;
 import org.mapstruct.*;
 
+import java.util.Collection;
+import java.util.List;
+
 @Mapper(uses = {LibraryMapper.class, BranchAddressJsonMapper.class},
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface BranchMapper {
@@ -29,4 +32,6 @@ public interface BranchMapper {
 
     @Mapping(target = "libraryId", source = "library.id")
     BranchShortResponse toShortResponse(Branch branch);
+
+    List<BranchResponse> toResponseList(Collection<Branch> branches);
 }
