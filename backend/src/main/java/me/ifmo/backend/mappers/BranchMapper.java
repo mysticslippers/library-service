@@ -34,4 +34,6 @@ public interface BranchMapper {
     BranchShortResponse toShortResponse(Branch branch);
 
     List<BranchResponse> toResponseList(Collection<Branch> branches);
+
+    List<BranchShortResponse> toShortResponseList(Collection<Branch> branches);
 }
