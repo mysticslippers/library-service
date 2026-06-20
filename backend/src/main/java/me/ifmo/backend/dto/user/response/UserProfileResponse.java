@@ -1,6 +1,9 @@
 package me.ifmo.backend.dto.user.response;
 
+import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.entities.enums.UserStatus;
+
+import java.util.Set;
 
 public record UserProfileResponse(
         Long id,
@@ -11,6 +14,7 @@ public record UserProfileResponse(
         String middleName,
         UserStatus status,
         Long homeBranchId,
-        String homeBranchName
+        String homeBranchName,
+        Set<RoleCode> roles
 ) {
 }
