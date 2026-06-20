@@ -3,8 +3,10 @@ package me.ifmo.backend.mappers;
 import me.ifmo.backend.dto.auth.request.RegisterRequest;
 import me.ifmo.backend.dto.user.request.CreateUserRequest;
 import me.ifmo.backend.dto.user.request.UpdateUserRequest;
+import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.dto.user.response.UserShortResponse;
 import me.ifmo.backend.entities.User;
+import me.ifmo.backend.entities.enums.RoleCode;
 import org.mapstruct.*;
 
 import java.util.Collection;
@@ -46,4 +48,9 @@ public interface UserMapper {
         UserShortResponse toShortResponse(User user);
 
         List<UserShortResponse> toShortResponseList(Collection<User> users);
+
+        @Mapping(target = "homeBranchId", source = "user.branch.id")
+        @Mapping(target = "homeBranchName", source = "user.branch.name")
+        @Mapping(target = "roles", source = "roles")
+        UserProfileResponse toProfileResponse(User user, Collection<RoleCode> roles);
 }
