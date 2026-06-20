@@ -2,6 +2,7 @@ package me.ifmo.backend.mappers;
 
 import me.ifmo.backend.dto.library.request.CreateBranchRequest;
 import me.ifmo.backend.dto.library.request.UpdateBranchRequest;
+import me.ifmo.backend.dto.library.response.BranchResponse;
 import me.ifmo.backend.entities.Branch;
 import me.ifmo.backend.entities.Library;
 import org.mapstruct.*;
@@ -22,4 +23,6 @@ public interface BranchMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     void updateEntity(UpdateBranchRequest request, @MappingTarget Branch branch);
+
+    BranchResponse toResponse(Branch branch);
 }
