@@ -7,6 +7,9 @@ import me.ifmo.backend.dto.user.response.UserShortResponse;
 import me.ifmo.backend.entities.User;
 import org.mapstruct.*;
 
+import java.util.Collection;
+import java.util.List;
+
 @Mapper(uses = {RoleMapper.class},
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface UserMapper {
@@ -41,4 +44,6 @@ public interface UserMapper {
         void updateEntity(UpdateUserRequest request, @MappingTarget User user);
 
         UserShortResponse toShortResponse(User user);
+
+        List<UserShortResponse> toShortResponseList(Collection<User> users);
 }
