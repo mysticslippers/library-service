@@ -12,5 +12,10 @@ import org.mapstruct.NullValueMappingStrategy;
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface UserBlockMapper {
 
-
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "user", source = "user")
+    @Mapping(target = "createdByUser", source = "createdByUser")
+    @Mapping(target = "reason", source = "request.reason")
+    @Mapping(target = "expiresAt", source = "request.expiresAt")
+    UserBlock toEntity(CreateUserBlockRequest request, User user, User createdByUser);
 }
