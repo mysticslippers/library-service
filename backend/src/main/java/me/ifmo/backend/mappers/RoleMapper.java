@@ -15,7 +15,7 @@ public interface RoleMapper {
 
     RoleResponse toResponse(Role role);
 
-    List<RoleResponse> toResponses(List<Role> roles);
+    List<RoleResponse> toResponseList(List<Role> roles);
 
     List<RoleResponse> toResponsesFromUserRoles(Collection<UserRole> userRoles);
 
