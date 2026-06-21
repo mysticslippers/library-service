@@ -2,6 +2,7 @@ package me.ifmo.backend.mappers;
 
 import me.ifmo.backend.dto.library.request.CreateLibraryRuleRequest;
 import me.ifmo.backend.dto.library.request.UpdateLibraryRuleRequest;
+import me.ifmo.backend.dto.library.response.LibraryRuleResponse;
 import me.ifmo.backend.entities.Branch;
 import me.ifmo.backend.entities.LibraryRule;
 import org.mapstruct.*;
@@ -25,4 +26,6 @@ public interface LibraryRuleMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "validFrom", ignore = true)
     void updateEntity(UpdateLibraryRuleRequest request, @MappingTarget LibraryRule rule);
+
+    LibraryRuleResponse toResponse(LibraryRule rule);
 }
