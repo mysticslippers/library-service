@@ -8,6 +8,8 @@ import me.ifmo.backend.entities.LibraryRule;
 import org.mapstruct.*;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 @Mapper(uses = BranchMapper.class,
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
@@ -28,4 +30,6 @@ public interface LibraryRuleMapper {
     void updateEntity(UpdateLibraryRuleRequest request, @MappingTarget LibraryRule rule);
 
     LibraryRuleResponse toResponse(LibraryRule rule);
+
+    List<LibraryRuleResponse> toResponseList(Collection<LibraryRule> rules);
 }
