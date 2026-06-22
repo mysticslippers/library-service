@@ -9,6 +9,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.NullValueMappingStrategy;
 
+import java.util.Collection;
+import java.util.List;
+
 @Mapper(uses = AuthorMapper.class,
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface MaterialAuthorMapper {
@@ -21,4 +24,6 @@ public interface MaterialAuthorMapper {
     MaterialAuthor toEntity(Material material, Author author, Integer authorOrder);
 
     MaterialAuthorResponse toResponse(MaterialAuthor materialAuthor);
+
+    List<MaterialAuthorResponse> toResponseList(Collection<MaterialAuthor> materialAuthors);
 }
