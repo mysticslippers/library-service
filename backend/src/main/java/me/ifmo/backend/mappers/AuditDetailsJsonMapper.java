@@ -17,4 +17,17 @@ public class AuditDetailsJsonMapper {
     public AuditDetailsJsonMapper(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
+
+    public String toJson(Map<String, Object> details) {
+        if (details == null) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(details);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException(
+                    "Failed to serialize audit details", exception
+            );
+        }
+    }
 }
