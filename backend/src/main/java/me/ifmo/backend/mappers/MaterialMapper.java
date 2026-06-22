@@ -3,6 +3,7 @@ package me.ifmo.backend.mappers;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialResponse;
+import me.ifmo.backend.dto.catalog.response.MaterialShortResponse;
 import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialAuthor;
 import me.ifmo.backend.entities.MaterialGenre;
@@ -30,4 +31,9 @@ public interface MaterialMapper {
     @Mapping(target = "genres", source = "materialGenres")
     MaterialResponse toResponse(Material material, Collection<MaterialAuthor> materialAuthors,
                                 Collection<MaterialGenre> materialGenres);
+
+    @Mapping(target = "authors", source = "materialAuthors")
+    @Mapping(target = "genres", source = "materialGenres")
+    MaterialShortResponse toShortResponse(Material material, Collection<MaterialAuthor> materialAuthors,
+                                          Collection<MaterialGenre> materialGenres);
 }
