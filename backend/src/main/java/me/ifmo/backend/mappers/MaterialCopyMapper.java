@@ -33,6 +33,8 @@ public interface MaterialCopyMapper {
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntity(UpdateMaterialCopyRequest request, @MappingTarget MaterialCopy entity);
 
+    @Mapping(target = "materialId", source = "material.id")
+    @Mapping(target = "materialTitle", source = "material.title")
     MaterialCopyResponse toResponse(MaterialCopy copy);
 
     List<MaterialCopyResponse> toResponseList(Collection<MaterialCopy> copies);
