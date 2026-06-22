@@ -9,6 +9,8 @@ import org.mapstruct.Mapping;
 import org.mapstruct.NullValueMappingStrategy;
 
 import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.List;
 
 @Mapper(uses = {UserMapper.class, MaterialCopyMapper.class},
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
@@ -26,4 +28,6 @@ public interface FineMapper {
     @Mapping(target = "loanId", source = "loan.id")
     @Mapping(target = "tariffId", source = "tariff.id")
     FineResponse toResponse(Fine fine);
+
+    List<FineResponse> toResponseList(Collection<Fine> fines);
 }
