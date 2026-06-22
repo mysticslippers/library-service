@@ -7,6 +7,8 @@ import me.ifmo.backend.entities.*;
 import org.mapstruct.*;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 @Mapper(uses = UserMapper.class, nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface NotificationMapper {
@@ -31,4 +33,6 @@ public interface NotificationMapper {
     @Mapping(target = "loanId", source = "loan.id")
     @Mapping(target = "fineId", source = "fine.id")
     NotificationResponse toResponse(Notification notification);
+
+    List<NotificationResponse> toResponseList(Collection<Notification> notifications);
 }
