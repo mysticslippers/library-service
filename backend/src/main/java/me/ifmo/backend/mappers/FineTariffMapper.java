@@ -2,6 +2,7 @@ package me.ifmo.backend.mappers;
 
 import me.ifmo.backend.dto.fine.request.CreateFineTariffRequest;
 import me.ifmo.backend.dto.fine.request.UpdateFineTariffRequest;
+import me.ifmo.backend.dto.fine.response.FineTariffResponse;
 import me.ifmo.backend.entities.FineTariff;
 import org.mapstruct.*;
 
@@ -22,4 +23,6 @@ public interface FineTariffMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "validFrom", ignore = true)
     void updateEntity(UpdateFineTariffRequest request, @MappingTarget FineTariff tariff);
+
+    FineTariffResponse toResponse(FineTariff tariff);
 }
