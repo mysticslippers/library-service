@@ -24,7 +24,6 @@ public interface MaterialCopyMapper {
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "id", ignore = true)
     @Mapping(target = "material", ignore = true)
     @Mapping(target = "branch", ignore = true)
     @Mapping(target = "inventoryNumber", ignore = true)
