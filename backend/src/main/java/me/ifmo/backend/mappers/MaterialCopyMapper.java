@@ -8,6 +8,9 @@ import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialCopy;
 import org.mapstruct.*;
 
+import java.util.Collection;
+import java.util.List;
+
 @Mapper( uses = BranchMapper.class,
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface MaterialCopyMapper {
@@ -31,4 +34,6 @@ public interface MaterialCopyMapper {
     void updateEntity(UpdateMaterialCopyRequest request, @MappingTarget MaterialCopy entity);
 
     MaterialCopyResponse toResponse(MaterialCopy copy);
+
+    List<MaterialCopyResponse> toResponseList(Collection<MaterialCopy> copies);
 }
