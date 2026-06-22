@@ -24,4 +24,6 @@ public interface AuthorMapper {
     void updateEntity(UpdateAuthorRequest request, @MappingTarget Author author);
 
     AuthorResponse toResponse(Author author);
+
+    List<AuthorResponse> toResponseList(Collection<Author> authors);
 }
