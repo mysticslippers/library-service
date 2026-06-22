@@ -10,6 +10,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.NullValueMappingStrategy;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 @Mapper(uses = {UserMapper.class, AuditDetailsJsonMapper.class},
@@ -26,4 +28,6 @@ public interface AuditLogMapper {
 
     @Mapping(target = "actor", source = "user")
     AuditLogResponse toResponse(AuditLog auditLog);
+
+    List<AuditLogResponse> toResponseList(Collection<AuditLog> auditLogs);
 }
