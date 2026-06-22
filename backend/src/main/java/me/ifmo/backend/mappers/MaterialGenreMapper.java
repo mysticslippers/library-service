@@ -4,6 +4,7 @@ import me.ifmo.backend.dto.catalog.response.GenreResponse;
 import me.ifmo.backend.entities.Genre;
 import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialGenre;
+import me.ifmo.backend.entities.id.MaterialGenreId;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -13,6 +14,7 @@ import java.util.Collection;
 import java.util.List;
 
 @Mapper(uses = GenreMapper.class,
+        imports = MaterialGenreId.class,
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface MaterialGenreMapper {
 
