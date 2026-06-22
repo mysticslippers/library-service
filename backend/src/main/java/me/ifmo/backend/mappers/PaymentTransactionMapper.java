@@ -1,11 +1,9 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.dto.fine.request.UpdatePaymentStatusRequest;
 import me.ifmo.backend.entities.Fine;
 import me.ifmo.backend.entities.PaymentTransaction;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.NullValueMappingStrategy;
+import org.mapstruct.*;
 
 import java.math.BigDecimal;
 
@@ -17,4 +15,9 @@ public interface PaymentTransactionMapper {
     @Mapping(target = "externalPayment", source = "externalPayment")
     @Mapping(target = "amount", source = "amount")
     PaymentTransaction toEntity(Fine fine, String externalPayment, BigDecimal amount);
+
+    @BeanMapping(ignoreByDefault = true, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "externalPayment", source = "externalPayment")
+    void updateStatus(UpdatePaymentStatusRequest request, @MappingTarget PaymentTransaction transaction);
 }
