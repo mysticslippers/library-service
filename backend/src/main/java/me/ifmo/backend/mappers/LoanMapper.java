@@ -1,5 +1,6 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.dto.circulation.response.LoanResponse;
 import me.ifmo.backend.entities.*;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -20,4 +21,7 @@ public interface LoanMapper {
     @Mapping(target = "issuedByUser", source = "issuedByUser")
     @Mapping(target = "dueAt", source = "dueAt")
     Loan toEntity(User user, MaterialCopy copy, Reservation reservation, Branch branch, User issuedByUser, LocalDateTime dueAt);
+
+    @Mapping(target = "reservationId", source = "reservation.id")
+    LoanResponse toResponse(Loan loan);
 }
