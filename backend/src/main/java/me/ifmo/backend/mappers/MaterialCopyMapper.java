@@ -1,17 +1,31 @@
 package me.ifmo.backend.mappers;
 
 import me.ifmo.backend.dto.catalog.request.CreateMaterialCopyRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateMaterialCopyRequest;
+import me.ifmo.backend.entities.Branch;
+import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialCopy;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.NullValueMappingStrategy;
+import org.mapstruct.*;
 
-@Mapper(nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
+@Mapper( uses = BranchMapper.class,
+        nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface MaterialCopyMapper {
 
     @BeanMapping(ignoreByDefault = true)
-    @Mapping(target = "inventoryNumber", source = "inventoryNumber")
-    @Mapping(target = "shelfLocation", source = "shelfLocation")
-    MaterialCopy toEntity(CreateMaterialCopyRequest request);
+    @Mapping(target = "material", source = "material")
+    @Mapping(target = "branch", source = "branch")
+    @Mapping(target = "inventoryNumber", source = "request.inventoryNumber")
+    @Mapping(target = "shelfLocation", source = "request.shelfLocation")
+    MaterialCopy toEntity(CreateMaterialCopyRequest request, Branch branch, Material material);
+
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "material", ignore = true)
+    @Mapping(target = "branch", ignore = true)
+    @Mapping(target = "inventoryNumber", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    void updateEntity(UpdateMaterialCopyRequest request, @MappingTarget MaterialCopy entity);
 }
