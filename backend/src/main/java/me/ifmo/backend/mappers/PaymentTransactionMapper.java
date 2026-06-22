@@ -7,6 +7,8 @@ import me.ifmo.backend.entities.PaymentTransaction;
 import org.mapstruct.*;
 
 import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.List;
 
 @Mapper(nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface PaymentTransactionMapper {
@@ -24,4 +26,6 @@ public interface PaymentTransactionMapper {
 
     @Mapping(target = "fineId", source = "fine.id")
     PaymentTransactionResponse toResponse(PaymentTransaction transaction);
+
+    List<PaymentTransactionResponse> toResponseList(Collection<PaymentTransaction> transactions);
 }
