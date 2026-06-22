@@ -1,5 +1,6 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.dto.audit.response.AuditLogResponse;
 import me.ifmo.backend.entities.AuditLog;
 import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.enums.AuditAction;
@@ -22,4 +23,7 @@ public interface AuditLogMapper {
     @Mapping(target = "action", source = "action")
     @Mapping(target = "details", source = "details")
     AuditLog toEntity(User actor, AuditEntityType entityType, Long entityId, AuditAction action, Map<String, Object> details);
+
+    @Mapping(target = "actor", source = "user")
+    AuditLogResponse toResponse(AuditLog auditLog);
 }
