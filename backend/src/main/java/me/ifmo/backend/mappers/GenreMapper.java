@@ -6,6 +6,9 @@ import me.ifmo.backend.dto.catalog.response.GenreResponse;
 import me.ifmo.backend.entities.Genre;
 import org.mapstruct.*;
 
+import java.util.Collection;
+import java.util.List;
+
 @Mapper(nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface GenreMapper {
 
@@ -20,4 +23,6 @@ public interface GenreMapper {
     void updateEntity(UpdateGenreRequest request, @MappingTarget Genre genre);
 
     GenreResponse toResponse(Genre genre);
+
+    List<GenreResponse> toResponseList(Collection<Genre> genres);
 }
