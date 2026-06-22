@@ -30,7 +30,7 @@ public class MaterialAuthor {
 
     @Builder.Default
     @Column(name = "author_order", nullable = false)
-    private Short authorOrder = 1;
+    private Integer authorOrder = 1;
 
     @Override
     public String toString() {
