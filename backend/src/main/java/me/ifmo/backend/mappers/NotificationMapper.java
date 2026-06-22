@@ -1,11 +1,11 @@
 package me.ifmo.backend.mappers;
 
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
+import me.ifmo.backend.dto.notification.request.UpdateNotificationStatusRequest;
 import me.ifmo.backend.entities.*;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.NullValueMappingStrategy;
+import org.mapstruct.*;
+
+import java.time.LocalDateTime;
 
 @Mapper(uses = UserMapper.class, nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface NotificationMapper {
@@ -20,4 +20,9 @@ public interface NotificationMapper {
     @Mapping(target = "subject", source = "request.subject")
     @Mapping(target = "body", source = "request.body")
     Notification toEntity(CreateNotificationRequest request, User user, Reservation reservation, Loan loan, Fine fine);
+
+    @BeanMapping(ignoreByDefault = true, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "status", source = "request.status")
+    @Mapping(target = "sentAt", source = "sentAt")
+    void updateStatus(UpdateNotificationStatusRequest request, LocalDateTime sentAt, @MappingTarget Notification notification);
 }
