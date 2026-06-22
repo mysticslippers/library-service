@@ -22,4 +22,6 @@ public interface AuthorMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     void updateEntity(UpdateAuthorRequest request, @MappingTarget Author author);
+
+    AuthorResponse toResponse(Author author);
 }
