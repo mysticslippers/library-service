@@ -1,6 +1,7 @@
 package me.ifmo.backend.mappers;
 
 import me.ifmo.backend.dto.fine.request.UpdatePaymentStatusRequest;
+import me.ifmo.backend.dto.fine.response.PaymentTransactionResponse;
 import me.ifmo.backend.entities.Fine;
 import me.ifmo.backend.entities.PaymentTransaction;
 import org.mapstruct.*;
@@ -20,4 +21,7 @@ public interface PaymentTransactionMapper {
     @Mapping(target = "status", source = "status")
     @Mapping(target = "externalPayment", source = "externalPayment")
     void updateStatus(UpdatePaymentStatusRequest request, @MappingTarget PaymentTransaction transaction);
+
+    @Mapping(target = "fineId", source = "fine.id")
+    PaymentTransactionResponse toResponse(PaymentTransaction transaction);
 }
