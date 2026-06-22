@@ -17,4 +17,9 @@ public interface AuthorMapper {
     @Mapping(target = "middleName", source = "middleName")
     @Mapping(target = "lastName", source = "lastName")
     Author toEntity(CreateAuthorRequest request);
+
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    void updateEntity(UpdateAuthorRequest request, @MappingTarget Author author);
 }
