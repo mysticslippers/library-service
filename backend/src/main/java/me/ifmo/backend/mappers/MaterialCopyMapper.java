@@ -2,6 +2,7 @@ package me.ifmo.backend.mappers;
 
 import me.ifmo.backend.dto.catalog.request.CreateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialCopyRequest;
+import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
 import me.ifmo.backend.entities.Branch;
 import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialCopy;
@@ -28,4 +29,6 @@ public interface MaterialCopyMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntity(UpdateMaterialCopyRequest request, @MappingTarget MaterialCopy entity);
+
+    MaterialCopyResponse toResponse(MaterialCopy copy);
 }
