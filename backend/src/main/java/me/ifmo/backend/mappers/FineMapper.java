@@ -1,5 +1,6 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.dto.fine.response.FineResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.ViolationType;
 import org.mapstruct.BeanMapping;
@@ -21,4 +22,8 @@ public interface FineMapper {
     @Mapping(target = "reason", source = "reason")
     @Mapping(target = "amount", source = "amount")
     Fine toEntity(User user, Loan loan, MaterialCopy copy, FineTariff tariff, ViolationType reason, BigDecimal amount);
+
+    @Mapping(target = "loanId", source = "loan.id")
+    @Mapping(target = "tariffId", source = "tariff.id")
+    FineResponse toResponse(Fine fine);
 }
