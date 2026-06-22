@@ -8,6 +8,8 @@ import org.mapstruct.Mapping;
 import org.mapstruct.NullValueMappingStrategy;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 @Mapper(uses = {UserMapper.class, MaterialCopyMapper.class, BranchMapper.class},
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
@@ -24,4 +26,6 @@ public interface LoanMapper {
 
     @Mapping(target = "reservationId", source = "reservation.id")
     LoanResponse toResponse(Loan loan);
+
+    List<LoanResponse> toResponseList(Collection<Loan> loans);
 }
