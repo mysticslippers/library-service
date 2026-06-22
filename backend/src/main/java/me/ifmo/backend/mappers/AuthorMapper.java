@@ -12,4 +12,9 @@ import java.util.List;
 @Mapper(nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface AuthorMapper {
 
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "firstName", source = "firstName")
+    @Mapping(target = "middleName", source = "middleName")
+    @Mapping(target = "lastName", source = "lastName")
+    Author toEntity(CreateAuthorRequest request);
 }
