@@ -1,5 +1,6 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.dto.catalog.response.GenreResponse;
 import me.ifmo.backend.entities.Genre;
 import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialGenre;
@@ -17,4 +18,9 @@ public interface MaterialGenreMapper {
     @Mapping(target = "material", source = "material")
     @Mapping(target = "genre", source = "genre")
     MaterialGenre toEntity(Material material, Genre genre);
+
+    @Mapping(target = "id", source = "genre.id")
+    @Mapping(target = "code", source = "genre.code")
+    @Mapping(target = "name", source = "genre.name")
+    GenreResponse toResponse(MaterialGenre materialGenre);
 }
