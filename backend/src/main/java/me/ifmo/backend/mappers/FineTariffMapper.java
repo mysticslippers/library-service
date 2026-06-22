@@ -7,6 +7,8 @@ import me.ifmo.backend.entities.FineTariff;
 import org.mapstruct.*;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
 @Mapper(nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
 public interface FineTariffMapper {
@@ -25,4 +27,6 @@ public interface FineTariffMapper {
     void updateEntity(UpdateFineTariffRequest request, @MappingTarget FineTariff tariff);
 
     FineTariffResponse toResponse(FineTariff tariff);
+
+    List<FineTariffResponse> toResponseList(Collection<FineTariff> tariffs);
 }
