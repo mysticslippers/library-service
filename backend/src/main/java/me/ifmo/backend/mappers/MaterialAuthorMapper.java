@@ -1,5 +1,6 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.dto.catalog.response.MaterialAuthorResponse;
 import me.ifmo.backend.entities.Author;
 import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialAuthor;
@@ -18,4 +19,6 @@ public interface MaterialAuthorMapper {
     @Mapping(target = "author", source = "author")
     @Mapping(target = "authorOrder", source = "authorOrder")
     MaterialAuthor toEntity(Material material, Author author, Integer authorOrder);
+
+    MaterialAuthorResponse toResponse(MaterialAuthor materialAuthor);
 }
