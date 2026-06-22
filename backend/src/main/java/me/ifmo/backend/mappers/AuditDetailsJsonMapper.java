@@ -30,4 +30,17 @@ public class AuditDetailsJsonMapper {
             );
         }
     }
+
+    public Map<String, Object> toMap(String detailsJson) {
+        if (detailsJson == null || detailsJson.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return objectMapper.readValue(detailsJson, DETAILS_TYPE);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException(
+                    "Failed to deserialize audit details", exception
+            );
+        }
+    }
 }
