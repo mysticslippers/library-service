@@ -2,6 +2,7 @@ package me.ifmo.backend.mappers;
 
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
 import me.ifmo.backend.dto.notification.request.UpdateNotificationStatusRequest;
+import me.ifmo.backend.dto.notification.response.NotificationResponse;
 import me.ifmo.backend.entities.*;
 import org.mapstruct.*;
 
@@ -25,4 +26,9 @@ public interface NotificationMapper {
     @Mapping(target = "status", source = "request.status")
     @Mapping(target = "sentAt", source = "sentAt")
     void updateStatus(UpdateNotificationStatusRequest request, LocalDateTime sentAt, @MappingTarget Notification notification);
+
+    @Mapping(target = "reservationId", source = "reservation.id")
+    @Mapping(target = "loanId", source = "loan.id")
+    @Mapping(target = "fineId", source = "fine.id")
+    NotificationResponse toResponse(Notification notification);
 }
