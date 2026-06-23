@@ -19,6 +19,8 @@ public interface BranchRepository extends JpaRepository<Branch, Long> {
 
     Page<Branch> findByLibrary_IdAndStatus(Long libraryId, BranchStatus status, Pageable pageable);
 
+    boolean existsByLibrary_IdAndStatusNot(Long libraryId, BranchStatus status);
+
     Optional<Branch> findByLibrary_IdAndNameIgnoreCase(Long libraryId, String name);
 
     boolean existsByLibrary_IdAndNameIgnoreCase(Long libraryId, String name);
