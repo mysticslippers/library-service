@@ -2,6 +2,7 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.CreateAuthorRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateAuthorRequest;
 import me.ifmo.backend.dto.catalog.response.AuthorResponse;
 import me.ifmo.backend.entities.Author;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
@@ -23,20 +24,20 @@ public class AuthorServiceImpl implements AuthorService {
     private final AuthorMapper mapper;
 
     private String normalize(String value, String fieldName) {
-        String normalized = value.strip();
+        if (fieldName.equals("Middle name")){
+            if(value == null)
+                return null;
 
-        if (normalized.isBlank())
-            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
+            String normalized = value.strip();
+            return normalized.isBlank() ? null : normalized;
+        } else {
+            String normalized = value.strip();
 
-        return normalized;
-    }
+            if (normalized.isBlank())
+                throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
 
-    private String normalizeMiddleName(String value) {
-        if(value == null)
-            return null;
-
-        String normalized = value.strip();
-        return normalized.isBlank() ? null : normalized;
+            return normalized;
+        }
     }
 
     @Override
@@ -44,7 +45,7 @@ public class AuthorServiceImpl implements AuthorService {
     public AuthorResponse create(CreateAuthorRequest request) {
         String firstName = normalize(request.firstName(), "First name");
         String lastName = normalize(request.lastName(), "Last name");
-        String middleName = normalizeMiddleName(request.middleName());
+        String middleName = normalize(request.middleName(), "Middle name");
 
         if (repository.existsByFullName(firstName, middleName, lastName))
             throw new DuplicateResourceException("Author with the same full name already exists");
@@ -63,5 +64,41 @@ public class AuthorServiceImpl implements AuthorService {
                 () -> new ResourceNotFoundException("Author with id '%s' not found".formatted(id)));
 
         return mapper.toResponse(author);
+    }
+
+    @Override
+    @Transactional
+    public AuthorResponse update(Long id, UpdateAuthorRequest request) {
+        Author author = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Author with id '%s' not found".formatted(id)));
+
+        String firstName = (request.firstName() != null) ? normalize(request.firstName(), "First name")
+                : author.getFirstName();
+
+        String lastName = (request.lastName() != null) ? normalize(request.lastName(), "Last name")
+                : author.getLastName();
+
+        String middleName = (request.middleName() != null) ? normalize(request.middleName(), "Middle name")
+                : author.getMiddleName();
+
+        repository.findByFullName(firstName, middleName, lastName)
+                .filter(found -> !found.getId().equals(id))
+                .ifPresent(found -> {
+                    throw new DuplicateResourceException("Author with the same full name already exists");
+                });
+
+        UpdateAuthorRequest normalizedRequest = new UpdateAuthorRequest(
+                request.firstName() != null ? firstName : null,
+                request.lastName() != null ? lastName : null,
+                request.middleName() != null ? middleName : null
+        );
+
+        mapper.updateEntity(normalizedRequest, author);
+
+        if(request.middleName() != null && middleName == null)
+            author.setMiddleName(null);
+
+        Author saved = repository.save(author);
+        return mapper.toResponse(saved);
     }
 }
