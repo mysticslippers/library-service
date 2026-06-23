@@ -66,4 +66,14 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
                 "Request validation failed", request, errors);
     }
+
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ApiErrorResponse> handleMalformedRequest(
+            Exception exception,
+            HttpServletRequest request) {
+
+        return build(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST",
+                "Request body or parameter has an invalid format",
+                request, List.of());
+    }
 }
