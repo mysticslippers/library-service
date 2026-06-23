@@ -1,9 +1,11 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.catalog.request.AuthorSearchRequest;
 import me.ifmo.backend.dto.catalog.request.CreateAuthorRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateAuthorRequest;
 import me.ifmo.backend.dto.catalog.response.AuthorResponse;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.Author;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
@@ -13,6 +15,8 @@ import me.ifmo.backend.mappers.AuthorMapper;
 import me.ifmo.backend.repositories.AuthorRepository;
 import me.ifmo.backend.repositories.MaterialAuthorRepository;
 import me.ifmo.backend.services.AuthorService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -113,5 +117,14 @@ public class AuthorServiceImpl implements AuthorService {
             throw new ResourceInUseException("Author with id '%s' is used by materials".formatted(id));
 
         repository.delete(existing);
+    }
+
+    @Override
+    public PageResponse<AuthorResponse> search(AuthorSearchRequest request, Pageable pageable) {
+        String query = (request == null || request.query() == null) ? "" : request.query().strip();
+
+        Page<AuthorResponse> responses = repository.search(query, pageable).map(mapper::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
