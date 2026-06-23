@@ -76,4 +76,13 @@ public class GlobalExceptionHandler {
                 "Request body or parameter has an invalid format",
                 request, List.of());
     }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrity(DataIntegrityViolationException exception,
+                                                                HttpServletRequest request) {
+
+        return build(HttpStatus.CONFLICT, "DATA_INTEGRITY_VIOLATION",
+                "The operation conflicts with existing data",
+                request, List.of());
+    }
 }
