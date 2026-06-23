@@ -7,9 +7,11 @@ import me.ifmo.backend.dto.catalog.response.GenreResponse;
 import me.ifmo.backend.entities.Genre;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceInUseException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.GenreMapper;
 import me.ifmo.backend.repositories.GenreRepository;
+import me.ifmo.backend.repositories.MaterialGenreRepository;
 import me.ifmo.backend.services.GenreService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class GenreServiceImpl implements GenreService {
 
+    private final MaterialGenreRepository materialGenreRepository;
     private final GenreRepository repository;
     private final GenreMapper mapper;
 
@@ -73,16 +76,16 @@ public class GenreServiceImpl implements GenreService {
         String normalizedCode = (request.code() != null) ? request.code().strip().toUpperCase(Locale.ROOT) : null;
 
         if(normalizedName != null && normalizedName.isBlank())
-            throw new BusinessRuleException("Genre code must not be blank");
+            throw new BusinessRuleException("Genre name must not be blank");
 
         if(normalizedCode != null && normalizedCode.isBlank())
             throw new BusinessRuleException("Genre code must not be blank");
 
-        if(normalizedName != null && normalizedName.equalsIgnoreCase(genre.getName())
+        if(normalizedName != null && !normalizedName.equalsIgnoreCase(genre.getName())
                 && repository.existsByNameIgnoreCase(normalizedName))
             throw new DuplicateResourceException("Genre with name '%s' already exists".formatted(normalizedName));
 
-        if(normalizedCode != null && normalizedCode.equalsIgnoreCase(genre.getCode())
+        if(normalizedCode != null && !normalizedCode.equalsIgnoreCase(genre.getCode())
                 && repository.existsByCode(normalizedCode))
             throw new DuplicateResourceException("Genre with code '%s' already exists".formatted(normalizedCode));
 
@@ -99,6 +102,9 @@ public class GenreServiceImpl implements GenreService {
     public void delete(Long id){
         Genre existing = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No genre with id '%s' found".formatted(id)));
+
+        if(materialGenreRepository.existsByGenre_Id(id))
+            throw new ResourceInUseException("Genre with id '%s' is used by materials".formatted(id));
 
         repository.delete(existing);
     }
