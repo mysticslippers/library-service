@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.library.response.LibraryResponse;
 public interface LibraryService {
 
     LibraryResponse create(CreateLibraryRequest request);
+
+    LibraryResponse getLibraryById(Long id);
 }
