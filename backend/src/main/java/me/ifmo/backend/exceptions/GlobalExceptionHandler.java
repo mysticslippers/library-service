@@ -93,4 +93,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "ACCESS_DENIED",
                 "Access is denied", request, List.of());
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception, HttpServletRequest request) {
+        log.error("Unhandled exception", exception);
+
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
+                "An unexpected error occurred", request, List.of());
+    }
 }
