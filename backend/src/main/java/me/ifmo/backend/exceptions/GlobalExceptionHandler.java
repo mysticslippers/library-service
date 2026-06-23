@@ -85,4 +85,12 @@ public class GlobalExceptionHandler {
                 "The operation conflicts with existing data",
                 request, List.of());
     }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException exception,
+                                                               HttpServletRequest request) {
+
+        return build(HttpStatus.FORBIDDEN, "ACCESS_DENIED",
+                "Access is denied", request, List.of());
+    }
 }
