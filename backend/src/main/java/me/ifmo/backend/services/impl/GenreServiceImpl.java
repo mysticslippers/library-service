@@ -43,6 +43,7 @@ public class GenreServiceImpl implements GenreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public GenreResponse getGenreById(Long id){
         Genre genre = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No genre with id '%s' found".formatted(id)));
