@@ -5,6 +5,7 @@ import me.ifmo.backend.dto.catalog.request.CreateGenreRequest;
 import me.ifmo.backend.dto.catalog.response.GenreResponse;
 import me.ifmo.backend.entities.Genre;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.GenreMapper;
 import me.ifmo.backend.repositories.GenreRepository;
 import me.ifmo.backend.services.GenreService;
@@ -38,5 +39,13 @@ public class GenreServiceImpl implements GenreService {
 
         Genre saved = repository.save(genre);
         return mapper.toResponse(saved);
+    }
+
+    @Override
+    public GenreResponse getGenreById(Long id){
+        Genre genre = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No genre with id '%s' found".formatted(id)));
+
+        return mapper.toResponse(genre);
     }
 }
