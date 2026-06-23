@@ -17,4 +17,6 @@ public interface GenreService {
     GenreResponse update(UpdateGenreRequest request);
 
     PageResponse<GenreResponse> search(String query, Pageable pageable);
+
+    void delete(Long id);
 }
