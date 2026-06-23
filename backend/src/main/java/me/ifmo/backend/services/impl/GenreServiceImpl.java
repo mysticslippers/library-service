@@ -48,4 +48,12 @@ public class GenreServiceImpl implements GenreService {
 
         return mapper.toResponse(genre);
     }
+
+    @Override
+    public GenreResponse getGenreByCode(String code){
+        Genre genre = repository.findByCode(code)
+                .orElseThrow(() -> new ResourceNotFoundException("Genre with code '%s' not found".formatted(code)));
+
+        return mapper.toResponse(genre);
+    }
 }
