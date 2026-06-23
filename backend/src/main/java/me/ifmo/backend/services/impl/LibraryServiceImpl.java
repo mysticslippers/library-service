@@ -8,6 +8,7 @@ import me.ifmo.backend.entities.enums.LoanStatus;
 import me.ifmo.backend.entities.enums.ReservationStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.LibraryMapper;
 import me.ifmo.backend.repositories.BranchRepository;
 import me.ifmo.backend.repositories.LibraryRepository;
@@ -58,4 +59,11 @@ public class LibraryServiceImpl implements LibraryService {
         return mapper.toResponse(saved);
     }
 
+    @Override
+    public LibraryResponse getLibraryById(Long id) {
+        Library library = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Library with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(library);
+    }
 }
