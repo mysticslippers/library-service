@@ -1,5 +1,6 @@
 package me.ifmo.backend.services;
 
+import me.ifmo.backend.dto.library.request.ChangeLibraryStatusRequest;
 import me.ifmo.backend.dto.library.request.CreateLibraryRequest;
 import me.ifmo.backend.dto.library.request.UpdateLibraryRequest;
 import me.ifmo.backend.dto.library.response.LibraryResponse;
@@ -13,4 +14,6 @@ public interface LibraryService {
     LibraryResponse getByCode(String code);
 
     LibraryResponse update(Long id, UpdateLibraryRequest request);
+
+    LibraryResponse changeStatus(Long id, ChangeLibraryStatusRequest request);
 }
