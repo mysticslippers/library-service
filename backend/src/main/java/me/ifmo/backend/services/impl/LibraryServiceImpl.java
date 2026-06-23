@@ -2,8 +2,10 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.library.request.CreateLibraryRequest;
+import me.ifmo.backend.dto.library.request.UpdateLibraryRequest;
 import me.ifmo.backend.dto.library.response.LibraryResponse;
 import me.ifmo.backend.entities.Library;
+import me.ifmo.backend.entities.enums.LibraryStatus;
 import me.ifmo.backend.entities.enums.LoanStatus;
 import me.ifmo.backend.entities.enums.ReservationStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
@@ -77,5 +79,28 @@ public class LibraryServiceImpl implements LibraryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Library with code '%s' not found".formatted(normalizedCode)));
 
         return mapper.toResponse(library);
+    }
+
+    @Override
+    @Transactional
+    public LibraryResponse update(Long id, UpdateLibraryRequest request) {
+        Library library = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Library with id '%s' not found".formatted(id)));
+
+        if (library.getStatus() == LibraryStatus.ARCHIVED)
+            throw new BusinessRuleException("Archived library cannot be updated");
+
+        String name = (request.name() != null) ? normalize(request.name(), "Library name") : null;
+
+        String code = (request.code() != null) ? normalize(request.code(), "Library code").toUpperCase(Locale.ROOT)
+                : null;
+
+        if (code != null && !code.equals(library.getCode()) && repository.existsByCode(code))
+            throw new DuplicateResourceException("Library with code '%s' already exists".formatted(code));
+
+        mapper.updateEntity(new UpdateLibraryRequest(code, name), library);
+
+        Library saved = repository.save(library);
+        return mapper.toResponse(saved);
     }
 }
