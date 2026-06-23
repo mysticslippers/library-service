@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.catalog.response.AuthorResponse;
 public interface AuthorService {
 
     AuthorResponse create(CreateAuthorRequest request);
+
+    AuthorResponse getAuthorById(Long id);
 }
