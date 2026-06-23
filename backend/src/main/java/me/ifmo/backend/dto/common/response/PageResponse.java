@@ -1,5 +1,7 @@
 package me.ifmo.backend.dto.common.response;
 
+import org.springframework.data.domain.Page;
+
 import java.util.List;
 
 public record PageResponse<T>(
@@ -12,4 +14,16 @@ public record PageResponse<T>(
         boolean last,
         boolean empty
 ) {
+    public static <T> PageResponse<T> from(Page<T> page) {
+        return new PageResponse<>(
+                page.getContent(),
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.isFirst(),
+                page.isLast(),
+                page.isEmpty()
+        );
+    }
 }
