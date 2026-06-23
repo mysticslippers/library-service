@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.catalog.response.GenreResponse;
 public interface GenreService {
 
     GenreResponse create(CreateGenreRequest request);
+
+    GenreResponse getGenreById(Long id);
 }
