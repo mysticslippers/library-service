@@ -8,4 +8,6 @@ public interface GenreService {
     GenreResponse create(CreateGenreRequest request);
 
     GenreResponse getGenreById(Long id);
+
+    GenreResponse getGenreByCode(String code);
 }
