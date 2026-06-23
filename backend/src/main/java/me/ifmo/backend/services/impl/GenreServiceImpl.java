@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.CreateGenreRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateGenreRequest;
 import me.ifmo.backend.dto.catalog.response.GenreResponse;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.Genre;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
@@ -13,6 +14,8 @@ import me.ifmo.backend.mappers.GenreMapper;
 import me.ifmo.backend.repositories.GenreRepository;
 import me.ifmo.backend.repositories.MaterialGenreRepository;
 import me.ifmo.backend.services.GenreService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -107,5 +110,18 @@ public class GenreServiceImpl implements GenreService {
             throw new ResourceInUseException("Genre with id '%s' is used by materials".formatted(id));
 
         repository.delete(existing);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<GenreResponse> search(String query, Pageable pageable){
+        String normalizedQuery = (query != null) ? query.strip() : "";
+
+        Page<Genre> genres = (!normalizedQuery.isBlank()) ? repository.findByNameContainingIgnoreCase(normalizedQuery, pageable)
+                : repository.findAll(pageable);
+
+        Page<GenreResponse> responses = genres.map(mapper::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
