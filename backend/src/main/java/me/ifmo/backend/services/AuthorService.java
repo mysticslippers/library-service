@@ -1,6 +1,7 @@
 package me.ifmo.backend.services;
 
 import me.ifmo.backend.dto.catalog.request.CreateAuthorRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateAuthorRequest;
 import me.ifmo.backend.dto.catalog.response.AuthorResponse;
 
 public interface AuthorService {
@@ -8,4 +9,6 @@ public interface AuthorService {
     AuthorResponse create(CreateAuthorRequest request);
 
     AuthorResponse getAuthorById(Long id);
+
+    AuthorResponse update(Long id, UpdateAuthorRequest request);
 }
