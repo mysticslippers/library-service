@@ -60,9 +60,21 @@ public class LibraryServiceImpl implements LibraryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public LibraryResponse getLibraryById(Long id) {
         Library library = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Library with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(library);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LibraryResponse getByCode(String code) {
+        String normalizedCode = normalize(code, "Library code").toUpperCase(Locale.ROOT);
+
+        Library library = repository.findByCode(normalizedCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Library with code '%s' not found".formatted(normalizedCode)));
 
         return mapper.toResponse(library);
     }
