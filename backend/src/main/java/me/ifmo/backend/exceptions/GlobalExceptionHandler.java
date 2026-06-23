@@ -30,4 +30,10 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(status).body(response);
     }
+
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ApiErrorResponse> handleApiException(ApiException exception, HttpServletRequest request) {
+        return build(exception.getStatus(), exception.getCode(),
+                exception.getMessage(), request, List.of());
+    }
 }
