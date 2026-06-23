@@ -12,7 +12,7 @@ public interface LibraryService {
 
     LibraryResponse create(CreateLibraryRequest request);
 
-    LibraryResponse getById(Long id);
+    LibraryResponse getLibraryById(Long id);
 
     LibraryResponse getByCode(String code);
 
