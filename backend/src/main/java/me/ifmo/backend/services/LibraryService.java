@@ -7,5 +7,7 @@ public interface LibraryService {
 
     LibraryResponse create(CreateLibraryRequest request);
 
-    LibraryResponse getLibraryById(Long id);
+    LibraryResponse getById(Long id);
+
+    LibraryResponse getByCode(String code);
 }
