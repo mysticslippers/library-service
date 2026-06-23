@@ -14,7 +14,7 @@ public interface GenreService {
 
     GenreResponse getGenreByCode(String code);
 
-    GenreResponse update(UpdateGenreRequest request);
+    GenreResponse update(Long id, UpdateGenreRequest request);
 
     PageResponse<GenreResponse> search(String query, Pageable pageable);
 
