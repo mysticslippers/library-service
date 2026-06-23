@@ -23,6 +23,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     Page<Reservation> findByBranch_IdAndStatus(Long branchId, ReservationStatus status, Pageable pageable);
 
+    boolean existsByBranch_Library_IdAndStatusIn(Long libraryId, Collection<ReservationStatus> statuses);
+
     Optional<Reservation> findByCopy_IdAndStatusIn(Long copyId, Collection<ReservationStatus> statuses);
 
     List<Reservation> findByStatusAndExpiresAtBefore(ReservationStatus status, LocalDateTime expiresAt);
