@@ -51,8 +51,11 @@ public class GenreServiceImpl implements GenreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public GenreResponse getGenreByCode(String code){
-        Genre genre = repository.findByCode(code)
+        String normalizedCode = code.strip().toUpperCase(Locale.ROOT);
+
+        Genre genre = repository.findByCode(normalizedCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Genre with code '%s' not found".formatted(code)));
 
         return mapper.toResponse(genre);
