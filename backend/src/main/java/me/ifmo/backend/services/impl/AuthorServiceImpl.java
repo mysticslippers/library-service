@@ -6,6 +6,7 @@ import me.ifmo.backend.dto.catalog.response.AuthorResponse;
 import me.ifmo.backend.entities.Author;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.AuthorMapper;
 import me.ifmo.backend.repositories.AuthorRepository;
 import me.ifmo.backend.repositories.MaterialAuthorRepository;
@@ -55,4 +56,11 @@ public class AuthorServiceImpl implements AuthorService {
         return mapper.toResponse(saved);
     }
 
+    @Override
+    public AuthorResponse getAuthorById(Long id) {
+        Author author = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Author with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(author);
+    }
 }
