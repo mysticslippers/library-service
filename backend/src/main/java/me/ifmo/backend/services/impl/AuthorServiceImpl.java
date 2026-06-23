@@ -57,6 +57,7 @@ public class AuthorServiceImpl implements AuthorService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public AuthorResponse getAuthorById(Long id) {
         Author author = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Author with id '%s' not found".formatted(id)));
