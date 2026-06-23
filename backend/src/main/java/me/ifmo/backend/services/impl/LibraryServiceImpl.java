@@ -1,15 +1,18 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.library.request.ChangeLibraryStatusRequest;
 import me.ifmo.backend.dto.library.request.CreateLibraryRequest;
 import me.ifmo.backend.dto.library.request.UpdateLibraryRequest;
 import me.ifmo.backend.dto.library.response.LibraryResponse;
 import me.ifmo.backend.entities.Library;
+import me.ifmo.backend.entities.enums.BranchStatus;
 import me.ifmo.backend.entities.enums.LibraryStatus;
 import me.ifmo.backend.entities.enums.LoanStatus;
 import me.ifmo.backend.entities.enums.ReservationStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceInUseException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.LibraryMapper;
 import me.ifmo.backend.repositories.BranchRepository;
@@ -44,6 +47,18 @@ public class LibraryServiceImpl implements LibraryService {
             throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
 
         return value.strip();
+    }
+
+    private boolean isTransitionAllowed(LibraryStatus current, LibraryStatus target){
+        return switch (current) {
+            case ACTIVE ->
+                    target == LibraryStatus.INACTIVE || target == LibraryStatus.SUSPENDED;
+            case INACTIVE ->
+                    target == LibraryStatus.ACTIVE || target == LibraryStatus.ARCHIVED;
+            case SUSPENDED ->
+                    target == LibraryStatus.ACTIVE || target == LibraryStatus.INACTIVE;
+            case ARCHIVED -> false;
+        };
     }
 
     @Override
@@ -100,6 +115,38 @@ public class LibraryServiceImpl implements LibraryService {
 
         mapper.updateEntity(new UpdateLibraryRequest(code, name), library);
 
+        Library saved = repository.save(library);
+        return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public LibraryResponse changeStatus(Long id, ChangeLibraryStatusRequest request) {
+        Library library = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Library with id '%s' not found".formatted(id)));
+
+        LibraryStatus status = request.status();
+
+        if (library.getStatus() == status)
+            return mapper.toResponse(library);
+
+        if (!isTransitionAllowed(library.getStatus(), status))
+            throw new BusinessRuleException(
+                    "Library status transition from '%s' to '%s' is not allowed".formatted(library.getStatus(), status));
+
+        if (status == LibraryStatus.ARCHIVED){
+            if (branchRepository.existsByLibrary_IdAndStatusNot(id, BranchStatus.ARCHIVED))
+                throw new ResourceInUseException("Library has non-archived branches");
+
+            if (loanRepository.existsByBranch_Library_IdAndStatusIn(
+                    id, BLOCKING_LOAN_STATUSES))
+                throw new ResourceInUseException("Library has active or unresolved loans");
+
+            if (reservationRepository.existsByBranch_Library_IdAndStatusIn(id, BLOCKING_RESERVATION_STATUSES))
+                throw new ResourceInUseException("Library has active reservations");
+        }
+
+        library.setStatus(status);
         Library saved = repository.save(library);
         return mapper.toResponse(saved);
     }
