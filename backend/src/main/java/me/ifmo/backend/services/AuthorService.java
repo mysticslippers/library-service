@@ -16,4 +16,6 @@ public interface AuthorService {
     AuthorResponse update(Long id, UpdateAuthorRequest request);
 
     PageResponse<AuthorResponse> search(AuthorSearchRequest request, Pageable pageable);
+
+    void delete(Long id);
 }
