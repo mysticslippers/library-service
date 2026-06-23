@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.dto.library.request.ChangeLibraryStatusRequest;
 import me.ifmo.backend.dto.library.request.CreateLibraryRequest;
 import me.ifmo.backend.dto.library.request.UpdateLibraryRequest;
@@ -20,6 +21,8 @@ import me.ifmo.backend.repositories.LibraryRepository;
 import me.ifmo.backend.repositories.LoanRepository;
 import me.ifmo.backend.repositories.ReservationRepository;
 import me.ifmo.backend.services.LibraryService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -149,5 +152,25 @@ public class LibraryServiceImpl implements LibraryService {
         library.setStatus(status);
         Library saved = repository.save(library);
         return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<LibraryResponse> search(String query, LibraryStatus status, Pageable pageable) {
+        Page<Library> libraries;
+        String normalizedQuery = (query != null) ? query.strip() : "";
+
+        if (normalizedQuery.isBlank() && status == null)
+            libraries = repository.findAll(pageable);
+        else if (normalizedQuery.isBlank())
+            libraries = repository.findByStatus(status, pageable);
+        else if (status == null)
+            libraries = repository.findByNameContainingIgnoreCase(normalizedQuery, pageable);
+        else
+            libraries = repository.findByNameContainingIgnoreCaseAndStatus(normalizedQuery, status, pageable);
+
+        Page<LibraryResponse> responses = libraries.map(mapper::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
