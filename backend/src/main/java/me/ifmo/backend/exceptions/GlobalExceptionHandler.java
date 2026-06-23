@@ -22,5 +22,12 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private ResponseEntity<ApiErrorResponse> build(HttpStatus status, String code, String message,
+                                                   HttpServletRequest request, List<FieldErrorResponse> fieldErrors) {
 
+        ApiErrorResponse response = new ApiErrorResponse(LocalDateTime.now(),
+                status.value(), code, message, request.getRequestURI(), fieldErrors);
+
+        return ResponseEntity.status(status).body(response);
+    }
 }
