@@ -120,6 +120,7 @@ public class AuthorServiceImpl implements AuthorService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<AuthorResponse> search(AuthorSearchRequest request, Pageable pageable) {
         String query = (request == null || request.query() == null) ? "" : request.query().strip();
 
