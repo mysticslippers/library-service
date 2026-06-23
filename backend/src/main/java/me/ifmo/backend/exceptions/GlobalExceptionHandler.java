@@ -51,4 +51,19 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
                 "Request validation failed", request, errors);
     }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleConstraintViolation(ConstraintViolationException exception,
+                                                                      HttpServletRequest request) {
+
+        List<FieldErrorResponse> errors = exception.getConstraintViolations()
+                .stream()
+                .map(error -> new FieldErrorResponse(
+                        error.getPropertyPath().toString(),
+                        error.getMessage()))
+                .toList();
+
+        return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "Request validation failed", request, errors);
+    }
 }
