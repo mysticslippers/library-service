@@ -46,6 +46,18 @@ public class BranchServiceImpl implements BranchService {
         return value.strip();
     }
 
+    private boolean isTransitionAllowed(BranchStatus current, BranchStatus target) {
+        return switch (current) {
+            case ACTIVE ->
+                    target == BranchStatus.TEMPORARILY_UNAVAILABLE || target == BranchStatus.DISABLED;
+            case TEMPORARILY_UNAVAILABLE ->
+                    target == BranchStatus.ACTIVE || target == BranchStatus.DISABLED;
+            case DISABLED ->
+                    target == BranchStatus.ACTIVE || target == BranchStatus.ARCHIVED;
+            case ARCHIVED -> false;
+        };
+    }
+
     @Override
     @Transactional
     public BranchResponse create(CreateBranchRequest request){
