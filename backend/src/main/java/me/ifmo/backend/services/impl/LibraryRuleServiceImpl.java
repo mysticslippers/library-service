@@ -48,4 +48,13 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
         LibraryRule saved = repository.save(rule);
         return mapper.toResponse(saved);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LibraryRuleResponse getLibraryRuleById(Long id) {
+        LibraryRule rule = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Library rule with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(rule);
+    }
 }
