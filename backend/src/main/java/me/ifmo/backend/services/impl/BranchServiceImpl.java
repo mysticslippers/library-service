@@ -1,18 +1,27 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.library.request.CreateBranchRequest;
+import me.ifmo.backend.dto.library.response.BranchResponse;
+import me.ifmo.backend.entities.Branch;
+import me.ifmo.backend.entities.Library;
+import me.ifmo.backend.entities.enums.LibraryStatus;
 import me.ifmo.backend.entities.enums.LoanStatus;
 import me.ifmo.backend.entities.enums.ReservationStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
+import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.BranchMapper;
 import me.ifmo.backend.repositories.*;
+import me.ifmo.backend.services.BranchService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class BranchServiceImpl {
+public class BranchServiceImpl implements BranchService {
 
     private static final Set<LoanStatus> BLOCKING_LOAN_STATUSES =
             Set.of(LoanStatus.ACTIVE, LoanStatus.OVERDUE, LoanStatus.LOST);
@@ -33,5 +42,26 @@ public class BranchServiceImpl {
         }
 
         return value.strip();
+    }
+
+    @Override
+    @Transactional
+    public BranchResponse create(CreateBranchRequest request){
+        Library library = libraryRepository.findById(request.libraryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Library with id '%s' not found"
+                        .formatted(request.libraryId())));
+
+        if (library.getStatus() != LibraryStatus.ACTIVE)
+            throw new BusinessRuleException("Branch can be created only for active library");
+
+        String name = normalize(request.name(), "Branch name");
+        if (repository.existsByLibrary_IdAndNameIgnoreCase(library.getId(), name))
+            throw new DuplicateResourceException("Branch with name '%s' already exists in library with id '%s'"
+                            .formatted(name, library.getId()));
+
+        Branch branch = mapper.toEntity(new CreateBranchRequest(library.getId(), name, request.address()), library);
+
+        Branch saved = repository.save(branch);
+        return mapper.toResponse(saved);
     }
 }
