@@ -3,6 +3,7 @@ package me.ifmo.backend.services.impl;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.entities.enums.LoanStatus;
 import me.ifmo.backend.entities.enums.ReservationStatus;
+import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.mappers.MaterialCopyMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.MaterialCopyService;
@@ -26,4 +27,11 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
     private final LoanRepository loanRepository;
     private final ReservationRepository reservationRepository;
     private final MaterialCopyMapper mapper;
+
+    private String normalizeRequired(String value, String fieldName) {
+        if (value == null || value.strip().isBlank())
+            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
+
+        return value.strip();
+    }
 }
