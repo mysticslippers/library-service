@@ -19,8 +19,8 @@ public interface LibraryRuleMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "branch", source = "branch")
     @Mapping(target = "status", ignore = true)
-    @Mapping(target = "validFrom", source = "validFrom")
-    LibraryRule toEntity(CreateLibraryRuleRequest request, Branch branch, LocalDateTime validFrom);
+    @Mapping(target = "validFrom", ignore = true)
+    LibraryRule toEntity(CreateLibraryRuleRequest request, Branch branch);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
