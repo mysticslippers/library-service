@@ -2,9 +2,11 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.library.request.CreateBranchRequest;
+import me.ifmo.backend.dto.library.request.UpdateBranchRequest;
 import me.ifmo.backend.dto.library.response.BranchResponse;
 import me.ifmo.backend.entities.Branch;
 import me.ifmo.backend.entities.Library;
+import me.ifmo.backend.entities.enums.BranchStatus;
 import me.ifmo.backend.entities.enums.LibraryStatus;
 import me.ifmo.backend.entities.enums.LoanStatus;
 import me.ifmo.backend.entities.enums.ReservationStatus;
@@ -73,5 +75,27 @@ public class BranchServiceImpl implements BranchService {
         );
 
         return mapper.toResponse(branch);
+    }
+
+    @Override
+    @Transactional
+    public BranchResponse update(Long id, UpdateBranchRequest request) {
+        Branch branch = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(id)));
+
+        if (branch.getStatus() == BranchStatus.ARCHIVED)
+            throw new BusinessRuleException("Archived branch cannot be updated");
+
+        String name = request.name() != null ? normalize(request.name(), "Branch name") : null;
+
+        if (name != null && !name.equalsIgnoreCase(branch.getName())
+                && repository.existsByLibrary_IdAndNameIgnoreCase(branch.getLibrary().getId(), name))
+            throw new DuplicateResourceException("Branch with name '%s' already exists in library with id '%s'"
+                            .formatted(name, branch.getLibrary().getId()));
+
+        mapper.updateEntity(new UpdateBranchRequest(name, request.address()), branch);
+
+        Branch saved = repository.save(branch);
+        return mapper.toResponse(saved);
     }
 }
