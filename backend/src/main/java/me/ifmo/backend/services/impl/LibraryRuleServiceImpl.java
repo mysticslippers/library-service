@@ -57,4 +57,14 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
 
         return mapper.toResponse(rule);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LibraryRuleResponse getActualByBranchId(Long branchId) {
+        LibraryRule rule = repository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE,
+                LocalDateTime.now()).orElseThrow(() ->
+                new ResourceNotFoundException("Actual library rule for branch with id '%s' not found".formatted(branchId)));
+
+        return mapper.toResponse(rule);
+    }
 }
