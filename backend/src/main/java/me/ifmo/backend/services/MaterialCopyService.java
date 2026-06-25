@@ -1,6 +1,7 @@
 package me.ifmo.backend.services;
 
 import me.ifmo.backend.dto.catalog.request.CreateMaterialCopyRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
 
 public interface MaterialCopyService {
@@ -10,4 +11,6 @@ public interface MaterialCopyService {
     MaterialCopyResponse getMaterialCopyById(Long id);
 
     MaterialCopyResponse getByInventoryNumber(String inventoryNumber);
+
+    MaterialCopyResponse update(Long id, UpdateMaterialCopyRequest request);
 }
