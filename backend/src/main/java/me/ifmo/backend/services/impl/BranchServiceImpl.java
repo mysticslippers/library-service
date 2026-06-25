@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.dto.library.request.ChangeBranchStatusRequest;
 import me.ifmo.backend.dto.library.request.CreateBranchRequest;
 import me.ifmo.backend.dto.library.request.UpdateBranchRequest;
@@ -15,6 +16,8 @@ import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.BranchMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.BranchService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -143,5 +146,24 @@ public class BranchServiceImpl implements BranchService {
 
         Branch saved = repository.save(branch);
         return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<BranchResponse> search(Long libraryId, BranchStatus status, Pageable pageable) {
+        Page<Branch> branches;
+
+        if (libraryId == null && status == null)
+            branches = repository.findAll(pageable);
+        else if (libraryId == null)
+            branches = repository.findByStatus(status, pageable);
+        else if (status == null)
+            branches = repository.findByLibrary_Id(libraryId, pageable);
+        else
+            branches = repository.findByLibrary_IdAndStatus(libraryId, status, pageable);
+
+        Page<BranchResponse> responses = branches.map(mapper::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
