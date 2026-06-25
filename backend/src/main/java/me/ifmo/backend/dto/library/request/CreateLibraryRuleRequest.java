@@ -31,7 +31,6 @@ public record CreateLibraryRuleRequest(
         Integer renewalPeriodDays,
 
         Boolean reservationAllowed,
-        LocalDateTime validFrom,
         LocalDateTime validTo
 ) {
 }
