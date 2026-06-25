@@ -5,6 +5,7 @@ import me.ifmo.backend.dto.catalog.request.ChangeMaterialCopyStatusRequest;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.Branch;
 import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialCopy;
@@ -16,6 +17,8 @@ import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.MaterialCopyMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.MaterialCopyService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -173,5 +176,31 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
 
         MaterialCopy saved = repository.save(copy);
         return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<MaterialCopyResponse> search(Long materialId, Long branchId, CopyStatus status, Pageable pageable) {
+        Page<MaterialCopy> copies;
+
+        if (materialId == null && branchId == null && status == null)
+            copies = repository.findAll(pageable);
+        else if (materialId != null && branchId == null && status == null)
+            copies = repository.findByMaterial_Id(materialId, pageable);
+        else if (materialId == null && branchId != null && status == null)
+            copies = repository.findByBranch_Id(branchId, pageable);
+        else if (materialId == null && branchId == null)
+            copies = repository.findByStatus(status, pageable);
+        else if (materialId != null && branchId != null && status == null)
+            copies = repository.findByMaterial_IdAndBranch_Id(materialId, branchId, pageable);
+        else if (materialId != null && branchId == null)
+            copies = repository.findByMaterial_IdAndStatus(materialId, status, pageable);
+        else if (materialId == null)
+            copies = repository.findByBranch_IdAndStatus(branchId, status, pageable);
+        else
+            copies = repository.findByMaterial_IdAndBranch_IdAndStatus(materialId, branchId, status, pageable);
+
+        Page<MaterialCopyResponse> responses = copies.map(mapper::toResponse);
+        return PageResponse.from(responses);
     }
 }
