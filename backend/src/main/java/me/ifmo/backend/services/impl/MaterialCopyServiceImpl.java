@@ -2,14 +2,12 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialCopyRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
 import me.ifmo.backend.entities.Branch;
 import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialCopy;
-import me.ifmo.backend.entities.enums.BranchStatus;
-import me.ifmo.backend.entities.enums.LoanStatus;
-import me.ifmo.backend.entities.enums.MaterialStatus;
-import me.ifmo.backend.entities.enums.ReservationStatus;
+import me.ifmo.backend.entities.enums.*;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
@@ -96,5 +94,22 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
                 () -> new ResourceNotFoundException("Material copy with inventory number '%s' not found".formatted(normalizedInventoryNumber)));
 
         return mapper.toResponse(copy);
+    }
+
+    @Override
+    @Transactional
+    public MaterialCopyResponse update(Long id, UpdateMaterialCopyRequest request) {
+        MaterialCopy copy = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(id)));
+
+        if (copy.getStatus() == CopyStatus.REMOVED)
+            throw new BusinessRuleException("Removed material copy cannot be updated");
+
+        String shelfLocation = normalize(request.shelfLocation(), "Shelf location");
+
+        mapper.updateEntity(new UpdateMaterialCopyRequest(null, shelfLocation), copy);
+
+        MaterialCopy saved = repository.save(copy);
+        return mapper.toResponse(saved);
     }
 }
