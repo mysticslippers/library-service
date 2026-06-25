@@ -86,4 +86,15 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
 
         return mapper.toResponse(copy);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MaterialCopyResponse getByInventoryNumber(String inventoryNumber) {
+        String normalizedInventoryNumber = normalize(inventoryNumber, "Inventory number");
+
+        MaterialCopy copy = repository.findByInventoryNumber(normalizedInventoryNumber).orElseThrow(
+                () -> new ResourceNotFoundException("Material copy with inventory number '%s' not found".formatted(normalizedInventoryNumber)));
+
+        return mapper.toResponse(copy);
+    }
 }
