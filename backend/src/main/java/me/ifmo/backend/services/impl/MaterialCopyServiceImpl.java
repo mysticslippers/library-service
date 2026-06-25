@@ -77,4 +77,13 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
         MaterialCopy saved = repository.save(copy);
         return mapper.toResponse(saved);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MaterialCopyResponse getMaterialCopyById(Long id) {
+        MaterialCopy copy = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(copy);
+    }
 }
