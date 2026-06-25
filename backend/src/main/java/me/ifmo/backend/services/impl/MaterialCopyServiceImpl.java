@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.catalog.request.ChangeMaterialCopyStatusRequest;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
@@ -10,6 +11,7 @@ import me.ifmo.backend.entities.MaterialCopy;
 import me.ifmo.backend.entities.enums.*;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceInUseException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.MaterialCopyMapper;
 import me.ifmo.backend.repositories.*;
@@ -68,6 +70,11 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
                             || target == CopyStatus.REMOVED;
             case RESERVED, LOANED, REMOVED -> false;
         };
+    }
+
+    private boolean hasActiveOperations(Long copyId) {
+        return loanRepository.findByCopy_IdAndStatusIn(copyId, BLOCKING_LOAN_STATUSES).isPresent()
+                || reservationRepository.findByCopy_IdAndStatusIn(copyId, BLOCKING_RESERVATION_STATUSES).isPresent();
     }
 
     @Override
@@ -131,6 +138,38 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
         String shelfLocation = normalize(request.shelfLocation(), "Shelf location");
 
         mapper.updateEntity(new UpdateMaterialCopyRequest(null, shelfLocation), copy);
+
+        MaterialCopy saved = repository.save(copy);
+        return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public MaterialCopyResponse changeStatus(Long id, ChangeMaterialCopyStatusRequest request) {
+        MaterialCopy copy = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(id)));
+
+        CopyStatus status = request.status();
+
+        if (copy.getStatus() == status)
+            return mapper.toResponse(copy);
+
+        if (!isTransitionAllowed(copy.getStatus(), status))
+            throw new BusinessRuleException("Material copy status transition from '%s' to '%s' is not allowed"
+                            .formatted(copy.getStatus(), status));
+
+        if (hasActiveOperations(copy.getId()))
+            throw new ResourceInUseException("Material copy has active operations");
+
+        if (status == CopyStatus.AVAILABLE) {
+            if (copy.getMaterial().getStatus() != MaterialStatus.ACTIVE)
+                throw new BusinessRuleException("Material copy can be made available only if material is active");
+
+            if (copy.getBranch().getStatus() != BranchStatus.ACTIVE)
+                throw new BusinessRuleException("Material copy can be made available only if branch is active");
+        }
+
+        copy.setStatus(status);
 
         MaterialCopy saved = repository.save(copy);
         return mapper.toResponse(saved);
