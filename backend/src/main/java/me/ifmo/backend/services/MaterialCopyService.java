@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
 public interface MaterialCopyService {
 
     MaterialCopyResponse create(CreateMaterialCopyRequest request);
+
+    MaterialCopyResponse getMaterialCopyById(Long id);
 }
