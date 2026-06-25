@@ -64,4 +64,14 @@ public class BranchServiceImpl implements BranchService {
         Branch saved = repository.save(branch);
         return mapper.toResponse(saved);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BranchResponse getBranchById(Long id){
+        Branch branch = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(id))
+        );
+
+        return mapper.toResponse(branch);
+    }
 }
