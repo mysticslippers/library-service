@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.library.response.BranchResponse;
 public interface BranchService {
 
     BranchResponse create(CreateBranchRequest request);
+
+    BranchResponse getBranchById(Long id);
 }
