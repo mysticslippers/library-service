@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.dto.library.request.ChangeLibraryRuleStatusRequest;
 import me.ifmo.backend.dto.library.request.CreateLibraryRuleRequest;
 import me.ifmo.backend.dto.library.request.UpdateLibraryRuleRequest;
@@ -15,6 +16,8 @@ import me.ifmo.backend.mappers.LibraryRuleMapper;
 import me.ifmo.backend.repositories.BranchRepository;
 import me.ifmo.backend.repositories.LibraryRuleRepository;
 import me.ifmo.backend.services.LibraryRuleService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -125,5 +128,23 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
 
         LibraryRule saved = repository.save(rule);
         return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<LibraryRuleResponse> search(Long branchId, LibraryRuleStatus status, Pageable pageable) {
+        Page<LibraryRule> rules;
+
+        if (branchId == null && status == null)
+            rules = repository.findAll(pageable);
+        else if (branchId == null)
+            rules = repository.findByStatus(status, pageable);
+        else if (status == null)
+            rules = repository.findByBranch_Id(branchId, pageable);
+        else
+            rules = repository.findByBranch_IdAndStatus(branchId, status, pageable);
+
+        Page<LibraryRuleResponse> responses = rules.map(mapper::toResponse);
+        return PageResponse.from(responses);
     }
 }
