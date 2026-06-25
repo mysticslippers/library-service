@@ -8,4 +8,6 @@ public interface LibraryRuleService {
     LibraryRuleResponse create(CreateLibraryRuleRequest request);
 
     LibraryRuleResponse getLibraryRuleById(Long id);
+
+    LibraryRuleResponse getActualByBranchId(Long branchId);
 }
