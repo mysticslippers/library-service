@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.library.response.LibraryRuleResponse;
 public interface LibraryRuleService {
 
     LibraryRuleResponse create(CreateLibraryRuleRequest request);
+
+    LibraryRuleResponse getLibraryRuleById(Long id);
 }
