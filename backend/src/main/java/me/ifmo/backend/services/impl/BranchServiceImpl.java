@@ -1,17 +1,16 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.library.request.ChangeBranchStatusRequest;
 import me.ifmo.backend.dto.library.request.CreateBranchRequest;
 import me.ifmo.backend.dto.library.request.UpdateBranchRequest;
 import me.ifmo.backend.dto.library.response.BranchResponse;
 import me.ifmo.backend.entities.Branch;
 import me.ifmo.backend.entities.Library;
-import me.ifmo.backend.entities.enums.BranchStatus;
-import me.ifmo.backend.entities.enums.LibraryStatus;
-import me.ifmo.backend.entities.enums.LoanStatus;
-import me.ifmo.backend.entities.enums.ReservationStatus;
+import me.ifmo.backend.entities.enums.*;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceInUseException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.BranchMapper;
 import me.ifmo.backend.repositories.*;
@@ -106,6 +105,41 @@ public class BranchServiceImpl implements BranchService {
                             .formatted(name, branch.getLibrary().getId()));
 
         mapper.updateEntity(new UpdateBranchRequest(name, request.address()), branch);
+
+        Branch saved = repository.save(branch);
+        return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public BranchResponse changeStatus(Long id, ChangeBranchStatusRequest request) {
+        Branch branch = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(id)));
+
+        BranchStatus status = request.status();
+
+        if (branch.getStatus() == status)
+            return mapper.toResponse(branch);
+
+        if (!isTransitionAllowed(branch.getStatus(), status))
+            throw new BusinessRuleException("Branch status transition from '%s' to '%s' is not allowed"
+                            .formatted(branch.getStatus(), status));
+
+        if (status == BranchStatus.ACTIVE && branch.getLibrary().getStatus() != LibraryStatus.ACTIVE)
+            throw new BusinessRuleException("Branch can be activated only if parent library is active");
+
+        if (status == BranchStatus.ARCHIVED) {
+            if (loanRepository.existsByBranch_IdAndStatusIn(id, BLOCKING_LOAN_STATUSES))
+                throw new ResourceInUseException("Branch has active or unresolved loans");
+
+            if (reservationRepository.existsByBranch_IdAndStatusIn(id, BLOCKING_RESERVATION_STATUSES))
+                throw new ResourceInUseException("Branch has active reservations");
+
+            if (materialCopyRepository.existsByBranch_IdAndStatusNot(id, CopyStatus.REMOVED))
+                throw new ResourceInUseException("Branch has non-removed material copies");
+        }
+
+        branch.setStatus(status);
 
         Branch saved = repository.save(branch);
         return mapper.toResponse(saved);
