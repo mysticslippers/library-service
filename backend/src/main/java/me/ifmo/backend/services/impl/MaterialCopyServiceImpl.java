@@ -47,6 +47,29 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
         return value.strip();
     }
 
+    private boolean isTransitionAllowed(CopyStatus current, CopyStatus target) {
+        return switch (current) {
+            case AVAILABLE ->
+                    target == CopyStatus.UNDER_REPAIR
+                            || target == CopyStatus.DAMAGED
+                            || target == CopyStatus.LOST
+                            || target == CopyStatus.REMOVED;
+            case UNDER_REPAIR ->
+                    target == CopyStatus.AVAILABLE
+                            || target == CopyStatus.DAMAGED
+                            || target == CopyStatus.LOST
+                            || target == CopyStatus.REMOVED;
+            case DAMAGED ->
+                    target == CopyStatus.UNDER_REPAIR
+                            || target == CopyStatus.LOST
+                            || target == CopyStatus.REMOVED;
+            case LOST ->
+                    target == CopyStatus.AVAILABLE
+                            || target == CopyStatus.REMOVED;
+            case RESERVED, LOANED, REMOVED -> false;
+        };
+    }
+
     @Override
     @Transactional
     public MaterialCopyResponse create(CreateMaterialCopyRequest request) {
