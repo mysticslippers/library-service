@@ -8,4 +8,6 @@ public interface MaterialCopyService {
     MaterialCopyResponse create(CreateMaterialCopyRequest request);
 
     MaterialCopyResponse getMaterialCopyById(Long id);
+
+    MaterialCopyResponse getByInventoryNumber(String inventoryNumber);
 }
