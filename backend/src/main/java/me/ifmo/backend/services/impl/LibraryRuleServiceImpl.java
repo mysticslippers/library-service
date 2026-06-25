@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.library.request.ChangeLibraryRuleStatusRequest;
 import me.ifmo.backend.dto.library.request.CreateLibraryRuleRequest;
 import me.ifmo.backend.dto.library.request.UpdateLibraryRuleRequest;
 import me.ifmo.backend.dto.library.response.LibraryRuleResponse;
@@ -82,6 +83,45 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
             throw new BusinessRuleException("Library rule validTo must be after validFrom");
 
         mapper.updateEntity(request, rule);
+
+        LibraryRule saved = repository.save(rule);
+        return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public LibraryRuleResponse changeStatus(Long id, ChangeLibraryRuleStatusRequest request) {
+        LibraryRule rule = repository.findById(id).orElseThrow(() ->
+                        new ResourceNotFoundException("Library rule with id '%s' not found".formatted(id)));
+
+        LibraryRuleStatus status = request.status();
+
+        if (rule.getStatus() == status)
+            return mapper.toResponse(rule);
+
+        if (rule.getStatus() == LibraryRuleStatus.ARCHIVED)
+            throw new BusinessRuleException("Archived library rule status cannot be changed");
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (status == LibraryRuleStatus.ACTIVE) {
+            if (rule.getBranch().getStatus() == BranchStatus.ARCHIVED)
+                throw new BusinessRuleException("Library rule cannot be activated for archived branch");
+
+            repository.findByBranch_IdAndStatus(rule.getBranch().getId(), LibraryRuleStatus.ACTIVE)
+                    .filter(activeRule -> !activeRule.getId().equals(rule.getId()))
+                    .ifPresent(activeRule -> {
+                        activeRule.setStatus(LibraryRuleStatus.INACTIVE);
+                        activeRule.setValidTo(now);
+                    });
+
+            rule.setValidTo(null);
+        }
+
+        if (status == LibraryRuleStatus.INACTIVE || status == LibraryRuleStatus.ARCHIVED)
+            rule.setValidTo(now);
+
+        rule.setStatus(status);
 
         LibraryRule saved = repository.save(rule);
         return mapper.toResponse(saved);
