@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import me.ifmo.backend.entities.enums.MaterialStatus;
 import me.ifmo.backend.entities.enums.MaterialType;
 
 import java.util.List;
