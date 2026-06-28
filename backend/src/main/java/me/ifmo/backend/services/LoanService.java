@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.circulation.response.LoanResponse;
 public interface LoanService {
 
     LoanResponse create(CreateLoanRequest request);
+
+    LoanResponse getLoanById(Long id);
 }
