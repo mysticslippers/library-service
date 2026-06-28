@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.response.MaterialShortResponse;
 import me.ifmo.backend.dto.circulation.request.CancelReservationRequest;
 import me.ifmo.backend.dto.circulation.request.CreateReservationRequest;
+import me.ifmo.backend.dto.circulation.request.ReservationSearchRequest;
 import me.ifmo.backend.dto.circulation.response.ReservationResponse;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.*;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
@@ -14,6 +16,8 @@ import me.ifmo.backend.mappers.MaterialMapper;
 import me.ifmo.backend.mappers.ReservationMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.ReservationService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -213,5 +217,19 @@ public class ReservationServiceImpl implements ReservationService {
 
         Reservation saved = repository.save(reservation);
         return toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ReservationResponse> search(ReservationSearchRequest request, Pageable pageable) {
+        String query = request.query() != null ? request.query().strip() : "";
+
+        Page<Reservation> reservations = repository.search(request.userId(), request.materialId(), request.copyId(),
+                request.branchId(), request.status(), request.createdFrom(), request.createdTo(), request.expiresBefore(),
+                query, pageable);
+
+        Page<ReservationResponse> responses = reservations.map(this::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
