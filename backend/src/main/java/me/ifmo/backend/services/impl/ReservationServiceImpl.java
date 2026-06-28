@@ -162,4 +162,23 @@ public class ReservationServiceImpl implements ReservationService {
         return toResponse(saved);
     }
 
+    @Override
+    @Transactional
+    public ReservationResponse cancelByLibrarian(Long id, CancelReservationRequest request) {
+        Reservation reservation = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+
+        if (!ACTIVE_RESERVATION_STATUSES.contains(reservation.getStatus()))
+            throw new BusinessRuleException("Only active reservation can be cancelled");
+
+        reservation.setStatus(ReservationStatus.CANCELLED_BY_LIBRARIAN);
+        reservation.setCancelledAt(LocalDateTime.now());
+        reservation.setCancellationReason(normalize(request.reason(), "Cancellation reason"));
+
+        if (reservation.getCopy().getStatus() == CopyStatus.RESERVED)
+            reservation.getCopy().setStatus(CopyStatus.AVAILABLE);
+
+        Reservation saved = repository.save(reservation);
+        return toResponse(saved);
+    }
 }
