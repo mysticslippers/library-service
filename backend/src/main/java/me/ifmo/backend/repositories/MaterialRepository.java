@@ -37,10 +37,29 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
                    AND (:type IS NULL OR material.materialType = :type)
                    AND (:status IS NULL OR material.status = :status)
                    AND (:publicationYear IS NULL OR material.publicationYear = :publicationYear)
-    """)
+                   AND (:authorId IS NULL OR EXISTS (
+                       SELECT materialAuthor FROM MaterialAuthor materialAuthor
+                           WHERE materialAuthor.material = material
+                               AND materialAuthor.author.id = :authorId
+                   ))
+                   AND (:genreId IS NULL OR EXISTS (
+                       SELECT materialGenre FROM MaterialGenre materialGenre
+                           WHERE materialGenre.material = material
+                               AND materialGenre.genre.id = :genreId
+                   ))
+                   AND (:branchId IS NULL OR EXISTS (
+                       SELECT copy FROM MaterialCopy copy
+                           WHERE copy.material = material
+                               AND copy.branch.id = :branchId
+                                   AND copy.status <> me.ifmo.backend.entities.enums.CopyStatus.REMOVED \s
+                   ))
+   \s""")
     Page<Material> search(@Param("query") String query,
                           @Param("type") MaterialType type,
                           @Param("status") MaterialStatus status,
                           @Param("publicationYear") Integer publicationYear,
+                          @Param("authorId") Long authorId,
+                          @Param("genreId") Long genreId,
+                          @Param("branchId") Long branchId,
                           Pageable pageable);
 }
