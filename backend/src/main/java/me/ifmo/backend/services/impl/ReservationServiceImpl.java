@@ -7,6 +7,7 @@ import me.ifmo.backend.dto.circulation.response.ReservationResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.*;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
+import me.ifmo.backend.exceptions.domain.ResourceInUseException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.MaterialMapper;
 import me.ifmo.backend.mappers.ReservationMapper;
@@ -59,5 +60,28 @@ public class ReservationServiceImpl implements ReservationService {
     private LibraryRule getActualRule(Long branchId) {
         return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now()).orElseThrow(
                 () -> new ResourceNotFoundException("Actual library rule for branch with id '%s' not found".formatted(branchId)));
+    }
+
+    private MaterialCopy resolveCopy(CreateReservationRequest request) {
+        if (request.copyId() != null) {
+            MaterialCopy copy = materialCopyRepository.findById(request.copyId()).orElseThrow(
+                    () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(request.copyId())));
+
+            if (!copy.getMaterial().getId().equals(request.materialId()))
+                throw new BusinessRuleException("Material copy does not belong to requested material");
+
+            if (!copy.getBranch().getId().equals(request.branchId()))
+                throw new BusinessRuleException("Material copy does not belong to requested branch");
+
+            if (copy.getStatus() != CopyStatus.AVAILABLE)
+                throw new ResourceInUseException("Material copy is not available for reservation");
+
+            return copy;
+        }
+
+        return materialCopyRepository.findFirstByMaterial_IdAndBranch_IdAndStatusOrderByCreatedAtAsc(
+                        request.materialId(), request.branchId(), CopyStatus.AVAILABLE).orElseThrow(
+                        () -> new ResourceNotFoundException("Available material copy for material id '%s' in branch id '%s' not found"
+                                .formatted(request.materialId(), request.branchId())));
     }
 }
