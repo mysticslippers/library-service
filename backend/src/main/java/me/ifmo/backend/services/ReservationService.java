@@ -2,7 +2,10 @@ package me.ifmo.backend.services;
 
 import me.ifmo.backend.dto.circulation.request.CancelReservationRequest;
 import me.ifmo.backend.dto.circulation.request.CreateReservationRequest;
+import me.ifmo.backend.dto.circulation.request.ReservationSearchRequest;
 import me.ifmo.backend.dto.circulation.response.ReservationResponse;
+import me.ifmo.backend.dto.common.response.PageResponse;
+import org.springframework.data.domain.Pageable;
 
 public interface ReservationService {
 
@@ -17,4 +20,6 @@ public interface ReservationService {
     ReservationResponse expire(Long id);
 
     ReservationResponse markUsed(Long id);
+
+    PageResponse<ReservationResponse> search(ReservationSearchRequest request, Pageable pageable);
 }
