@@ -32,8 +32,6 @@ public record UpdateMaterialRequest(
         @Size(max = 50)
         String language,
 
-        MaterialStatus status,
-
         @Valid
         List<MaterialAuthorRequest> authors,
 
