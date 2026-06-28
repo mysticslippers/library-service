@@ -2,24 +2,38 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.response.MaterialShortResponse;
+import me.ifmo.backend.dto.circulation.response.ReservationResponse;
 import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialAuthor;
 import me.ifmo.backend.entities.MaterialGenre;
+import me.ifmo.backend.entities.Reservation;
+import me.ifmo.backend.entities.enums.ReservationStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.mappers.MaterialMapper;
-import me.ifmo.backend.repositories.MaterialAuthorRepository;
-import me.ifmo.backend.repositories.MaterialGenreRepository;
+import me.ifmo.backend.mappers.ReservationMapper;
+import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.ReservationService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class ReservationServiceImpl implements ReservationService {
 
+    private static final Set<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
+            Set.of(ReservationStatus.ACTIVE, ReservationStatus.READY_FOR_PICKUP);
+
+    private final ReservationRepository repository;
+    private final UserRepository userRepository;
+    private final MaterialRepository materialRepository;
+    private final BranchRepository branchRepository;
+    private final MaterialCopyRepository materialCopyRepository;
+    private final LibraryRuleRepository libraryRuleRepository;
     private final MaterialAuthorRepository materialAuthorRepository;
     private final MaterialGenreRepository materialGenreRepository;
+    private final ReservationMapper mapper;
     private final MaterialMapper materialMapper;
 
     private String normalize(String value, String fieldName) {
@@ -35,5 +49,9 @@ public class ReservationServiceImpl implements ReservationService {
         List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
 
         return materialMapper.toShortResponse(material, authors, genres);
+    }
+
+    private ReservationResponse toResponse(Reservation reservation) {
+        return mapper.toResponse(reservation, toMaterialShortResponse(reservation.getMaterial()));
     }
 }
