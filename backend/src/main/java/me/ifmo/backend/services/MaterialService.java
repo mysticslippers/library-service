@@ -1,5 +1,6 @@
 package me.ifmo.backend.services;
 
+import me.ifmo.backend.dto.catalog.request.ChangeMaterialStatusRequest;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
 import me.ifmo.backend.dto.catalog.request.MaterialSearchRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialRequest;
@@ -16,6 +17,8 @@ public interface MaterialService {
     MaterialResponse getMaterialByIsbn(String isbn);
 
     MaterialResponse update(UpdateMaterialRequest request);
+
+    MaterialResponse changeStatus(Long id, ChangeMaterialStatusRequest request);
 
     Page<MaterialResponse> search(MaterialSearchRequest request, Pageable pageable);
 }
