@@ -54,6 +54,10 @@ public class Loan {
     private LocalDateTime returnedAt;
 
     @Builder.Default
+    @Column(name = "renewal_count", nullable = false)
+    private Integer renewalCount = 0;
+
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
     @Column(name = "status", nullable = false, columnDefinition = "loan_status")
