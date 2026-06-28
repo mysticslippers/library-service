@@ -84,4 +84,52 @@ public class ReservationServiceImpl implements ReservationService {
                         () -> new ResourceNotFoundException("Available material copy for material id '%s' in branch id '%s' not found"
                                 .formatted(request.materialId(), request.branchId())));
     }
+
+    @Override
+    @Transactional
+    public ReservationResponse create(CreateReservationRequest request) {
+        User user = userRepository.findById(request.userId()).orElseThrow(
+                () -> new ResourceNotFoundException("User with id '%s' not found".formatted(request.userId())));
+
+        if (user.getStatus() != UserStatus.ACTIVE)
+            throw new BusinessRuleException("Reservation can be created only for active user");
+
+        Material material = materialRepository.findById(request.materialId()).orElseThrow(
+                () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(request.materialId())));
+
+        if (material.getStatus() != MaterialStatus.ACTIVE)
+            throw new BusinessRuleException("Reservation can be created only for active material");
+
+        Branch branch = branchRepository.findById(request.branchId()).orElseThrow(
+                () -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(request.branchId())));
+
+        if (branch.getStatus() != BranchStatus.ACTIVE)
+            throw new BusinessRuleException("Reservation can be created only for active branch");
+
+        LibraryRule rule = getActualRule(branch.getId());
+
+        if (Boolean.FALSE.equals(rule.getReservationAllowed()))
+            throw new BusinessRuleException("Reservations are not allowed for this branch");
+
+        Long activeReservationCount = repository.countByUser_IdAndStatusIn(user.getId(), ACTIVE_RESERVATION_STATUSES);
+
+        if (activeReservationCount >= rule.getMaxActiveReservations())
+            throw new BusinessRuleException("User has reached active reservation limit");
+
+        if (repository.existsByUser_IdAndMaterial_IdAndStatusIn(user.getId(), material.getId(), ACTIVE_RESERVATION_STATUSES))
+            throw new BusinessRuleException("User already has active reservation for this material");
+
+        MaterialCopy copy = resolveCopy(request);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = now.plusDays(rule.getReservationTtlDays());
+
+        copy.setStatus(CopyStatus.RESERVED);
+
+        Reservation reservation = mapper.toEntity(user, material, copy, branch, expiresAt);
+        reservation.setStatus(ReservationStatus.READY_FOR_PICKUP);
+        reservation.setReadyAt(now);
+
+        Reservation saved = repository.save(reservation);
+        return toResponse(saved);
+    }
 }
