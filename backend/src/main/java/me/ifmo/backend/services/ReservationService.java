@@ -13,4 +13,6 @@ public interface ReservationService {
     ReservationResponse cancelByUser(Long id, CancelReservationRequest request);
 
     ReservationResponse cancelByLibrarian(Long id, CancelReservationRequest request);
+
+    ReservationResponse expire(Long id);
 }
