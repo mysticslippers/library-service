@@ -1,6 +1,7 @@
 package me.ifmo.backend.services;
 
 import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateMaterialRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialResponse;
 
 public interface MaterialService {
@@ -10,4 +11,6 @@ public interface MaterialService {
     MaterialResponse getMaterialById(Long id);
 
     MaterialResponse getMaterialByIsbn(String isbn);
+
+    MaterialResponse update(UpdateMaterialRequest request);
 }
