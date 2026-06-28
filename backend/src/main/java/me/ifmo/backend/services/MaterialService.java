@@ -16,7 +16,7 @@ public interface MaterialService {
 
     MaterialResponse getMaterialByIsbn(String isbn);
 
-    MaterialResponse update(UpdateMaterialRequest request);
+    MaterialResponse update(Long id, UpdateMaterialRequest request);
 
     MaterialResponse changeStatus(Long id, ChangeMaterialStatusRequest request);
 
