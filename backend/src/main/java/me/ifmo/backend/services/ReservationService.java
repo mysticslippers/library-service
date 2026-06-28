@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.circulation.response.ReservationResponse;
 public interface ReservationService {
 
     ReservationResponse create(CreateReservationRequest request);
+
+    ReservationResponse getReservationById(Long id);
 }
