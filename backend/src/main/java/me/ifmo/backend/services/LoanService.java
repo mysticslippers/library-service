@@ -16,4 +16,6 @@ public interface LoanService {
     LoanResponse renew(Long id, RenewLoanRequest request);
 
     LoanResponse markOverdue(Long id);
+
+    LoanResponse markLost(Long id);
 }
