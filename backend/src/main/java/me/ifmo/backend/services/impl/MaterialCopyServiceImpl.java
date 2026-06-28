@@ -140,7 +140,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
 
         String shelfLocation = normalize(request.shelfLocation(), "Shelf location");
 
-        mapper.updateEntity(new UpdateMaterialCopyRequest(null, shelfLocation), copy);
+        mapper.updateEntity(new UpdateMaterialCopyRequest(shelfLocation), copy);
 
         MaterialCopy saved = repository.save(copy);
         return mapper.toResponse(saved);
