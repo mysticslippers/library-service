@@ -3,8 +3,10 @@ package me.ifmo.backend.services.impl;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
 import me.ifmo.backend.dto.catalog.request.MaterialAuthorRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateMaterialRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialResponse;
 import me.ifmo.backend.entities.*;
+import me.ifmo.backend.entities.enums.MaterialStatus;
 import me.ifmo.backend.entities.id.MaterialAuthorId;
 import me.ifmo.backend.entities.id.MaterialGenreId;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
@@ -51,6 +53,37 @@ public class MaterialServiceImpl implements MaterialService {
         }
     }
 
+    private List<MaterialAuthor> saveAuthors(Material material, List<MaterialAuthorRequest> authorRequests) {
+        List<MaterialAuthor> materialAuthors = new ArrayList<>();
+
+        if (authorRequests == null)
+            return materialAuthors;
+
+        Set<Long> authorIds = new HashSet<>();
+        int defaultOrder = 1;
+
+        for (MaterialAuthorRequest authorRequest : authorRequests) {
+            if (authorRequest == null || authorRequest.authorId() == null)
+                throw new BusinessRuleException("Author id must not be null");
+
+            if (!authorIds.add(authorRequest.authorId()))
+                throw new BusinessRuleException("Duplicate author id '%s'".formatted(authorRequest.authorId()));
+
+            Author author = authorRepository.findById(authorRequest.authorId()).orElseThrow(
+                    () -> new ResourceNotFoundException(
+                            "Author with id '%s' not found".formatted(authorRequest.authorId())));
+
+            Integer authorOrder = (authorRequest.authorOrder() != null) ? authorRequest.authorOrder() : defaultOrder;
+
+            materialAuthors.add(MaterialAuthor.builder().id(new MaterialAuthorId(material.getId(), author.getId())).material(saved)
+                    .author(author).authorOrder(authorOrder).build());
+
+            defaultOrder++;
+        }
+
+        return materialAuthorRepository.saveAll(materialAuthors);
+    }
+
     @Override
     @Transactional
     public MaterialResponse create(CreateMaterialRequest request) {
@@ -72,33 +105,7 @@ public class MaterialServiceImpl implements MaterialService {
         Material material = mapper.toEntity(normalizedRequest);
         Material saved = repository.save(material);
 
-        List<MaterialAuthor> materialAuthors = new ArrayList<>();
-
-        if (request.authors() != null) {
-            Set<Long> authorIds = new HashSet<>();
-            int defaultOrder = 1;
-
-            for (MaterialAuthorRequest authorRequest : request.authors()) {
-                if (authorRequest == null || authorRequest.authorId() == null)
-                    throw new BusinessRuleException("Author id must not be null");
-
-                if (!authorIds.add(authorRequest.authorId()))
-                    throw new BusinessRuleException("Duplicate author id '%s'".formatted(authorRequest.authorId()));
-
-                Author author = authorRepository.findById(authorRequest.authorId()).orElseThrow(
-                                () -> new ResourceNotFoundException(
-                                        "Author with id '%s' not found".formatted(authorRequest.authorId())));
-
-                Integer authorOrder = (authorRequest.authorOrder() != null) ? authorRequest.authorOrder() : defaultOrder;
-
-                materialAuthors.add(MaterialAuthor.builder().id(new MaterialAuthorId(saved.getId(), author.getId())).material(saved)
-                        .author(author).authorOrder(authorOrder).build());
-
-                defaultOrder++;
-            }
-
-            materialAuthors = materialAuthorRepository.saveAll(materialAuthors);
-        }
+        List<MaterialAuthor> authors = saveAuthors(saved, request.authors());
 
         List<MaterialGenre> materialGenres = new ArrayList<>();
 
@@ -117,7 +124,7 @@ public class MaterialServiceImpl implements MaterialService {
             materialGenres = materialGenreRepository.saveAll(materialGenres);
         }
 
-        return mapper.toResponse(saved, materialAuthors, materialGenres);
+        return mapper.toResponse(saved, authors, materialGenres);
     }
 
     @Override
@@ -146,5 +153,47 @@ public class MaterialServiceImpl implements MaterialService {
         List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
 
         return mapper.toResponse(material, authors, genres);
+    }
+
+    @Override
+    @Transactional
+    public MaterialResponse update(Long id, UpdateMaterialRequest request) {
+        Material material = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(id)));
+
+        if (material.getStatus() == MaterialStatus.REMOVED)
+            throw new BusinessRuleException("Removed material cannot be updated");
+
+        String isbn = request.isbn() != null ? normalize(request.isbn(), "Isbn") : null;
+        String title = request.title() != null ? normalize(request.title(), "Title") : null;
+        String description = request.description() != null ? normalize(request.description(), "Description") : null;
+        String publisher = request.publisher() != null ? normalize(request.publisher(), "Publisher") : null;
+        String language = request.language() != null ? normalize(request.language(), "Language") : null;
+
+        if (isbn != null && !isbn.equals(material.getIsbn()) && repository.existsByIsbn(isbn))
+            throw new DuplicateResourceException("Material with isbn '%s' already exists".formatted(isbn));
+
+        mapper.updateEntity(new UpdateMaterialRequest(isbn, title, description, publisher, request.publicationYear(),
+                request.materialType(), language, request.authors(), request.genreIds()), material);
+
+        if (request.description() != null)
+            material.setDescription(description);
+
+        if (request.publisher() != null)
+            material.setPublisher(publisher);
+
+        Material saved = repository.save(material);
+
+        if (request.authors() != null) {
+            materialAuthorRepository.deleteByMaterial_Id(saved.getId());
+            saveAuthors(saved, request.authors());
+        }
+
+        if (request.genreIds() != null) {
+            materialGenreRepository.deleteByMaterial_Id(saved.getId());
+            saveGenres(saved, request.genreIds());
+        }
+
+        return toResponse(saved);
     }
 }
