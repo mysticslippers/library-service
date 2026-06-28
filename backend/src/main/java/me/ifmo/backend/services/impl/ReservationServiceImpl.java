@@ -199,4 +199,19 @@ public class ReservationServiceImpl implements ReservationService {
         Reservation saved = repository.save(reservation);
         return toResponse(saved);
     }
+
+    @Override
+    @Transactional
+    public ReservationResponse markUsed(Long id) {
+        Reservation reservation = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+
+        if (reservation.getStatus() != ReservationStatus.READY_FOR_PICKUP)
+            throw new BusinessRuleException("Only ready for pickup reservation can be marked as used");
+
+        reservation.setStatus(ReservationStatus.USED);
+
+        Reservation saved = repository.save(reservation);
+        return toResponse(saved);
+    }
 }
