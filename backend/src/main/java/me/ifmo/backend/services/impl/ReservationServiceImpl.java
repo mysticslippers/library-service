@@ -2,19 +2,20 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.response.MaterialShortResponse;
+import me.ifmo.backend.dto.circulation.request.CreateReservationRequest;
 import me.ifmo.backend.dto.circulation.response.ReservationResponse;
-import me.ifmo.backend.entities.Material;
-import me.ifmo.backend.entities.MaterialAuthor;
-import me.ifmo.backend.entities.MaterialGenre;
-import me.ifmo.backend.entities.Reservation;
-import me.ifmo.backend.entities.enums.ReservationStatus;
+import me.ifmo.backend.entities.*;
+import me.ifmo.backend.entities.enums.*;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
+import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.MaterialMapper;
 import me.ifmo.backend.mappers.ReservationMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.ReservationService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -53,5 +54,10 @@ public class ReservationServiceImpl implements ReservationService {
 
     private ReservationResponse toResponse(Reservation reservation) {
         return mapper.toResponse(reservation, toMaterialShortResponse(reservation.getMaterial()));
+    }
+
+    private LibraryRule getActualRule(Long branchId) {
+        return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now()).orElseThrow(
+                () -> new ResourceNotFoundException("Actual library rule for branch with id '%s' not found".formatted(branchId)));
     }
 }
