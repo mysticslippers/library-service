@@ -75,13 +75,33 @@ public class MaterialServiceImpl implements MaterialService {
 
             Integer authorOrder = (authorRequest.authorOrder() != null) ? authorRequest.authorOrder() : defaultOrder;
 
-            materialAuthors.add(MaterialAuthor.builder().id(new MaterialAuthorId(material.getId(), author.getId())).material(saved)
+            materialAuthors.add(MaterialAuthor.builder().id(new MaterialAuthorId(material.getId(), author.getId())).material(material)
                     .author(author).authorOrder(authorOrder).build());
 
             defaultOrder++;
         }
 
         return materialAuthorRepository.saveAll(materialAuthors);
+    }
+
+    private List<MaterialGenre> saveGenres(Material material, Set<Long> genreIds) {
+        List<MaterialGenre> materialGenres = new ArrayList<>();
+
+        if (genreIds == null)
+            return materialGenres;
+
+        for (Long genreId : genreIds) {
+            if (genreId == null)
+                throw new BusinessRuleException("Genre id must not be null");
+
+            Genre genre = genreRepository.findById(genreId).orElseThrow(
+                    () -> new ResourceNotFoundException("Genre with id '%s' not found".formatted(genreId)));
+
+            materialGenres.add(MaterialGenre.builder().id(new MaterialGenreId(material.getId(), genre.getId()))
+                    .material(material).genre(genre).build());
+        }
+
+        return materialGenreRepository.saveAll(materialGenres);
     }
 
     @Override
@@ -107,22 +127,7 @@ public class MaterialServiceImpl implements MaterialService {
 
         List<MaterialAuthor> authors = saveAuthors(saved, request.authors());
 
-        List<MaterialGenre> materialGenres = new ArrayList<>();
-
-        if (request.genreIds() != null) {
-            for (Long genreId : request.genreIds()) {
-                if (genreId == null)
-                    throw new BusinessRuleException("Genre id must not be null");
-
-                Genre genre = genreRepository.findById(genreId).orElseThrow(
-                                () -> new ResourceNotFoundException("Genre with id '%s' not found".formatted(genreId)));
-
-                materialGenres.add(MaterialGenre.builder().id(new MaterialGenreId(saved.getId(), genre.getId()))
-                        .material(saved).genre(genre).build());
-            }
-
-            materialGenres = materialGenreRepository.saveAll(materialGenres);
-        }
+        List<MaterialGenre> materialGenres = saveGenres(saved, request.genreIds());
 
         return mapper.toResponse(saved, authors, materialGenres);
     }
