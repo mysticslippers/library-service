@@ -104,6 +104,20 @@ public class MaterialServiceImpl implements MaterialService {
         return materialGenreRepository.saveAll(materialGenres);
     }
 
+    private boolean isTransitionAllowed(MaterialStatus current, MaterialStatus target) {
+        return switch (current) {
+            case ACTIVE -> target == MaterialStatus.HIDDEN
+                            || target == MaterialStatus.ARCHIVED
+                            || target == MaterialStatus.REMOVED;
+            case HIDDEN -> target == MaterialStatus.ACTIVE
+                            || target == MaterialStatus.ARCHIVED
+                            || target == MaterialStatus.REMOVED;
+            case ARCHIVED -> target == MaterialStatus.ACTIVE
+                            || target == MaterialStatus.REMOVED;
+            case REMOVED -> false;
+        };
+    }
+
     @Override
     @Transactional
     public MaterialResponse create(CreateMaterialRequest request) {
