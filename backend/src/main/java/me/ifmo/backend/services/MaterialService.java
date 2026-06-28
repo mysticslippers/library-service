@@ -5,7 +5,7 @@ import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
 import me.ifmo.backend.dto.catalog.request.MaterialSearchRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialResponse;
-import org.springframework.data.domain.Page;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import org.springframework.data.domain.Pageable;
 
 public interface MaterialService {
@@ -20,5 +20,5 @@ public interface MaterialService {
 
     MaterialResponse changeStatus(Long id, ChangeMaterialStatusRequest request);
 
-    Page<MaterialResponse> search(MaterialSearchRequest request, Pageable pageable);
+    PageResponse<MaterialResponse> search(MaterialSearchRequest request, Pageable pageable);
 }
