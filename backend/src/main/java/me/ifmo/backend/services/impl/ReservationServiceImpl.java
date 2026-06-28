@@ -132,4 +132,12 @@ public class ReservationServiceImpl implements ReservationService {
         Reservation saved = repository.save(reservation);
         return toResponse(saved);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReservationResponse getReservationById(Long id) {
+        Reservation reservation = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+        return toResponse(reservation);
+    }
 }
