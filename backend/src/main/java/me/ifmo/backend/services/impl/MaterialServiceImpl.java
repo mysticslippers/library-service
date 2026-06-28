@@ -122,17 +122,28 @@ public class MaterialServiceImpl implements MaterialService {
 
     @Override
     @Transactional(readOnly = true)
+    public MaterialResponse getMaterialById(Long id) {
+        Material material = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(id)));
+
+        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
+
+        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
+
+        return mapper.toResponse(material, authors, genres);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public MaterialResponse getMaterialByIsbn(String isbn) {
         String normalizedIsbn = normalize(isbn, "Isbn");
 
         Material material = repository.findByIsbn(normalizedIsbn).orElseThrow(
                 () -> new ResourceNotFoundException("Material with isbn '%s' not found".formatted(normalizedIsbn)));
 
-        List<MaterialAuthor> authors =
-                materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
+        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
 
-        List<MaterialGenre> genres =
-                materialGenreRepository.findByMaterial_Id(material.getId());
+        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
 
         return mapper.toResponse(material, authors, genres);
     }
