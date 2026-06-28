@@ -1,11 +1,9 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.catalog.request.ChangeMaterialStatusRequest;
-import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
-import me.ifmo.backend.dto.catalog.request.MaterialAuthorRequest;
-import me.ifmo.backend.dto.catalog.request.UpdateMaterialRequest;
+import me.ifmo.backend.dto.catalog.request.*;
 import me.ifmo.backend.dto.catalog.response.MaterialResponse;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.CopyStatus;
 import me.ifmo.backend.entities.enums.MaterialStatus;
@@ -18,6 +16,8 @@ import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.MaterialMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.MaterialService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -122,6 +122,14 @@ public class MaterialServiceImpl implements MaterialService {
         };
     }
 
+    private MaterialResponse toResponse(Material material) {
+        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
+
+        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
+
+        return mapper.toResponse(material, authors, genres);
+    }
+
     @Override
     @Transactional
     public MaterialResponse create(CreateMaterialRequest request) {
@@ -144,10 +152,9 @@ public class MaterialServiceImpl implements MaterialService {
         Material saved = repository.save(material);
 
         List<MaterialAuthor> authors = saveAuthors(saved, request.authors());
+        List<MaterialGenre> genres = saveGenres(saved, request.genreIds());
 
-        List<MaterialGenre> materialGenres = saveGenres(saved, request.genreIds());
-
-        return mapper.toResponse(saved, authors, materialGenres);
+        return mapper.toResponse(saved, authors, genres);
     }
 
     @Override
@@ -156,11 +163,7 @@ public class MaterialServiceImpl implements MaterialService {
         Material material = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(id)));
 
-        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
-
-        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
-
-        return mapper.toResponse(material, authors, genres);
+        return toResponse(material);
     }
 
     @Override
@@ -171,11 +174,7 @@ public class MaterialServiceImpl implements MaterialService {
         Material material = repository.findByIsbn(normalizedIsbn).orElseThrow(
                 () -> new ResourceNotFoundException("Material with isbn '%s' not found".formatted(normalizedIsbn)));
 
-        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
-
-        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
-
-        return mapper.toResponse(material, authors, genres);
+        return toResponse(material);
     }
 
     @Override
@@ -217,11 +216,7 @@ public class MaterialServiceImpl implements MaterialService {
             saveGenres(saved, request.genreIds());
         }
 
-        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(saved.getId());
-
-        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(saved.getId());
-
-        return mapper.toResponse(saved, authors, genres);
+        return toResponse(saved);
     }
 
     @Override
@@ -249,6 +244,19 @@ public class MaterialServiceImpl implements MaterialService {
         material.setStatus(status);
 
         Material saved = repository.save(material);
-        return mapper.toResponse(saved, authors, genres);
+        return toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<MaterialResponse> search(MaterialSearchRequest request, Pageable pageable) {
+        String query = request.query() != null ? request.query().strip() : "";
+
+        Page<Material> materials = repository.search(query, request.materialType(), request.status(), request.publicationYear(),
+                request.authorId(), request.genreId(), request.branchId(), pageable);
+
+        Page<MaterialResponse> responses = materials.map(this::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
