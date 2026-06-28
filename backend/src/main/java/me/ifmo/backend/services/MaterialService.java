@@ -8,4 +8,6 @@ public interface MaterialService {
     MaterialResponse create(CreateMaterialRequest request);
 
     MaterialResponse getMaterialById(Long id);
+
+    MaterialResponse getMaterialByIsbn(String isbn);
 }
