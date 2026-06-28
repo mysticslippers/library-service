@@ -199,6 +199,10 @@ public class MaterialServiceImpl implements MaterialService {
             saveGenres(saved, request.genreIds());
         }
 
-        return toResponse(saved);
+        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
+
+        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
+
+        return mapper.toResponse(material, authors, genres);
     }
 }
