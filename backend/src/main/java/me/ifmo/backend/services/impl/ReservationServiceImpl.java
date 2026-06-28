@@ -181,4 +181,22 @@ public class ReservationServiceImpl implements ReservationService {
         Reservation saved = repository.save(reservation);
         return toResponse(saved);
     }
+
+    @Override
+    @Transactional
+    public ReservationResponse expire(Long id) {
+        Reservation reservation = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+
+        if (!ACTIVE_RESERVATION_STATUSES.contains(reservation.getStatus()))
+            throw new BusinessRuleException("Only active reservation can be expired");
+
+        reservation.setStatus(ReservationStatus.EXPIRED);
+
+        if (reservation.getCopy().getStatus() == CopyStatus.RESERVED)
+            reservation.getCopy().setStatus(CopyStatus.AVAILABLE);
+
+        Reservation saved = repository.save(reservation);
+        return toResponse(saved);
+    }
 }
