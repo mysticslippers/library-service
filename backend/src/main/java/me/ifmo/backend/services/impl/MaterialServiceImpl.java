@@ -1,16 +1,19 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.catalog.request.ChangeMaterialStatusRequest;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
 import me.ifmo.backend.dto.catalog.request.MaterialAuthorRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialResponse;
 import me.ifmo.backend.entities.*;
+import me.ifmo.backend.entities.enums.CopyStatus;
 import me.ifmo.backend.entities.enums.MaterialStatus;
 import me.ifmo.backend.entities.id.MaterialAuthorId;
 import me.ifmo.backend.entities.id.MaterialGenreId;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceInUseException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.MaterialMapper;
 import me.ifmo.backend.repositories.*;
@@ -31,6 +34,7 @@ public class MaterialServiceImpl implements MaterialService {
     private final AuthorRepository authorRepository;
     private final GenreRepository genreRepository;
     private final MaterialAuthorRepository materialAuthorRepository;
+    private final MaterialCopyRepository materialCopyRepository;
     private final MaterialGenreRepository materialGenreRepository;
     private final MaterialMapper mapper;
 
@@ -213,10 +217,38 @@ public class MaterialServiceImpl implements MaterialService {
             saveGenres(saved, request.genreIds());
         }
 
+        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(saved.getId());
+
+        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(saved.getId());
+
+        return mapper.toResponse(saved, authors, genres);
+    }
+
+    @Override
+    @Transactional
+    public MaterialResponse changeStatus(Long id, ChangeMaterialStatusRequest request) {
+        Material material = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(id)));
+
+        MaterialStatus status = request.status();
+
         List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
 
         List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
 
-        return mapper.toResponse(material, authors, genres);
+        if (material.getStatus() == status)
+            mapper.toResponse(material, authors, genres);
+
+        if (!isTransitionAllowed(material.getStatus(), status))
+            throw new BusinessRuleException(
+                    "Material status transition from '%s' to '%s' is not allowed".formatted(material.getStatus(), status));
+
+        if (status == MaterialStatus.REMOVED && materialCopyRepository.existsByMaterial_IdAndStatusNot(id, CopyStatus.REMOVED))
+            throw new ResourceInUseException("Material has non-removed copies");
+
+        material.setStatus(status);
+
+        Material saved = repository.save(material);
+        return mapper.toResponse(saved, authors, genres);
     }
 }
