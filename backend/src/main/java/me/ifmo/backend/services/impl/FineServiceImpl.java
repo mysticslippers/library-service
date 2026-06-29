@@ -123,4 +123,21 @@ public class FineServiceImpl implements FineService {
         Fine saved = repository.save(fine);
         return mapper.toResponse(saved);
     }
+
+    @Override
+    @Transactional
+    public FineResponse markPaid(Long id) {
+        Fine fine = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Fine with id '%s' not found".formatted(id)));
+
+        if (fine.getStatus() != FineStatus.ACTIVE) {
+            throw new BusinessRuleException("Only active fine can be marked as paid");
+        }
+
+        fine.setStatus(FineStatus.PAID);
+        fine.setPaidAt(LocalDateTime.now());
+
+        Fine saved = repository.save(fine);
+        return mapper.toResponse(saved);
+    }
 }
