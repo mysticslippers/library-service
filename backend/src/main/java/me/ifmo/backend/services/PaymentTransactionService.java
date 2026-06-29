@@ -8,4 +8,6 @@ public interface PaymentTransactionService {
     PaymentTransactionResponse create(CreatePaymentTransactionRequest request);
 
     PaymentTransactionResponse getPaymentTransactionById(Long id);
+
+    PaymentTransactionResponse getByExternalPayment(String externalPayment);
 }
