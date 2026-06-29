@@ -103,4 +103,19 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
 
         return mapper.toResponse(transaction);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentTransactionResponse getByExternalPayment(String externalPayment) {
+        String normalizedExternalPayment = normalize(externalPayment);
+
+        if (normalizedExternalPayment == null)
+            throw new BusinessRuleException("External payment id must not be blank");
+
+        PaymentTransaction transaction = repository.findByExternalPayment(normalizedExternalPayment).orElseThrow(
+                () -> new ResourceNotFoundException(
+                        "Payment transaction with external payment id '%s' not found".formatted(normalizedExternalPayment)));
+
+        return mapper.toResponse(transaction);
+    }
 }
