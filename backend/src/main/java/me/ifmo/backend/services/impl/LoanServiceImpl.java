@@ -136,4 +136,13 @@ public class LoanServiceImpl implements LoanService {
         Loan saved = repository.save(loan);
         return mapper.toResponse(saved);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LoanResponse getLoanById(Long id) {
+        Loan loan = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(loan);
+    }
 }
