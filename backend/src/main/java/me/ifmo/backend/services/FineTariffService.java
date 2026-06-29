@@ -1,5 +1,6 @@
 package me.ifmo.backend.services;
 
+import me.ifmo.backend.dto.fine.request.ChangeFineTariffStatusRequest;
 import me.ifmo.backend.dto.fine.request.CreateFineTariffRequest;
 import me.ifmo.backend.dto.fine.request.UpdateFineTariffRequest;
 import me.ifmo.backend.dto.fine.response.FineTariffResponse;
@@ -14,4 +15,6 @@ public interface FineTariffService {
     FineTariffResponse getActualByViolationType(ViolationType violationType);
 
     FineTariffResponse update(Long id, UpdateFineTariffRequest request);
+
+    FineTariffResponse changeStatus(Long id, ChangeFineTariffStatusRequest request);
 }
