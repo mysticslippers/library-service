@@ -191,4 +191,22 @@ public class LoanServiceImpl implements LoanService {
         Loan saved = repository.save(loan);
         return mapper.toResponse(saved);
     }
+
+    @Override
+    @Transactional
+    public LoanResponse markOverdue(Long id) {
+        Loan loan = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
+
+        if (loan.getStatus() != LoanStatus.ACTIVE)
+            throw new BusinessRuleException("Only active loan can be marked as overdue");
+
+        if (loan.getDueAt().isAfter(LocalDateTime.now()))
+            throw new BusinessRuleException("Loan dueAt has not passed yet");
+
+        loan.setStatus(LoanStatus.OVERDUE);
+
+        Loan saved = repository.save(loan);
+        return mapper.toResponse(saved);
+    }
 }
