@@ -95,4 +95,12 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         return mapper.toResponse(saved);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PaymentTransactionResponse getPaymentTransactionById(Long id) {
+        PaymentTransaction transaction = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Payment transaction with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(transaction);
+    }
 }
