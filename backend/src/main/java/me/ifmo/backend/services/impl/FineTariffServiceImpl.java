@@ -5,6 +5,7 @@ import me.ifmo.backend.dto.fine.request.CreateFineTariffRequest;
 import me.ifmo.backend.dto.fine.response.FineTariffResponse;
 import me.ifmo.backend.entities.FineTariff;
 import me.ifmo.backend.entities.enums.FineTariffStatus;
+import me.ifmo.backend.entities.enums.ViolationType;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.FineTariffMapper;
@@ -62,6 +63,16 @@ public class FineTariffServiceImpl implements FineTariffService {
     public FineTariffResponse getFineTariffById(Long id) {
         FineTariff tariff = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Fine tariff with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(tariff);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FineTariffResponse getActualByViolationType(ViolationType violationType) {
+        FineTariff tariff = repository.findActualByViolationTypeAndStatus(violationType, FineTariffStatus.ACTIVE,
+                        LocalDateTime.now()).orElseThrow(
+                        () -> new ResourceNotFoundException("Actual fine tariff for violation type '%s' not found".formatted(violationType)));
 
         return mapper.toResponse(tariff);
     }
