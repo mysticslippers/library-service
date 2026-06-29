@@ -1,13 +1,21 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.fine.request.CreatePaymentTransactionRequest;
+import me.ifmo.backend.dto.fine.response.PaymentTransactionResponse;
+import me.ifmo.backend.entities.Fine;
+import me.ifmo.backend.entities.PaymentTransaction;
+import me.ifmo.backend.entities.enums.FineStatus;
 import me.ifmo.backend.entities.enums.PaymentStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
+import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.PaymentTransactionMapper;
 import me.ifmo.backend.repositories.FineRepository;
 import me.ifmo.backend.repositories.PaymentTransactionRepository;
 import me.ifmo.backend.services.PaymentTransactionService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Set;
@@ -57,4 +65,34 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
             case SUCCESS, DECLINED, CANCELLED, FAILED, TIMEOUT -> false;
         };
     }
+
+    @Override
+    @Transactional
+    public PaymentTransactionResponse create(CreatePaymentTransactionRequest request) {
+        Fine fine = fineRepository.findById(request.fineId()).orElseThrow(
+                () -> new ResourceNotFoundException("Fine with id '%s' not found".formatted(request.fineId())));
+
+        if (fine.getStatus() != FineStatus.ACTIVE)
+            throw new BusinessRuleException("Payment can be created only for active fine");
+
+        validate(request.amount());
+
+        if (request.amount().compareTo(fine.getAmount()) != 0)
+            throw new BusinessRuleException("Payment amount must be equal to fine amount");
+
+        String externalPayment = normalize(request.externalPayment());
+
+        if (externalPayment != null && repository.existsByExternalPayment(externalPayment))
+            throw new DuplicateResourceException("Payment transaction with external payment id '%s' already exists".formatted(externalPayment));
+
+        if (repository.findByFine_IdAndStatus(fine.getId(), PaymentStatus.PENDING).isPresent())
+            throw new BusinessRuleException("Fine already has pending payment transaction");
+
+        PaymentTransaction transaction = mapper.toEntity(fine, externalPayment, request.amount());
+        transaction.setStatus(PaymentStatus.CREATED);
+
+        PaymentTransaction saved = repository.save(transaction);
+        return mapper.toResponse(saved);
+    }
+
 }
