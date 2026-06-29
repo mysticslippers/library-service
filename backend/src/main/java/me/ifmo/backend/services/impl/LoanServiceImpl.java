@@ -1,8 +1,10 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.circulation.request.ReturnLoanRequest;
 import me.ifmo.backend.entities.LibraryRule;
 import me.ifmo.backend.entities.User;
+import me.ifmo.backend.entities.enums.CopyStatus;
 import me.ifmo.backend.entities.enums.LibraryRuleStatus;
 import me.ifmo.backend.entities.enums.LoanStatus;
 import me.ifmo.backend.entities.enums.UserStatus;
@@ -45,5 +47,17 @@ public class LoanServiceImpl implements LoanService {
             throw new BusinessRuleException("%s must be active".formatted(fieldName));
 
         return user;
+    }
+
+    private CopyStatus resolveReturnCopyStatus(ReturnLoanRequest request) {
+        if (request.resultingCopyStatus() == null)
+            return CopyStatus.AVAILABLE;
+
+        CopyStatus status = request.resultingCopyStatus();
+
+        if (status == CopyStatus.RESERVED || status == CopyStatus.LOANED)
+            throw new BusinessRuleException("Returned copy cannot become '%s'".formatted(status));
+
+        return status;
     }
 }
