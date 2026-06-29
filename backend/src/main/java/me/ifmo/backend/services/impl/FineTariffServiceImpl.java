@@ -2,6 +2,7 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.fine.request.CreateFineTariffRequest;
+import me.ifmo.backend.dto.fine.request.UpdateFineTariffRequest;
 import me.ifmo.backend.dto.fine.response.FineTariffResponse;
 import me.ifmo.backend.entities.FineTariff;
 import me.ifmo.backend.entities.enums.FineTariffStatus;
@@ -76,4 +77,29 @@ public class FineTariffServiceImpl implements FineTariffService {
 
         return mapper.toResponse(tariff);
     }
+
+    @Override
+    @Transactional
+    public FineTariffResponse update(Long id, UpdateFineTariffRequest request) {
+        FineTariff tariff = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Fine tariff with id '%s' not found".formatted(id)));
+
+        if (tariff.getStatus() == FineTariffStatus.ARCHIVED)
+            throw new BusinessRuleException("Archived fine tariff cannot be updated");
+
+        BigDecimal amountPerDay = request.amountPerDay() != null ? request.amountPerDay() : tariff.getAmountPerDay();
+        BigDecimal fixedAmount = request.fixedAmount() != null ? request.fixedAmount() : tariff.getFixedAmount();
+        BigDecimal maxAmount = request.maxAmount() != null ? request.maxAmount() : tariff.getMaxAmount();
+
+        validate(amountPerDay, fixedAmount, maxAmount);
+
+        if (request.validTo() != null && !request.validTo().isAfter(tariff.getValidFrom()))
+            throw new BusinessRuleException("Fine tariff validTo must be after validFrom");
+
+        mapper.updateEntity(request, tariff);
+
+        FineTariff saved = repository.save(tariff);
+        return mapper.toResponse(saved);
+    }
+
 }
