@@ -36,4 +36,25 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
             throw new BusinessRuleException("Payment amount must be positive");
     }
+
+    private boolean isTransitionAllowed(PaymentStatus current, PaymentStatus target) {
+        if (current == target)
+            return true;
+
+        if (FINAL_STATUSES.contains(current))
+            return false;
+
+        return switch (current) {
+            case CREATED -> target == PaymentStatus.PENDING
+                    || target == PaymentStatus.SUCCESS
+                    || target == PaymentStatus.CANCELLED
+                    || target == PaymentStatus.FAILED;
+            case PENDING -> target == PaymentStatus.SUCCESS
+                    || target == PaymentStatus.DECLINED
+                    || target == PaymentStatus.CANCELLED
+                    || target == PaymentStatus.FAILED
+                    || target == PaymentStatus.TIMEOUT;
+            case SUCCESS, DECLINED, CANCELLED, FAILED, TIMEOUT -> false;
+        };
+    }
 }
