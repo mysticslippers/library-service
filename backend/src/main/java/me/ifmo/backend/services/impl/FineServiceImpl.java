@@ -7,6 +7,8 @@ import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.FineService;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+
 @Service
 @RequiredArgsConstructor
 public class FineServiceImpl implements FineService {
@@ -23,5 +25,10 @@ public class FineServiceImpl implements FineService {
             throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
 
         return value.strip();
+    }
+
+    private void validate(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+            throw new BusinessRuleException("Fine amount must be positive");
     }
 }
