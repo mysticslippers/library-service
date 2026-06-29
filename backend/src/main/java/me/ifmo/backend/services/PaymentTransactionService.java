@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.fine.response.PaymentTransactionResponse;
 public interface PaymentTransactionService {
 
     PaymentTransactionResponse create(CreatePaymentTransactionRequest request);
+
+    PaymentTransactionResponse getPaymentTransactionById(Long id);
 }
