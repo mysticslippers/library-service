@@ -1,8 +1,10 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.dto.fine.request.CancelFineRequest;
 import me.ifmo.backend.dto.fine.request.CreateFineRequest;
+import me.ifmo.backend.dto.fine.request.FineSearchRequest;
 import me.ifmo.backend.dto.fine.response.FineResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.FineStatus;
@@ -14,6 +16,8 @@ import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.FineMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.FineService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -139,5 +143,16 @@ public class FineServiceImpl implements FineService {
 
         Fine saved = repository.save(fine);
         return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<FineResponse> search(FineSearchRequest request, Pageable pageable) {
+        Page<Fine> fines = repository.search(request.userId(), request.loanId(), request.copyId(), request.reason(),
+                request.status(), request.createdFrom(), request.createdTo(), pageable);
+
+        Page<FineResponse> responses = fines.map(mapper::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
