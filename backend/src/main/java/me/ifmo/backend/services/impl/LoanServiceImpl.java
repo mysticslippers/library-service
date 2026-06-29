@@ -1,19 +1,20 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.circulation.request.CreateLoanRequest;
 import me.ifmo.backend.dto.circulation.request.ReturnLoanRequest;
-import me.ifmo.backend.entities.LibraryRule;
-import me.ifmo.backend.entities.User;
-import me.ifmo.backend.entities.enums.CopyStatus;
-import me.ifmo.backend.entities.enums.LibraryRuleStatus;
-import me.ifmo.backend.entities.enums.LoanStatus;
-import me.ifmo.backend.entities.enums.UserStatus;
+import me.ifmo.backend.dto.circulation.response.LoanResponse;
+import me.ifmo.backend.entities.*;
+import me.ifmo.backend.entities.enums.*;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
+import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
+import me.ifmo.backend.exceptions.domain.ResourceInUseException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.LoanMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.LoanService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -59,5 +60,80 @@ public class LoanServiceImpl implements LoanService {
             throw new BusinessRuleException("Returned copy cannot become '%s'".formatted(status));
 
         return status;
+    }
+
+    @Override
+    @Transactional
+    public LoanResponse create(CreateLoanRequest request) {
+        User user = findUser(request.userId(), "User");
+        User issuedByUser = findUser(request.issuedByUserId(), "Issued by user");
+
+        Branch branch = branchRepository.findById(request.branchId()).orElseThrow(
+                () -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(request.branchId())));
+
+        if (branch.getStatus() != BranchStatus.ACTIVE)
+            throw new BusinessRuleException("Loan can be created only in active branch");
+
+        MaterialCopy copy = materialCopyRepository.findById(request.copyId()).orElseThrow(
+                () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(request.copyId())));
+
+        if (!copy.getBranch().getId().equals(branch.getId()))
+            throw new BusinessRuleException("Material copy does not belong to requested branch");
+
+        if (copy.getMaterial().getStatus() != MaterialStatus.ACTIVE)
+            throw new BusinessRuleException("Loan can be created only for active material");
+
+        if (repository.findByCopy_IdAndStatusIn(copy.getId(), BLOCKING_LOAN_STATUSES).isPresent())
+            throw new ResourceInUseException("Material copy already has active or unresolved loan");
+
+        LibraryRule rule = getActualRule(branch.getId());
+
+        Long activeLoanCount = repository.countByUser_IdAndStatusIn(user.getId(), BLOCKING_LOAN_STATUSES);
+        if (activeLoanCount >= rule.getMaxActiveLoans())
+            throw new BusinessRuleException("User has reached active loan limit");
+
+        Reservation reservation = null;
+
+        if (request.reservationId() != null) {
+            reservation = reservationRepository.findById(request.reservationId()).orElseThrow(
+                    () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(request.reservationId())));
+
+            if (reservation.getStatus() != ReservationStatus.READY_FOR_PICKUP)
+                throw new BusinessRuleException("Only ready for pickup reservation can be converted to loan");
+
+            if (!reservation.getUser().getId().equals(user.getId()))
+                throw new BusinessRuleException("Reservation belongs to another user");
+
+            if (!reservation.getCopy().getId().equals(copy.getId()))
+                throw new BusinessRuleException("Reservation belongs to another material copy");
+
+            if (!reservation.getBranch().getId().equals(branch.getId()))
+                throw new BusinessRuleException("Reservation belongs to another branch");
+
+            if (repository.findByReservation_Id(reservation.getId()).isPresent())
+                throw new DuplicateResourceException("Loan for reservation with id '%s' already exists".formatted(reservation.getId()));
+
+            if (copy.getStatus() != CopyStatus.RESERVED)
+                throw new BusinessRuleException("Reserved material copy has invalid status");
+
+            reservation.setStatus(ReservationStatus.USED);
+        } else if (copy.getStatus() != CopyStatus.AVAILABLE)
+            throw new ResourceInUseException("Material copy is not available for loan");
+
+        LocalDateTime now = LocalDateTime.now();
+
+        LocalDateTime dueAt = request.dueAt() != null ? request.dueAt() : now.plusDays(rule.getDefaultLoanDays());
+
+        if (!dueAt.isAfter(now))
+            throw new BusinessRuleException("Loan dueAt must be in the future");
+
+        copy.setStatus(CopyStatus.LOANED);
+
+        Loan loan = mapper.toEntity(user, copy, reservation, branch, issuedByUser, dueAt);
+        loan.setStatus(LoanStatus.ACTIVE);
+        loan.setRenewalCount(0);
+
+        Loan saved = repository.save(loan);
+        return mapper.toResponse(saved);
     }
 }
