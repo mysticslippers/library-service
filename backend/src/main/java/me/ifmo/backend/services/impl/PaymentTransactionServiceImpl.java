@@ -1,7 +1,9 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.dto.fine.request.CreatePaymentTransactionRequest;
+import me.ifmo.backend.dto.fine.request.PaymentTransactionSearchRequest;
 import me.ifmo.backend.dto.fine.request.UpdatePaymentStatusRequest;
 import me.ifmo.backend.dto.fine.response.PaymentTransactionResponse;
 import me.ifmo.backend.entities.Fine;
@@ -15,6 +17,8 @@ import me.ifmo.backend.mappers.PaymentTransactionMapper;
 import me.ifmo.backend.repositories.FineRepository;
 import me.ifmo.backend.repositories.PaymentTransactionRepository;
 import me.ifmo.backend.services.PaymentTransactionService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -153,5 +157,15 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
 
         PaymentTransaction saved = repository.save(transaction);
         return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentTransactionResponse> search(PaymentTransactionSearchRequest request, Pageable pageable) {
+        Page<PaymentTransaction> transactions = repository.search(request.fineId(), request.status(), request.createdFrom(), request.createdTo(), pageable);
+
+        Page<PaymentTransactionResponse> responses = transactions.map(mapper::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
