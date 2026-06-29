@@ -2,9 +2,11 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.circulation.request.CreateLoanRequest;
+import me.ifmo.backend.dto.circulation.request.LoanSearchRequest;
 import me.ifmo.backend.dto.circulation.request.RenewLoanRequest;
 import me.ifmo.backend.dto.circulation.request.ReturnLoanRequest;
 import me.ifmo.backend.dto.circulation.response.LoanResponse;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.*;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
@@ -14,6 +16,8 @@ import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.LoanMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.LoanService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -224,5 +228,17 @@ public class LoanServiceImpl implements LoanService {
 
         Loan saved = repository.save(loan);
         return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<LoanResponse> search(LoanSearchRequest request, Pageable pageable) {
+        Page<Loan> loans = repository.search(request.userId(), request.copyId(), request.branchId(), request.issuedByUserId(),
+                request.status(), request.loanedFrom(), request.loanedTo(), request.dueBefore(), request.returnedFrom(),
+                request.returnedTo(), pageable);
+
+        Page<LoanResponse> responses = loans.map(mapper::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
