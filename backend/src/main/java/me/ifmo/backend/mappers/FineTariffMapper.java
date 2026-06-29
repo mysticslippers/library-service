@@ -16,8 +16,8 @@ public interface FineTariffMapper {
     @BeanMapping(nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "status", ignore = true)
-    @Mapping(target = "validFrom", source = "validFrom")
-    FineTariff toEntity(CreateFineTariffRequest request, LocalDateTime validFrom);
+    @Mapping(target = "validFrom", ignore = true)
+    FineTariff toEntity(CreateFineTariffRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
