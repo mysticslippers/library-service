@@ -20,7 +20,6 @@ public record CreateFineTariffRequest(
         @DecimalMin("0.00")
         BigDecimal maxAmount,
 
-        LocalDateTime validFrom,
         LocalDateTime validTo
 ) {
 }
