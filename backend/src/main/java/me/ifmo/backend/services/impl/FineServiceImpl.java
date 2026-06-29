@@ -94,4 +94,13 @@ public class FineServiceImpl implements FineService {
         Fine saved = repository.save(fine);
         return mapper.toResponse(saved);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FineResponse getFineById(Long id) {
+        Fine fine = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Fine with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(fine);
+    }
 }
