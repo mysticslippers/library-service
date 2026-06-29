@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.fine.response.FineResponse;
 public interface FineService {
 
     FineResponse create(CreateFineRequest request);
+
+    FineResponse getFineById(Long id);
 }
