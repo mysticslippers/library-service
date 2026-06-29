@@ -2,8 +2,11 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.entities.LibraryRule;
+import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.enums.LibraryRuleStatus;
 import me.ifmo.backend.entities.enums.LoanStatus;
+import me.ifmo.backend.entities.enums.UserStatus;
+import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.LoanMapper;
 import me.ifmo.backend.repositories.*;
@@ -32,5 +35,15 @@ public class LoanServiceImpl implements LoanService {
         return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now())
                 .orElseThrow(
                         () -> new ResourceNotFoundException("Actual library rule for branch with id '%s' not found".formatted(branchId)));
+    }
+
+    private User findUser(Long id, String fieldName) {
+        User user = userRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("%s with id '%s' not found".formatted(fieldName, id)));
+
+        if (user.getStatus() != UserStatus.ACTIVE)
+            throw new BusinessRuleException("%s must be active".formatted(fieldName));
+
+        return user;
     }
 }
