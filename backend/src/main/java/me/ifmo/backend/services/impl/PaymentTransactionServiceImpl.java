@@ -21,4 +21,12 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
     private final PaymentTransactionRepository repository;
     private final FineRepository fineRepository;
     private final PaymentTransactionMapper mapper;
+
+    private String normalize(String value) {
+        if (value == null || value.strip().isBlank()) {
+            return null;
+        }
+
+        return value.strip();
+    }
 }
