@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.fine.request.CancelFineRequest;
 import me.ifmo.backend.dto.fine.request.CreateFineRequest;
 import me.ifmo.backend.dto.fine.response.FineResponse;
 import me.ifmo.backend.entities.*;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -102,5 +104,23 @@ public class FineServiceImpl implements FineService {
                 () -> new ResourceNotFoundException("Fine with id '%s' not found".formatted(id)));
 
         return mapper.toResponse(fine);
+    }
+
+    @Override
+    @Transactional
+    public FineResponse cancel(Long id, CancelFineRequest request) {
+        Fine fine = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Fine with id '%s' not found".formatted(id)));
+
+        if (fine.getStatus() != FineStatus.ACTIVE)
+            throw new BusinessRuleException("Only active fine can be cancelled");
+
+        normalize(request.reason(), "Cancellation reason");
+
+        fine.setStatus(FineStatus.CANCELLED);
+        fine.setCancelledAt(LocalDateTime.now());
+
+        Fine saved = repository.save(fine);
+        return mapper.toResponse(saved);
     }
 }
