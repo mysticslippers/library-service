@@ -11,4 +11,6 @@ public interface FineService {
     FineResponse getFineById(Long id);
 
     FineResponse cancel(Long id, CancelFineRequest request);
+
+    FineResponse markPaid(Long id);
 }
