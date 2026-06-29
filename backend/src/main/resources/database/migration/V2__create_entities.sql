@@ -448,6 +448,7 @@ CREATE TABLE loans (
                        loaned_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                        due_at              TIMESTAMP NOT NULL,
                        returned_at         TIMESTAMP,
+                       renewal_count       INT NOT NULL DEFAULT 0,
                        status              loan_status NOT NULL DEFAULT 'ACTIVE',
 
                        CONSTRAINT fk_loans_user
@@ -480,6 +481,9 @@ CREATE TABLE loans (
 
                        CONSTRAINT chk_loans_returned_at
                            CHECK (returned_at IS NULL OR returned_at >= loaned_at),
+
+                       CONSTRAINT chk_loans_renewal_count
+                           CHECK (renewal_count >= 0),
 
                        CONSTRAINT chk_loans_returned_status
                            CHECK ((status = 'RETURNED' AND returned_at IS NOT NULL)
