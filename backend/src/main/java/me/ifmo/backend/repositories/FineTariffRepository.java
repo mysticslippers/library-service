@@ -20,6 +20,8 @@ public interface FineTariffRepository extends JpaRepository<FineTariff, Long> {
 
     Optional<FineTariff> findByViolationTypeAndStatus(ViolationType violationType, FineTariffStatus status);
 
+    Page<FineTariff> findByViolationTypeAndStatus(ViolationType violationType, FineTariffStatus status, Pageable pageable);
+
     @Query("""
             SELECT fineTariff FROM FineTariff fineTariff
                 WHERE fineTariff.violationType = :violationType
