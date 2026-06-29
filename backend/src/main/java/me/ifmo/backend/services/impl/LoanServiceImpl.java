@@ -145,4 +145,23 @@ public class LoanServiceImpl implements LoanService {
 
         return mapper.toResponse(loan);
     }
+
+    @Override
+    @Transactional
+    public LoanResponse returnLoan(Long id, ReturnLoanRequest request) {
+        Loan loan = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
+
+        if (loan.getStatus() != LoanStatus.ACTIVE && loan.getStatus() != LoanStatus.OVERDUE && loan.getStatus() != LoanStatus.LOST)
+            throw new BusinessRuleException("Only active, overdue or lost loan can be returned");
+
+        CopyStatus resultingCopyStatus = resolveReturnCopyStatus(request);
+
+        loan.setStatus(LoanStatus.RETURNED);
+        loan.setReturnedAt(LocalDateTime.now());
+        loan.getCopy().setStatus(resultingCopyStatus);
+
+        Loan saved = repository.save(loan);
+        return mapper.toResponse(saved);
+    }
 }
