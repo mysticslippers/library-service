@@ -2,6 +2,7 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.circulation.request.CreateLoanRequest;
+import me.ifmo.backend.dto.circulation.request.RenewLoanRequest;
 import me.ifmo.backend.dto.circulation.request.ReturnLoanRequest;
 import me.ifmo.backend.dto.circulation.response.LoanResponse;
 import me.ifmo.backend.entities.*;
@@ -160,6 +161,32 @@ public class LoanServiceImpl implements LoanService {
         loan.setStatus(LoanStatus.RETURNED);
         loan.setReturnedAt(LocalDateTime.now());
         loan.getCopy().setStatus(resultingCopyStatus);
+
+        Loan saved = repository.save(loan);
+        return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public LoanResponse renew(Long id, RenewLoanRequest request) {
+        Loan loan = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
+
+        if (loan.getStatus() != LoanStatus.ACTIVE)
+            throw new BusinessRuleException("Only active loan can be renewed");
+
+        LibraryRule rule = getActualRule(loan.getBranch().getId());
+
+        if (Boolean.FALSE.equals(rule.getRenewalAllowed()))
+            throw new BusinessRuleException("Loan renewal is not allowed for this branch");
+
+        if (loan.getRenewalCount() >= rule.getMaxRenewalCount())
+            throw new BusinessRuleException("Loan renewal limit has been reached");
+
+        int renewalDays = request.renewalDays() != null ? request.renewalDays() : rule.getRenewalPeriodDays();
+
+        loan.setDueAt(loan.getDueAt().plusDays(renewalDays));
+        loan.setRenewalCount(loan.getRenewalCount() + 1);
 
         Loan saved = repository.save(loan);
         return mapper.toResponse(saved);
