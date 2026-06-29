@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.fine.request.ChangeFineTariffStatusRequest;
 import me.ifmo.backend.dto.fine.request.CreateFineTariffRequest;
 import me.ifmo.backend.dto.fine.request.UpdateFineTariffRequest;
 import me.ifmo.backend.dto.fine.response.FineTariffResponse;
@@ -97,6 +98,41 @@ public class FineTariffServiceImpl implements FineTariffService {
             throw new BusinessRuleException("Fine tariff validTo must be after validFrom");
 
         mapper.updateEntity(request, tariff);
+
+        FineTariff saved = repository.save(tariff);
+        return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public FineTariffResponse changeStatus(Long id, ChangeFineTariffStatusRequest request) {
+        FineTariff tariff = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Fine tariff with id '%s' not found".formatted(id)));
+
+        FineTariffStatus status = request.status();
+
+        if (tariff.getStatus() == status)
+            return mapper.toResponse(tariff);
+
+        if (tariff.getStatus() == FineTariffStatus.ARCHIVED)
+            throw new BusinessRuleException("Archived fine tariff status cannot be changed");
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (status == FineTariffStatus.ACTIVE) {
+            repository.findByViolationTypeAndStatus(tariff.getViolationType(), FineTariffStatus.ACTIVE)
+                    .filter(activeTariff -> !activeTariff.getId().equals(tariff.getId())).ifPresent(activeTariff -> {
+                        activeTariff.setStatus(FineTariffStatus.INACTIVE);
+                        activeTariff.setValidTo(now);
+                    });
+
+            tariff.setValidTo(null);
+        }
+
+        if (status == FineTariffStatus.INACTIVE || status == FineTariffStatus.ARCHIVED)
+            tariff.setValidTo(now);
+
+        tariff.setStatus(status);
 
         FineTariff saved = repository.save(tariff);
         return mapper.toResponse(saved);
