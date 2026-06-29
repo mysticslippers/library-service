@@ -75,6 +75,7 @@ public class Loan {
                 ", loanedAt=" + loanedAt +
                 ", dueAt=" + dueAt +
                 ", returnedAt=" + returnedAt +
+                ", renewalCount=" + renewalCount +
                 ", status=" + status +
                 '}';
     }
