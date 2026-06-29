@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.dto.fine.request.ChangeFineTariffStatusRequest;
 import me.ifmo.backend.dto.fine.request.CreateFineTariffRequest;
 import me.ifmo.backend.dto.fine.request.UpdateFineTariffRequest;
@@ -13,6 +14,8 @@ import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.FineTariffMapper;
 import me.ifmo.backend.repositories.FineTariffRepository;
 import me.ifmo.backend.services.FineTariffService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -138,4 +141,22 @@ public class FineTariffServiceImpl implements FineTariffService {
         return mapper.toResponse(saved);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<FineTariffResponse> search(ViolationType violationType, FineTariffStatus status, Pageable pageable) {
+        Page<FineTariff> tariffs;
+
+        if (violationType == null && status == null)
+            tariffs = repository.findAll(pageable);
+        else if (violationType == null)
+            tariffs = repository.findByStatus(status, pageable);
+        else if (status == null)
+            tariffs = repository.findByViolationType(violationType, pageable);
+        else
+            tariffs = repository.findByViolationTypeAndStatus(violationType, status, pageable);
+
+        Page<FineTariffResponse> responses = tariffs.map(mapper::toResponse);
+
+        return PageResponse.from(responses);
+    }
 }
