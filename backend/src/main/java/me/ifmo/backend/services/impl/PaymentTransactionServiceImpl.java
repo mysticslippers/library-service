@@ -2,12 +2,14 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.entities.enums.PaymentStatus;
+import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.mappers.PaymentTransactionMapper;
 import me.ifmo.backend.repositories.FineRepository;
 import me.ifmo.backend.repositories.PaymentTransactionRepository;
 import me.ifmo.backend.services.PaymentTransactionService;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.Set;
 
 @Service
@@ -28,5 +30,10 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         }
 
         return value.strip();
+    }
+
+    private void validate(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+            throw new BusinessRuleException("Payment amount must be positive");
     }
 }
