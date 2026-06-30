@@ -21,8 +21,8 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UserRoleId> 
     boolean existsByUser_IdAndRole_Code(Long userId, RoleCode roleCode);
 
     @Query("""
-            SELECT userRole FROM UserRole userRole
-                WHERE userRole.user.id = :userId
+        SELECT userRole.role.code FROM UserRole userRole
+            WHERE userRole.user.id = :userId
     """)
     List<RoleCode> findRoleCodesByUser_Id(@Param("userId") Long userId);
 }
