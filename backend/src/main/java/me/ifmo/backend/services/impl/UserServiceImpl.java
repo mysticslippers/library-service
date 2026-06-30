@@ -1,10 +1,8 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.user.request.AssignUserRoleRequest;
-import me.ifmo.backend.dto.user.request.ChangeUserStatusRequest;
-import me.ifmo.backend.dto.user.request.CreateUserRequest;
-import me.ifmo.backend.dto.user.request.UpdateUserRequest;
+import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.dto.user.request.*;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.entities.Branch;
@@ -24,6 +22,8 @@ import me.ifmo.backend.repositories.RoleRepository;
 import me.ifmo.backend.repositories.UserRepository;
 import me.ifmo.backend.repositories.UserRoleRepository;
 import me.ifmo.backend.services.UserService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -254,5 +254,17 @@ public class UserServiceImpl implements UserService {
         userRoleRepository.delete(userRole);
 
         return toAdminResponse(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<UserAdminResponse> search(UserSearchRequest request, Pageable pageable) {
+        String query = request.query() != null ? request.query().strip() : "";
+
+        Page<User> users = repository.search(query, request.status(), request.homeBranchId(), pageable);
+
+        Page<UserAdminResponse> responses = users.map(this::toAdminResponse);
+
+        return PageResponse.from(responses);
     }
 }
