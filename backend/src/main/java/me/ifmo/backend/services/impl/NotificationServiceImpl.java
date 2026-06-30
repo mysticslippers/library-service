@@ -1,4 +1,25 @@
 package me.ifmo.backend.services.impl;
 
-public class NotificationServiceImpl {
+import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.entities.enums.NotificationStatus;
+import me.ifmo.backend.mappers.NotificationMapper;
+import me.ifmo.backend.repositories.*;
+import me.ifmo.backend.services.NotificationService;
+import org.springframework.stereotype.Service;
+
+import java.util.Set;
+
+@Service
+@RequiredArgsConstructor
+public class NotificationServiceImpl implements NotificationService {
+
+    private static final Set<NotificationStatus> FINAL_STATUSES =
+            Set.of(NotificationStatus.DELIVERED, NotificationStatus.CANCELLED);
+
+    private final NotificationRepository repository;
+    private final UserRepository userRepository;
+    private final ReservationRepository reservationRepository;
+    private final LoanRepository loanRepository;
+    private final FineRepository fineRepository;
+    private final NotificationMapper mapper;
 }
