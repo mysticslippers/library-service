@@ -18,6 +18,7 @@ import me.ifmo.backend.services.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -66,5 +67,17 @@ public class AuthServiceImpl implements AuthService {
         UserRole userRole = UserRole.builder().id(new UserRoleId(user.getId(), role.getId())).user(user).role(role).build();
 
         userRoleRepository.save(userRole);
+    }
+
+    private void rejectInvalidCredentials(User user) {
+        short attempts = (short) (user.getFailedLoginAttempts() + 1);
+        user.setFailedLoginAttempts(attempts);
+
+        if (attempts >= MAX_FAILED_ATTEMPTS)
+            user.setLockedUntil(LocalDateTime.now().plusMinutes(LOCK_MINUTES));
+
+        userRepository.save(user);
+
+        throw new BusinessRuleException("Invalid email or password");
     }
 }
