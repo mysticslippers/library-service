@@ -6,4 +6,6 @@ import me.ifmo.backend.dto.notification.response.NotificationResponse;
 public interface NotificationService {
 
     NotificationResponse create(CreateNotificationRequest request);
+
+    NotificationResponse getNotificationById(Long id);
 }
