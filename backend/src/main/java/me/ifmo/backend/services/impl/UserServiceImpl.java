@@ -1,7 +1,10 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.entities.Branch;
+import me.ifmo.backend.entities.enums.BranchStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
+import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.UserMapper;
 import me.ifmo.backend.repositories.BranchRepository;
 import me.ifmo.backend.repositories.RoleRepository;
@@ -37,5 +40,15 @@ public class UserServiceImpl implements UserService {
                 throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
         }
         return value.strip();
+    }
+
+    private Branch findActiveBranch(Long branchId) {
+        Branch branch = branchRepository.findById(branchId).orElseThrow(
+                () -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(branchId)));
+
+        if (branch.getStatus() != BranchStatus.ACTIVE)
+            throw new BusinessRuleException("Home branch must be active");
+
+        return branch;
     }
 }
