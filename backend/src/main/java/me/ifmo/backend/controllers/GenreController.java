@@ -5,7 +5,9 @@ import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.CreateGenreRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateGenreRequest;
 import me.ifmo.backend.dto.catalog.response.GenreResponse;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.services.GenreService;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,5 +37,10 @@ public class GenreController {
     @PatchMapping("/{id}")
     public GenreResponse update(@PathVariable Long id, @Valid @RequestBody UpdateGenreRequest request) {
         return service.update(id, request);
+    }
+
+    @GetMapping
+    public PageResponse<GenreResponse> search(@RequestParam(required = false) String query, Pageable pageable) {
+        return service.search(query, pageable);
     }
 }
