@@ -4,11 +4,13 @@ import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.entities.Branch;
+import me.ifmo.backend.entities.Role;
 import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.UserRole;
 import me.ifmo.backend.entities.enums.BranchStatus;
 import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.entities.enums.UserStatus;
+import me.ifmo.backend.entities.id.UserRoleId;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.UserMapper;
@@ -84,5 +86,18 @@ public class UserServiceImpl implements UserService {
             case INACTIVE -> target == UserStatus.ACTIVE || target == UserStatus.ARCHIVED;
             case ARCHIVED -> false;
         };
+    }
+
+    private void assignRoleIfAbsent(User user, RoleCode roleCode) {
+        Role role = roleRepository.findByCode(roleCode).orElseThrow(
+                () -> new ResourceNotFoundException("Role with code '%s' not found".formatted(roleCode)));
+
+        if (userRoleRepository.existsByUser_IdAndRole_Code(user.getId(), roleCode))
+            return;
+
+        UserRole userRole = UserRole.builder().id(new UserRoleId(user.getId(), role.getId())).user(user)
+                .role(role).build();
+
+        userRoleRepository.save(userRole);
     }
 }
