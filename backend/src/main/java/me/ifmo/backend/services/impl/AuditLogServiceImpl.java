@@ -43,4 +43,13 @@ public class AuditLogServiceImpl implements AuditLogService {
         AuditLog saved = repository.save(auditLog);
         return mapper.toResponse(saved);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuditLogResponse getAuditLogById(Long id) {
+        AuditLog auditLog = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("AuditLog with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(auditLog);
+    }
 }
