@@ -20,4 +20,9 @@ public class GenreController {
     public GenreResponse create(@Valid @RequestBody CreateGenreRequest request) {
         return service.create(request);
     }
+
+    @GetMapping("/{id}")
+    public GenreResponse getGenreById(@PathVariable Long id) {
+        return service.getGenreById(id);
+    }
 }
