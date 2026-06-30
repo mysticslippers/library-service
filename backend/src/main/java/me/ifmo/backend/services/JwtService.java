@@ -8,4 +8,6 @@ import java.util.Collection;
 public interface JwtService {
 
     String generateAccessToken(User user, Collection<RoleCode> roles);
+
+    long getAccessTokenExpiresIn();
 }
