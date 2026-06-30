@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.auth.request.RegisterRequest;
 import me.ifmo.backend.dto.auth.response.AuthResponse;
 import me.ifmo.backend.entities.Role;
 import me.ifmo.backend.entities.User;
@@ -9,6 +10,7 @@ import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.entities.enums.UserStatus;
 import me.ifmo.backend.entities.id.UserRoleId;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
+import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.UserMapper;
 import me.ifmo.backend.repositories.RoleRepository;
@@ -18,6 +20,7 @@ import me.ifmo.backend.services.AuthService;
 import me.ifmo.backend.services.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
@@ -88,5 +91,38 @@ public class AuthServiceImpl implements AuthService {
 
         if (user.getStatus() != UserStatus.ACTIVE)
             throw new BusinessRuleException("User account is not active");
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse register(RegisterRequest request) {
+        if (!request.password().equals(request.passwordConfirmation()))
+            throw new BusinessRuleException("Password confirmation does not match");
+
+        String email = normalize(request.email(), "Email");
+        String phone = normalize(request.phone(), "Phone");
+        String firstName = normalize(request.firstName(), "First name");
+        String lastName = normalize(request.lastName(), "Last name");
+        String middleName = normalize(request.middleName(), "Middle name");
+
+        if (userRepository.existsByEmail(email))
+            throw new DuplicateResourceException("User with email '%s' already exists".formatted(email));
+
+        if (userRepository.existsByPhone(phone))
+            throw new DuplicateResourceException("User with phone '%s' already exists".formatted(phone));
+
+        User user = userMapper.toEntity(new RegisterRequest(email, phone, request.password(), request.passwordConfirmation(),
+                firstName, lastName, middleName));
+
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setStatus(UserStatus.ACTIVE);
+        user.setActivatedAt(LocalDateTime.now());
+        user.setFailedLoginAttempts((short) 0);
+        user.setLockedUntil(null);
+
+        User saved = userRepository.save(user);
+        assignDefaultReaderRole(saved);
+
+        return toAuthResponse(saved);
     }
 }
