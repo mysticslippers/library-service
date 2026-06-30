@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.user.request.ChangeUserStatusRequest;
 import me.ifmo.backend.dto.user.request.CreateUserRequest;
 import me.ifmo.backend.dto.user.request.UpdateUserRequest;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
@@ -188,6 +189,34 @@ public class UserServiceImpl implements UserService {
 
         if (request.homeBranchId() != null)
             user.setBranch(findActiveBranch(request.homeBranchId()));
+
+        User saved = repository.save(user);
+        return toAdminResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public UserAdminResponse changeStatus(Long id, ChangeUserStatusRequest request) {
+        User user = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
+
+        UserStatus targetStatus = request.status();
+
+        if (user.getStatus() == targetStatus)
+            return toAdminResponse(user);
+
+        if (!isTransitionAllowed(user.getStatus(), targetStatus))
+            throw new BusinessRuleException("User status transition from '%s' to '%s' is not allowed".formatted(user.getStatus(), targetStatus));
+
+        if (targetStatus == UserStatus.ACTIVE && user.getActivatedAt() == null)
+            user.setActivatedAt(LocalDateTime.now());
+
+        if (targetStatus == UserStatus.ACTIVE) {
+            user.setLockedUntil(null);
+            user.setFailedLoginAttempts((short) 0);
+        }
+
+        user.setStatus(targetStatus);
 
         User saved = repository.save(user);
         return toAdminResponse(saved);
