@@ -25,13 +25,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findByBranchId(Long branchId, Pageable pageable);
 
     @Query("""
-           SELECT user FROM User user
-               WHERE (:query IS NULL OR :query = ''
-                   OR lower(user.email) LIKE lower(concat('%', :query, '%')) 
-                   OR user.phone LIKE concat('%', :query, '%') 
-                   OR lower(user.firstName) LIKE lower(concat('%', :query, '%')) 
-                   OR lower(user.lastName) LIKE lower(concat('%', :query, '%'))
-                   OR lower(coalesce(user.middleName, '')) LIKE lower(concat('%', :query, '%')))
+       SELECT user FROM User user
+           WHERE (:query IS NULL OR :query = ''
+               OR lower(user.email) LIKE lower(concat('%', :query, '%'))
+               OR user.phone LIKE concat('%', :query, '%')
+               OR lower(user.firstName) LIKE lower(concat('%', :query, '%'))
+               OR lower(user.lastName) LIKE lower(concat('%', :query, '%'))
+               OR lower(coalesce(user.middleName, '')) LIKE lower(concat('%', :query, '%')))
+             AND (:status IS NULL OR user.status = :status)
+             AND (:homeBranchId IS NULL OR user.branch.id = :homeBranchId)
     """)
-    Page<User> search(@Param("query") String query, Pageable pageable);
+    Page<User> search(@Param("query") String query, @Param("status") UserStatus status, @Param("homeBranchId") Long homeBranchId, Pageable pageable);
 }
