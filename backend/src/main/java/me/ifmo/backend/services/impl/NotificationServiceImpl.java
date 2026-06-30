@@ -108,4 +108,12 @@ public class NotificationServiceImpl implements NotificationService {
         return mapper.toResponse(saved);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public NotificationResponse getNotificationById(Long id) {
+        Notification notification = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Notification with id '%s' not found".formatted(id)));
+
+        return mapper.toResponse(notification);
+    }
 }
