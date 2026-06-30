@@ -3,6 +3,7 @@ package me.ifmo.backend.controllers;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.CreateGenreRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateGenreRequest;
 import me.ifmo.backend.dto.catalog.response.GenreResponse;
 import me.ifmo.backend.services.GenreService;
 import org.springframework.http.HttpStatus;
@@ -29,5 +30,10 @@ public class GenreController {
     @GetMapping("/code/{code}")
     public GenreResponse getGenreByCode(@PathVariable String code) {
         return service.getGenreByCode(code);
+    }
+
+    @PatchMapping("/{id}")
+    public GenreResponse update(@PathVariable Long id, @Valid @RequestBody UpdateGenreRequest request) {
+        return service.update(id, request);
     }
 }
