@@ -149,4 +149,13 @@ public class UserServiceImpl implements UserService {
 
         return toAdminResponse(user);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProfileResponse getProfile(Long id) {
+        User user = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
+
+        return toProfileResponse(user);
+    }
 }
