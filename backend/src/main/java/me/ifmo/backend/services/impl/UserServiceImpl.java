@@ -1,7 +1,10 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.entities.Branch;
+import me.ifmo.backend.entities.User;
+import me.ifmo.backend.entities.UserRole;
 import me.ifmo.backend.entities.enums.BranchStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
@@ -14,6 +17,7 @@ import me.ifmo.backend.services.UserService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -50,5 +54,10 @@ public class UserServiceImpl implements UserService {
             throw new BusinessRuleException("Home branch must be active");
 
         return branch;
+    }
+
+    private UserAdminResponse toAdminResponse(User user) {
+        List<UserRole> userRoles = userRoleRepository.findByUser_Id(user.getId());
+        return mapper.toAdminResponse(user, userRoles);
     }
 }
