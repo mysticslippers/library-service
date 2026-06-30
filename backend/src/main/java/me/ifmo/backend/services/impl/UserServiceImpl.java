@@ -236,4 +236,23 @@ public class UserServiceImpl implements UserService {
 
         return toAdminResponse(user);
     }
+
+    @Override
+    @Transactional
+    public UserAdminResponse revokeRole(Long id, AssignUserRoleRequest request) {
+        User user = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
+
+        UserRole userRole = userRoleRepository.findByUser_IdAndRole_Code(user.getId(), request.roleCode()).orElseThrow(
+                () -> new ResourceNotFoundException("User role '%s' not found for user with id '%s'".formatted(request.roleCode(), user.getId())));
+
+        List<UserRole> currentRoles = userRoleRepository.findByUser_Id(user.getId());
+
+        if (currentRoles.size() <= 1)
+            throw new BusinessRuleException("User must have at least one role");
+
+        userRoleRepository.delete(userRole);
+
+        return toAdminResponse(user);
+    }
 }
