@@ -20,4 +20,6 @@ public interface UserService {
     UserAdminResponse changeStatus(Long id, ChangeUserStatusRequest request);
 
     UserAdminResponse assignRole(Long id, AssignUserRoleRequest request);
+
+    UserAdminResponse revokeRole(Long id, AssignUserRoleRequest request);
 }
