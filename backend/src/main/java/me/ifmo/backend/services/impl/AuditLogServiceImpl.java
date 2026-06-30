@@ -1,6 +1,8 @@
 package me.ifmo.backend.services.impl;
 
+import me.ifmo.backend.dto.audit.request.AuditLogSearchRequest;
 import me.ifmo.backend.dto.audit.response.AuditLogResponse;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.AuditLog;
 import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.enums.AuditAction;
@@ -11,6 +13,8 @@ import me.ifmo.backend.mappers.AuditLogMapper;
 import me.ifmo.backend.repositories.AuditLogRepository;
 import me.ifmo.backend.repositories.UserRepository;
 import me.ifmo.backend.services.AuditLogService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
@@ -51,5 +55,16 @@ public class AuditLogServiceImpl implements AuditLogService {
                 () -> new ResourceNotFoundException("AuditLog with id '%s' not found".formatted(id)));
 
         return mapper.toResponse(auditLog);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<AuditLogResponse> search(AuditLogSearchRequest request, Pageable pageable) {
+        Page<AuditLog> auditLogs = repository.search(request.actorUserId(), request.type(), request.entityId(),
+                request.action(), request.createdFrom(), request.createdTo(), pageable);
+
+        Page<AuditLogResponse> responses = auditLogs.map(mapper::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
