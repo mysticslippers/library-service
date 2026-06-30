@@ -6,6 +6,7 @@ import me.ifmo.backend.entities.Role;
 import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.UserRole;
 import me.ifmo.backend.entities.enums.RoleCode;
+import me.ifmo.backend.entities.enums.UserStatus;
 import me.ifmo.backend.entities.id.UserRoleId;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
@@ -79,5 +80,13 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         throw new BusinessRuleException("Invalid email or password");
+    }
+
+    private void validate(User user) {
+        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now()))
+            throw new BusinessRuleException("User is temporarily locked");
+
+        if (user.getStatus() != UserStatus.ACTIVE)
+            throw new BusinessRuleException("User account is not active");
     }
 }
