@@ -2,6 +2,7 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.user.request.CreateUserRequest;
+import me.ifmo.backend.dto.user.request.UpdateUserRequest;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.entities.Branch;
@@ -157,5 +158,38 @@ public class UserServiceImpl implements UserService {
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
 
         return toProfileResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public UserAdminResponse update(Long id, UpdateUserRequest request) {
+        User user = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
+
+        if (user.getStatus() == UserStatus.ARCHIVED)
+            throw new BusinessRuleException("Archived user cannot be updated");
+
+        String email = request.email() != null ? normalize(request.email(), "Email") : null;
+        String phone = request.phone() != null ? normalize(request.phone(), "Phone") : null;
+        String firstName = request.firstName() != null ? normalize(request.firstName(), "First name") : null;
+        String lastName = request.lastName() != null ? normalize(request.lastName(), "Last name") : null;
+        String middleName = request.middleName() != null ? normalize(request.middleName(), "Middle name") : null;
+
+        if (email != null && !email.equals(user.getEmail()) && repository.existsByEmail(email))
+            throw new DuplicateResourceException("User with email '%s' already exists".formatted(email));
+
+        if (phone != null && !phone.equals(user.getPhone()) && repository.existsByPhone(phone))
+            throw new DuplicateResourceException("User with phone '%s' already exists".formatted(phone));
+
+        mapper.updateEntity(new UpdateUserRequest(email, phone, firstName, lastName, middleName, request.homeBranchId()), user);
+
+        if (request.middleName() != null)
+            user.setMiddleName(middleName);
+
+        if (request.homeBranchId() != null)
+            user.setBranch(findActiveBranch(request.homeBranchId()));
+
+        User saved = repository.save(user);
+        return toAdminResponse(saved);
     }
 }
