@@ -25,4 +25,9 @@ public class GenreController {
     public GenreResponse getGenreById(@PathVariable Long id) {
         return service.getGenreById(id);
     }
+
+    @GetMapping("/code/{code}")
+    public GenreResponse getGenreByCode(@PathVariable String code) {
+        return service.getGenreByCode(code);
+    }
 }
