@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.auth.request.LoginRequest;
 import me.ifmo.backend.dto.auth.request.RegisterRequest;
 import me.ifmo.backend.dto.auth.response.AuthResponse;
+import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.entities.Role;
 import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.UserRole;
@@ -147,5 +148,14 @@ public class AuthServiceImpl implements AuthService {
         User saved = userRepository.save(user);
 
         return toAuthResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProfileResponse me(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new ResourceNotFoundException("User with id '%s' not found".formatted(userId)));
+
+        return userMapper.toProfileResponse(user, new LinkedHashSet<>(userRoleRepository.findRoleCodesByUser_Id(userId)));
     }
 }
