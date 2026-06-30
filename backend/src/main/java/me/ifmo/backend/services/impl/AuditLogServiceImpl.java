@@ -1,5 +1,6 @@
 package me.ifmo.backend.services.impl;
 
+import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.audit.request.AuditLogSearchRequest;
 import me.ifmo.backend.dto.audit.response.AuditLogResponse;
 import me.ifmo.backend.dto.common.response.PageResponse;
@@ -15,10 +16,13 @@ import me.ifmo.backend.repositories.UserRepository;
 import me.ifmo.backend.services.AuditLogService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 
+@Service
+@RequiredArgsConstructor
 public class AuditLogServiceImpl implements AuditLogService {
 
     private final AuditLogRepository repository;
