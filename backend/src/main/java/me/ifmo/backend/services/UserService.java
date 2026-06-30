@@ -1,11 +1,10 @@
 package me.ifmo.backend.services;
 
-import me.ifmo.backend.dto.user.request.AssignUserRoleRequest;
-import me.ifmo.backend.dto.user.request.ChangeUserStatusRequest;
-import me.ifmo.backend.dto.user.request.CreateUserRequest;
-import me.ifmo.backend.dto.user.request.UpdateUserRequest;
+import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.dto.user.request.*;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
+import org.springframework.data.domain.Pageable;
 
 public interface UserService {
 
@@ -22,4 +21,6 @@ public interface UserService {
     UserAdminResponse assignRole(Long id, AssignUserRoleRequest request);
 
     UserAdminResponse revokeRole(Long id, AssignUserRoleRequest request);
+
+    PageResponse<UserAdminResponse> search(UserSearchRequest request, Pageable pageable);
 }
