@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.auth.request.LoginRequest;
 import me.ifmo.backend.dto.auth.request.RegisterRequest;
 import me.ifmo.backend.dto.auth.response.AuthResponse;
 import me.ifmo.backend.entities.Role;
@@ -122,6 +123,28 @@ public class AuthServiceImpl implements AuthService {
 
         User saved = userRepository.save(user);
         assignDefaultReaderRole(saved);
+
+        return toAuthResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse login(LoginRequest request) {
+        String email = normalize(request.email(), "Email");
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessRuleException("Invalid email or password"));
+
+        validate(user);
+
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash()))
+            rejectInvalidCredentials(user);
+
+        user.setFailedLoginAttempts((short) 0);
+        user.setLockedUntil(null);
+        user.setLastLoginAt(LocalDateTime.now());
+
+        User saved = userRepository.save(user);
 
         return toAuthResponse(saved);
     }
