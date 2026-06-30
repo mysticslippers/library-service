@@ -8,6 +8,7 @@ import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.UserRole;
 import me.ifmo.backend.entities.enums.BranchStatus;
 import me.ifmo.backend.entities.enums.RoleCode;
+import me.ifmo.backend.entities.enums.UserStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.UserMapper;
@@ -67,5 +68,21 @@ public class UserServiceImpl implements UserService {
     private UserProfileResponse toProfileResponse(User user) {
         List<RoleCode> roles = userRoleRepository.findRoleCodesByUser_Id(user.getId());
         return mapper.toProfileResponse(user, new LinkedHashSet<>(roles));
+    }
+
+    private boolean isTransitionAllowed(UserStatus current, UserStatus target) {
+        return switch (current) {
+            case PENDING_ACTIVATION -> target == UserStatus.ACTIVE || target == UserStatus.BLOCKED
+                            || target == UserStatus.ARCHIVED;
+
+            case ACTIVE -> target == UserStatus.BLOCKED || target == UserStatus.INACTIVE
+                            || target == UserStatus.ARCHIVED;
+
+            case BLOCKED -> target == UserStatus.ACTIVE || target == UserStatus.INACTIVE
+                            || target == UserStatus.ARCHIVED;
+
+            case INACTIVE -> target == UserStatus.ACTIVE || target == UserStatus.ARCHIVED;
+            case ARCHIVED -> false;
+        };
     }
 }
