@@ -1,7 +1,9 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
+import me.ifmo.backend.dto.notification.request.NotificationSearchRequest;
 import me.ifmo.backend.dto.notification.request.UpdateNotificationStatusRequest;
 import me.ifmo.backend.dto.notification.response.NotificationResponse;
 import me.ifmo.backend.entities.*;
@@ -12,6 +14,8 @@ import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.NotificationMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.NotificationService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -141,5 +145,19 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification saved = repository.save(notification);
         return mapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<NotificationResponse> search(NotificationSearchRequest request, Pageable pageable) {
+        String query = request.query() != null ? request.query().strip() : "";
+
+        Page<Notification> notifications = repository.search(request.userId(), request.reservationId(),
+                request.loanId(), request.fineId(), request.type(), request.channel(), request.status(),
+                request.createdFrom(), request.createdTo(), request.sentFrom(), request.sentTo(), query, pageable);
+
+        Page<NotificationResponse> responses = notifications.map(mapper::toResponse);
+
+        return PageResponse.from(responses);
     }
 }
