@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.user.request.AssignUserRoleRequest;
 import me.ifmo.backend.dto.user.request.ChangeUserStatusRequest;
 import me.ifmo.backend.dto.user.request.CreateUserRequest;
 import me.ifmo.backend.dto.user.request.UpdateUserRequest;
@@ -220,5 +221,19 @@ public class UserServiceImpl implements UserService {
 
         User saved = repository.save(user);
         return toAdminResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public UserAdminResponse assignRole(Long id, AssignUserRoleRequest request) {
+        User user = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
+
+        if (user.getStatus() == UserStatus.ARCHIVED)
+            throw new BusinessRuleException("Cannot assign role to archived user");
+
+        assignRoleIfAbsent(user, request.roleCode());
+
+        return toAdminResponse(user);
     }
 }
