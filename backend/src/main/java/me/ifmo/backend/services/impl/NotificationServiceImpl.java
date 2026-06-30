@@ -2,6 +2,7 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
+import me.ifmo.backend.dto.notification.request.UpdateNotificationStatusRequest;
 import me.ifmo.backend.dto.notification.response.NotificationResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.NotificationChannel;
@@ -14,6 +15,7 @@ import me.ifmo.backend.services.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Service
@@ -115,5 +117,29 @@ public class NotificationServiceImpl implements NotificationService {
                 () -> new ResourceNotFoundException("Notification with id '%s' not found".formatted(id)));
 
         return mapper.toResponse(notification);
+    }
+
+    @Override
+    @Transactional
+    public NotificationResponse updateStatus(Long id, UpdateNotificationStatusRequest request) {
+        Notification notification = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Notification with id '%s' not found".formatted(id)));
+
+        NotificationStatus targetStatus = request.status();
+
+        if (!isTransitionAllowed(notification.getStatus(), targetStatus))
+            throw new BusinessRuleException(
+                    "Notification status transition from '%s' to '%s' is not allowed".formatted(notification.getStatus(), targetStatus));
+
+        LocalDateTime sentAt = null;
+
+        if ((targetStatus == NotificationStatus.SENT || targetStatus == NotificationStatus.DELIVERED)
+                && notification.getSentAt() == null)
+            sentAt = LocalDateTime.now();
+
+        mapper.updateStatus(request, sentAt, notification);
+
+        Notification saved = repository.save(notification);
+        return mapper.toResponse(saved);
     }
 }
