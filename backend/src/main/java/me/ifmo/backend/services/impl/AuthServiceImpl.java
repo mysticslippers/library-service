@@ -2,9 +2,13 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.auth.response.AuthResponse;
+import me.ifmo.backend.entities.Role;
 import me.ifmo.backend.entities.User;
+import me.ifmo.backend.entities.UserRole;
 import me.ifmo.backend.entities.enums.RoleCode;
+import me.ifmo.backend.entities.id.UserRoleId;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
+import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.UserMapper;
 import me.ifmo.backend.repositories.RoleRepository;
 import me.ifmo.backend.repositories.UserRepository;
@@ -53,5 +57,14 @@ public class AuthServiceImpl implements AuthService {
 
         return new AuthResponse(token, "Bearer", jwtService.getAccessTokenExpiresIn(),
                 userMapper.toProfileResponse(user, new LinkedHashSet<>(roles)));
+    }
+
+    private void assignDefaultReaderRole(User user) {
+        Role role = roleRepository.findByCode(RoleCode.READER).orElseThrow(
+                () -> new ResourceNotFoundException("Role with code '%s' not found".formatted(RoleCode.READER)));
+
+        UserRole userRole = UserRole.builder().id(new UserRoleId(user.getId(), role.getId())).user(user).role(role).build();
+
+        userRoleRepository.save(userRole);
     }
 }
