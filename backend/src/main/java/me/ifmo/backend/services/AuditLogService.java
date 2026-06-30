@@ -10,4 +10,6 @@ public interface AuditLogService {
 
     AuditLogResponse record(Long actorUserId, AuditEntityType type, Long entityId,
                             AuditAction action, Map<String, Object> details);
+
+    AuditLogResponse getAuditLogById(Long id);
 }
