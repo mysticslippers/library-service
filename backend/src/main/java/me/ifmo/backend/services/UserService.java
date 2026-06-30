@@ -1,5 +1,6 @@
 package me.ifmo.backend.services;
 
+import me.ifmo.backend.dto.user.request.AssignUserRoleRequest;
 import me.ifmo.backend.dto.user.request.ChangeUserStatusRequest;
 import me.ifmo.backend.dto.user.request.CreateUserRequest;
 import me.ifmo.backend.dto.user.request.UpdateUserRequest;
@@ -17,4 +18,6 @@ public interface UserService {
     UserAdminResponse update(Long id, UpdateUserRequest request);
 
     UserAdminResponse changeStatus(Long id, ChangeUserStatusRequest request);
+
+    UserAdminResponse assignRole(Long id, AssignUserRoleRequest request);
 }
