@@ -2,10 +2,12 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
+import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.entities.Branch;
 import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.UserRole;
 import me.ifmo.backend.entities.enums.BranchStatus;
+import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.UserMapper;
@@ -17,6 +19,7 @@ import me.ifmo.backend.services.UserService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 
@@ -59,5 +62,10 @@ public class UserServiceImpl implements UserService {
     private UserAdminResponse toAdminResponse(User user) {
         List<UserRole> userRoles = userRoleRepository.findByUser_Id(user.getId());
         return mapper.toAdminResponse(user, userRoles);
+    }
+
+    private UserProfileResponse toProfileResponse(User user) {
+        List<RoleCode> roles = userRoleRepository.findRoleCodesByUser_Id(user.getId());
+        return mapper.toProfileResponse(user, new LinkedHashSet<>(roles));
     }
 }
