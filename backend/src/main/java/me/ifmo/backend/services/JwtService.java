@@ -7,6 +7,8 @@ import java.util.Collection;
 
 public interface JwtService {
 
+    boolean isTokenValid(String token);
+
     String generateAccessToken(User user, Collection<RoleCode> roles);
 
     long getAccessTokenExpiresIn();
