@@ -34,4 +34,22 @@ public class NotificationServiceImpl implements NotificationService {
         }
         return value.strip();
     }
+
+    private boolean isTransitionAllowed(NotificationStatus current, NotificationStatus target) {
+        if (current == target)
+            return true;
+
+        if (FINAL_STATUSES.contains(current))
+            return false;
+
+        return switch (current) {
+            case PLANNED, FAILED -> target == NotificationStatus.PENDING || target == NotificationStatus.CANCELLED;
+            case PENDING -> target == NotificationStatus.SENT
+                    || target == NotificationStatus.FAILED
+                    || target == NotificationStatus.CANCELLED;
+            case SENT -> target == NotificationStatus.DELIVERED
+                    || target == NotificationStatus.FAILED;
+            case DELIVERED, CANCELLED -> false;
+        };
+    }
 }
