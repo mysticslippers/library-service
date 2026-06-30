@@ -2,6 +2,7 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.entities.enums.NotificationStatus;
+import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.mappers.NotificationMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.NotificationService;
@@ -22,4 +23,15 @@ public class NotificationServiceImpl implements NotificationService {
     private final LoanRepository loanRepository;
     private final FineRepository fineRepository;
     private final NotificationMapper mapper;
+
+    private String normalize(String value, String fieldName) {
+        if(fieldName.equals("Subject")) {
+            if (value == null || value.strip().isBlank())
+                return null;
+        } else {
+            if (value == null || value.strip().isBlank())
+                throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
+        }
+        return value.strip();
+    }
 }
