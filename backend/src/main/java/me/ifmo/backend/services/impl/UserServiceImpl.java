@@ -1,6 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.user.request.CreateUserRequest;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.entities.Branch;
@@ -12,6 +13,7 @@ import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.entities.enums.UserStatus;
 import me.ifmo.backend.entities.id.UserRoleId;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
+import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.UserMapper;
 import me.ifmo.backend.repositories.BranchRepository;
@@ -21,10 +23,13 @@ import me.ifmo.backend.repositories.UserRoleRepository;
 import me.ifmo.backend.services.UserService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -99,5 +104,40 @@ public class UserServiceImpl implements UserService {
                 .role(role).build();
 
         userRoleRepository.save(userRole);
+    }
+
+    @Override
+    @Transactional
+    public UserAdminResponse create(CreateUserRequest request) {
+        String email = normalize(request.email(), "Email");
+        String phone = normalize(request.phone(), "Phone");
+        String firstName = normalize(request.firstName(), "First name");
+        String lastName = normalize(request.lastName(), "Last name");
+        String middleName = normalize(request.middleName(), "Middle name");
+
+        if (repository.existsByEmail(email))
+            throw new DuplicateResourceException("User with email '%s' already exists".formatted(email));
+
+        if (repository.existsByPhone(phone))
+            throw new DuplicateResourceException("User with phone '%s' already exists".formatted(phone));
+
+        User user = mapper.toEntity(new CreateUserRequest(email, phone, request.password(), firstName, lastName,
+                middleName, request.homeBranchId(), request.roles()));
+
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setStatus(UserStatus.ACTIVE);
+        user.setActivatedAt(LocalDateTime.now());
+
+        if (request.homeBranchId() != null)
+            user.setBranch(findActiveBranch(request.homeBranchId()));
+
+        User saved = repository.save(user);
+
+        Set<RoleCode> roles = request.roles() == null || request.roles().isEmpty() ? Set.of(RoleCode.READER) : request.roles();
+
+        for (RoleCode roleCode : roles)
+            assignRoleIfAbsent(saved, roleCode);
+
+        return toAdminResponse(saved);
     }
 }
