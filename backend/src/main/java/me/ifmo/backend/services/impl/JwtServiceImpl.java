@@ -4,7 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import lombok.Value;
+import org.springframework.beans.factory.annotation.Value;
 import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.services.JwtService;
