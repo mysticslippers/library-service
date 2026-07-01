@@ -45,4 +45,9 @@ public class JwtServiceImpl  implements JwtService {
                 .signWith(key)
                 .compact();
     }
+
+    @Override
+    public String extract(String token) {
+        return parse(token).getSubject();
+    }
 }
