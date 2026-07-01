@@ -9,9 +9,9 @@ public interface JwtService {
 
     boolean isTokenValid(String token);
 
-    String extractSubject(String token);
+    String extract(String token);
 
-    String generateAccessToken(User user, Collection<RoleCode> roles);
+    String generate(User user, Collection<RoleCode> roles);
 
     long getAccessTokenExpiresIn();
 }

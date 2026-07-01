@@ -1,5 +1,6 @@
 package me.ifmo.backend.services.impl;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -26,8 +27,12 @@ public class JwtServiceImpl  implements JwtService {
         this.accessTokenExpiresIn = accessTokenExpiresIn;
     }
 
+    private Claims parse(String token) {
+        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+    }
+
     @Override
-    public String generateAccessToken(User user, Collection<RoleCode> roles) {
+    public String generate(User user, Collection<RoleCode> roles) {
         Instant now = Instant.now();
 
         List<String> roleNames = roles.stream().map(RoleCode::name).toList();
