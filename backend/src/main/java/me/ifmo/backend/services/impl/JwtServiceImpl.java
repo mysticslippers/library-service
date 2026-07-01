@@ -60,4 +60,9 @@ public class JwtServiceImpl  implements JwtService {
             return false;
         }
     }
+
+    @Override
+    public long getAccessTokenExpiresIn() {
+        return accessTokenExpiresIn;
+    }
 }
