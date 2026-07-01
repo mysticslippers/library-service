@@ -50,4 +50,14 @@ public class JwtServiceImpl  implements JwtService {
     public String extract(String token) {
         return parse(token).getSubject();
     }
+
+    @Override
+    public boolean isTokenValid(String token) {
+        try {
+            parse(token);
+            return true;
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
 }
