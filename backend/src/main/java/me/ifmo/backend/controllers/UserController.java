@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.user.request.CreateUserRequest;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
+import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.services.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -24,5 +25,10 @@ public class UserController {
     @GetMapping("/{id}")
     public UserAdminResponse getUserById(@PathVariable Long id) {
         return service.getUserById(id);
+    }
+
+    @GetMapping("/{id}/profile")
+    public UserProfileResponse getProfile(@PathVariable Long id) {
+        return service.getProfile(id);
     }
 }
