@@ -25,4 +25,9 @@ public class LibraryController {
     public LibraryResponse getLibraryById(@PathVariable Long id) {
         return service.getLibraryById(id);
     }
+
+    @GetMapping("/code/{code}")
+    public LibraryResponse getByCode(@PathVariable String code) {
+        return service.getByCode(code);
+    }
 }
