@@ -1,9 +1,12 @@
 package me.ifmo.backend.controllers;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
+import me.ifmo.backend.dto.catalog.response.MaterialResponse;
 import me.ifmo.backend.services.MaterialService;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/materials")
@@ -11,4 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class MaterialController {
 
     private final MaterialService service;
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public MaterialResponse create(@Valid @RequestBody CreateMaterialRequest request) {
+        return service.create(request);
+    }
 }
