@@ -2,14 +2,13 @@ package me.ifmo.backend.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.user.request.AssignUserRoleRequest;
-import me.ifmo.backend.dto.user.request.ChangeUserStatusRequest;
-import me.ifmo.backend.dto.user.request.CreateUserRequest;
-import me.ifmo.backend.dto.user.request.UpdateUserRequest;
+import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.dto.user.request.*;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.services.UserService;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -54,5 +53,10 @@ public class UserController {
     @DeleteMapping("/{id}/roles/{roleCode}")
     public UserAdminResponse revokeRole(@PathVariable Long id, @PathVariable RoleCode roleCode) {
         return service.revokeRole(id, new AssignUserRoleRequest(roleCode));
+    }
+
+    @GetMapping
+    public PageResponse<UserAdminResponse> search(@Valid @ModelAttribute UserSearchRequest request, Pageable pageable) {
+        return service.search(request, pageable);
     }
 }
