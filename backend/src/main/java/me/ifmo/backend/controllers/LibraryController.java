@@ -3,6 +3,7 @@ package me.ifmo.backend.controllers;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.library.request.CreateLibraryRequest;
+import me.ifmo.backend.dto.library.request.UpdateLibraryRequest;
 import me.ifmo.backend.dto.library.response.LibraryResponse;
 import me.ifmo.backend.services.LibraryService;
 import org.springframework.http.HttpStatus;
@@ -29,5 +30,10 @@ public class LibraryController {
     @GetMapping("/code/{code}")
     public LibraryResponse getByCode(@PathVariable String code) {
         return service.getByCode(code);
+    }
+
+    @PatchMapping("/{id}")
+    public LibraryResponse update(@PathVariable Long id, @Valid @RequestBody UpdateLibraryRequest request) {
+        return service.update(id, request);
     }
 }
