@@ -2,6 +2,7 @@ package me.ifmo.backend.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.user.request.ChangeUserStatusRequest;
 import me.ifmo.backend.dto.user.request.CreateUserRequest;
 import me.ifmo.backend.dto.user.request.UpdateUserRequest;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
@@ -36,5 +37,10 @@ public class UserController {
     @PatchMapping("/{id}")
     public UserAdminResponse update(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
         return service.update(id, request);
+    }
+
+    @PatchMapping("/{id}/status")
+    public UserAdminResponse changeStatus(@PathVariable Long id, @Valid @RequestBody ChangeUserStatusRequest request) {
+        return service.changeStatus(id, request);
     }
 }
