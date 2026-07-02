@@ -2,6 +2,7 @@ package me.ifmo.backend.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.catalog.request.ChangeMaterialCopyStatusRequest;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
@@ -35,5 +36,10 @@ public class MaterialCopyController {
     @PatchMapping("/{id}")
     public MaterialCopyResponse update(@PathVariable Long id, @Valid @RequestBody UpdateMaterialCopyRequest request) {
         return service.update(id, request);
+    }
+
+    @PatchMapping("/{id}/status")
+    public MaterialCopyResponse changeStatus(@PathVariable Long id, @Valid @RequestBody ChangeMaterialCopyStatusRequest request) {
+        return service.changeStatus(id, request);
     }
 }
