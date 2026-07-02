@@ -2,6 +2,7 @@ package me.ifmo.backend.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.auth.request.LoginRequest;
 import me.ifmo.backend.dto.auth.request.RegisterRequest;
 import me.ifmo.backend.dto.auth.response.AuthResponse;
 import me.ifmo.backend.services.AuthService;
@@ -19,5 +20,10 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
         return service.register(request);
+    }
+
+    @PostMapping("/login")
+    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
+        return service.login(request);
     }
 }
