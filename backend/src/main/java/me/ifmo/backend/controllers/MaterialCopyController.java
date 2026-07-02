@@ -3,6 +3,7 @@ package me.ifmo.backend.controllers;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialCopyRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
 import me.ifmo.backend.services.MaterialCopyService;
 import org.springframework.http.HttpStatus;
@@ -29,5 +30,10 @@ public class MaterialCopyController {
     @GetMapping("/inventory/{inventoryNumber}")
     public MaterialCopyResponse getByInventoryNumber(@PathVariable String inventoryNumber) {
         return service.getByInventoryNumber(inventoryNumber);
+    }
+
+    @PatchMapping("/{id}")
+    public MaterialCopyResponse update(@PathVariable Long id, @Valid @RequestBody UpdateMaterialCopyRequest request) {
+        return service.update(id, request);
     }
 }
