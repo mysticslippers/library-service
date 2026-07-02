@@ -25,4 +25,9 @@ public class LibraryRuleController {
     public LibraryRuleResponse getLibraryRuleById(@PathVariable Long id) {
         return service.getLibraryRuleById(id);
     }
+
+    @GetMapping("/branches/{branchId}/actual")
+    public LibraryRuleResponse getActualByBranchId(@PathVariable Long branchId) {
+        return service.getActualByBranchId(branchId);
+    }
 }
