@@ -25,4 +25,9 @@ public class MaterialCopyController {
     public MaterialCopyResponse getMaterialCopyById(@PathVariable Long id) {
         return service.getMaterialCopyById(id);
     }
+
+    @GetMapping("/inventory/{inventoryNumber}")
+    public MaterialCopyResponse getByInventoryNumber(@PathVariable String inventoryNumber) {
+        return service.getByInventoryNumber(inventoryNumber);
+    }
 }
