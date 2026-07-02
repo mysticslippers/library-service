@@ -8,6 +8,7 @@ import me.ifmo.backend.dto.user.request.CreateUserRequest;
 import me.ifmo.backend.dto.user.request.UpdateUserRequest;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
+import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.services.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -48,5 +49,10 @@ public class UserController {
     @PostMapping("/{id}/roles")
     public UserAdminResponse assignRole(@PathVariable Long id, @Valid @RequestBody AssignUserRoleRequest request) {
         return service.assignRole(id, request);
+    }
+
+    @DeleteMapping("/{id}/roles/{roleCode}")
+    public UserAdminResponse revokeRole(@PathVariable Long id, @PathVariable RoleCode roleCode) {
+        return service.revokeRole(id, new AssignUserRoleRequest(roleCode));
     }
 }
