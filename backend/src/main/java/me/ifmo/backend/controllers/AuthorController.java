@@ -39,4 +39,10 @@ public class AuthorController {
     public PageResponse<AuthorResponse> search(@Valid @ModelAttribute AuthorSearchRequest request, Pageable pageable) {
         return service.search(request, pageable);
     }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
+    }
 }
