@@ -20,4 +20,9 @@ public class LibraryRuleController {
     public LibraryRuleResponse create(@Valid @RequestBody CreateLibraryRuleRequest request) {
         return service.create(request);
     }
+
+    @GetMapping("/{id}")
+    public LibraryRuleResponse getLibraryRuleById(@PathVariable Long id) {
+        return service.getLibraryRuleById(id);
+    }
 }
