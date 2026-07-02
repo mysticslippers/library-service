@@ -60,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
 
     private AuthResponse toAuthResponse(User user) {
         List<RoleCode> roles = userRoleRepository.findRoleCodesByUser_Id(user.getId());
-        String token = jwtService.generateAccessToken(user, roles);
+        String token = jwtService.generate(user, roles);
 
         return new AuthResponse(token, "Bearer", jwtService.getAccessTokenExpiresIn(),
                 userMapper.toProfileResponse(user, new LinkedHashSet<>(roles)));
