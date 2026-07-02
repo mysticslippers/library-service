@@ -2,6 +2,7 @@ package me.ifmo.backend.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.library.request.ChangeBranchStatusRequest;
 import me.ifmo.backend.dto.library.request.CreateBranchRequest;
 import me.ifmo.backend.dto.library.request.UpdateBranchRequest;
 import me.ifmo.backend.dto.library.response.BranchResponse;
@@ -30,5 +31,10 @@ public class BranchController {
     @PatchMapping("/{id}")
     public BranchResponse update(@PathVariable Long id, @Valid @RequestBody UpdateBranchRequest request) {
         return service.update(id, request);
+    }
+
+    @PatchMapping("/{id}/status")
+    public BranchResponse changeStatus(@PathVariable Long id, @Valid @RequestBody ChangeBranchStatusRequest request) {
+        return service.changeStatus(id, request);
     }
 }
