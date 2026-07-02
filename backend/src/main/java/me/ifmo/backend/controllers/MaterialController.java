@@ -3,6 +3,7 @@ package me.ifmo.backend.controllers;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateMaterialRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialResponse;
 import me.ifmo.backend.services.MaterialService;
 import org.springframework.http.HttpStatus;
@@ -29,5 +30,10 @@ public class MaterialController {
     @GetMapping("/isbn/{isbn}")
     public MaterialResponse getMaterialByIsbn(@PathVariable String isbn) {
         return service.getMaterialByIsbn(isbn);
+    }
+
+    @PatchMapping("/{id}")
+    public MaterialResponse update(@PathVariable Long id, @Valid @RequestBody UpdateMaterialRequest request) {
+        return service.update(id, request);
     }
 }
