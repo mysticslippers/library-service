@@ -20,4 +20,9 @@ public class AuthorController {
     public AuthorResponse create(@Valid @RequestBody CreateAuthorRequest request) {
         return service.create(request);
     }
+
+    @GetMapping("/{id}")
+    public AuthorResponse getAuthorById(@PathVariable Long id) {
+        return service.getAuthorById(id);
+    }
 }
