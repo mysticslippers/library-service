@@ -3,6 +3,7 @@ package me.ifmo.backend.controllers;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.library.request.CreateBranchRequest;
+import me.ifmo.backend.dto.library.request.UpdateBranchRequest;
 import me.ifmo.backend.dto.library.response.BranchResponse;
 import me.ifmo.backend.services.BranchService;
 import org.springframework.http.HttpStatus;
@@ -24,5 +25,10 @@ public class BranchController {
     @GetMapping("/{id}")
     public BranchResponse getBranchById(@PathVariable Long id) {
         return service.getBranchById(id);
+    }
+
+    @PatchMapping("/{id}")
+    public BranchResponse update(@PathVariable Long id, @Valid @RequestBody UpdateBranchRequest request) {
+        return service.update(id, request);
     }
 }
