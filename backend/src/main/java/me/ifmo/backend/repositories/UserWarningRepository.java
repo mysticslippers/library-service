@@ -5,6 +5,8 @@ import me.ifmo.backend.entities.enums.UserWarningStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 
@@ -23,4 +25,15 @@ public interface UserWarningRepository extends JpaRepository<UserWarning, Long> 
     Page<UserWarning> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
 
     Page<UserWarning> findByStatusAndExpiresAtBefore(UserWarningStatus status, LocalDateTime expiresAt, Pageable pageable);
+
+    @Query("""
+       SELECT userWarning FROM UserWarning userWarning
+           WHERE (:userId IS NULL OR userWarning.user.id = :userId)
+             AND (:createdByUserId IS NULL OR userWarning.createdByUser.id = :createdByUserId)
+             AND (:status IS NULL OR userWarning.status = :status)
+    """)
+    Page<UserWarning> search(@Param("userId") Long userId,
+                             @Param("createdByUserId") Long createdByUserId,
+                             @Param("status") UserWarningStatus status,
+                             Pageable pageable);
 }
