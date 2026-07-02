@@ -45,14 +45,6 @@ public class UserWarningServiceImpl implements UserWarningService {
         }
     }
 
-    private String normalizeNullable(String value) {
-        if (value == null)
-            return null;
-
-        String normalized = value.strip();
-        return normalized.isBlank() ? null : normalized;
-    }
-
     private User findTargetUser(Long id) {
         User user = userRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
