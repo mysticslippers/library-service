@@ -4,9 +4,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.ChangeMaterialStatusRequest;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
+import me.ifmo.backend.dto.catalog.request.MaterialSearchRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialResponse;
+import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.services.MaterialService;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,5 +44,10 @@ public class MaterialController {
     @PatchMapping("/{id}/status")
     public MaterialResponse changeStatus(@PathVariable Long id, @Valid @RequestBody ChangeMaterialStatusRequest request) {
         return service.changeStatus(id, request);
+    }
+
+    @GetMapping
+    public PageResponse<MaterialResponse> search(@Valid @ModelAttribute MaterialSearchRequest request, Pageable pageable) {
+        return service.search(request, pageable);
     }
 }
