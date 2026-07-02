@@ -3,6 +3,7 @@ package me.ifmo.backend.controllers;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.user.request.CreateUserRequest;
+import me.ifmo.backend.dto.user.request.UpdateUserRequest;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
 import me.ifmo.backend.services.UserService;
@@ -30,5 +31,10 @@ public class UserController {
     @GetMapping("/{id}/profile")
     public UserProfileResponse getProfile(@PathVariable Long id) {
         return service.getProfile(id);
+    }
+
+    @PatchMapping("/{id}")
+    public UserAdminResponse update(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
+        return service.update(id, request);
     }
 }
