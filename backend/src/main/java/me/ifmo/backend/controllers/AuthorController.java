@@ -3,6 +3,7 @@ package me.ifmo.backend.controllers;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.CreateAuthorRequest;
+import me.ifmo.backend.dto.catalog.request.UpdateAuthorRequest;
 import me.ifmo.backend.dto.catalog.response.AuthorResponse;
 import me.ifmo.backend.services.AuthorService;
 import org.springframework.http.HttpStatus;
@@ -24,5 +25,10 @@ public class AuthorController {
     @GetMapping("/{id}")
     public AuthorResponse getAuthorById(@PathVariable Long id) {
         return service.getAuthorById(id);
+    }
+
+    @PatchMapping("/{id}")
+    public AuthorResponse update(@PathVariable Long id, @Valid @RequestBody UpdateAuthorRequest request) {
+        return service.update(id, request);
     }
 }
