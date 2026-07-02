@@ -25,4 +25,9 @@ public class MaterialController {
     public MaterialResponse getMaterialById(@PathVariable Long id) {
         return service.getMaterialById(id);
     }
+
+    @GetMapping("/isbn/{isbn}")
+    public MaterialResponse getMaterialByIsbn(@PathVariable String isbn) {
+        return service.getMaterialByIsbn(isbn);
+    }
 }
