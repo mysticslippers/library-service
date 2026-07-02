@@ -20,4 +20,9 @@ public class LibraryController {
     public LibraryResponse create(@Valid @RequestBody CreateLibraryRequest request) {
         return service.create(request);
     }
+
+    @GetMapping("/{id}")
+    public LibraryResponse getLibraryById(@PathVariable Long id) {
+        return service.getLibraryById(id);
+    }
 }
