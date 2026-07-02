@@ -20,4 +20,9 @@ public class UserController {
     public UserAdminResponse create(@Valid @RequestBody CreateUserRequest request) {
         return service.create(request);
     }
+
+    @GetMapping("/{id}")
+    public UserAdminResponse getUserById(@PathVariable Long id) {
+        return service.getUserById(id);
+    }
 }
