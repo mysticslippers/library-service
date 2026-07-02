@@ -3,6 +3,7 @@ package me.ifmo.backend.controllers;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.library.request.CreateLibraryRuleRequest;
+import me.ifmo.backend.dto.library.request.UpdateLibraryRuleRequest;
 import me.ifmo.backend.dto.library.response.LibraryRuleResponse;
 import me.ifmo.backend.services.LibraryRuleService;
 import org.springframework.http.HttpStatus;
@@ -29,5 +30,10 @@ public class LibraryRuleController {
     @GetMapping("/branches/{branchId}/actual")
     public LibraryRuleResponse getActualByBranchId(@PathVariable Long branchId) {
         return service.getActualByBranchId(branchId);
+    }
+
+    @PatchMapping("/{id}")
+    public LibraryRuleResponse update(@PathVariable Long id, @Valid @RequestBody UpdateLibraryRuleRequest request) {
+        return service.update(id, request);
     }
 }
