@@ -20,4 +20,9 @@ public class MaterialCopyController {
     public MaterialCopyResponse create(@Valid @RequestBody CreateMaterialCopyRequest request) {
         return service.create(request);
     }
+
+    @GetMapping("/{id}")
+    public MaterialCopyResponse getMaterialCopyById(@PathVariable Long id) {
+        return service.getMaterialCopyById(id);
+    }
 }
