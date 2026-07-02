@@ -20,4 +20,9 @@ public class BranchController {
     public BranchResponse create(@Valid @RequestBody CreateBranchRequest request) {
         return service.create(request);
     }
+
+    @GetMapping("/{id}")
+    public BranchResponse getBranchById(@PathVariable Long id) {
+        return service.getBranchById(id);
+    }
 }
