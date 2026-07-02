@@ -20,4 +20,9 @@ public class MaterialController {
     public MaterialResponse create(@Valid @RequestBody CreateMaterialRequest request) {
         return service.create(request);
     }
+
+    @GetMapping("/{id}")
+    public MaterialResponse getMaterialById(@PathVariable Long id) {
+        return service.getMaterialById(id);
+    }
 }
