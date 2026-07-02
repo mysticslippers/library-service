@@ -2,6 +2,7 @@ package me.ifmo.backend.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.library.request.ChangeLibraryStatusRequest;
 import me.ifmo.backend.dto.library.request.CreateLibraryRequest;
 import me.ifmo.backend.dto.library.request.UpdateLibraryRequest;
 import me.ifmo.backend.dto.library.response.LibraryResponse;
@@ -35,5 +36,10 @@ public class LibraryController {
     @PatchMapping("/{id}")
     public LibraryResponse update(@PathVariable Long id, @Valid @RequestBody UpdateLibraryRequest request) {
         return service.update(id, request);
+    }
+
+    @PatchMapping("/{id}/status")
+    public LibraryResponse changeStatus(@PathVariable Long id, @Valid @RequestBody ChangeLibraryStatusRequest request) {
+        return service.changeStatus(id, request);
     }
 }
