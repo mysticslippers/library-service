@@ -200,6 +200,8 @@ CREATE TABLE user_blocks (
     reason              TEXT NOT NULL,
     blocked_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expires_at          TIMESTAMP,
+    unblocked_by_user_id BIGINT,
+    unblock_reason      TEXT,
     unblocked_at        TIMESTAMP,
     status              user_block_status NOT NULL DEFAULT 'ACTIVE',
 
@@ -210,8 +212,13 @@ CREATE TABLE user_blocks (
 
     CONSTRAINT fk_user_blocks_created_by
         FOREIGN KEY (created_by_user_id)
-        REFERENCES users (id)
-        ON DELETE RESTRICT,
+            REFERENCES users (id)
+            ON DELETE RESTRICT,
+
+    CONSTRAINT fk_user_blocks_unblocked_by
+        FOREIGN KEY (unblocked_by_user_id)
+            REFERENCES users (id)
+            ON DELETE SET NULL,
 
     CONSTRAINT chk_user_blocks_dates
         CHECK (expires_at IS NULL OR expires_at > blocked_at),
