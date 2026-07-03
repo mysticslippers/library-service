@@ -1,13 +1,23 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.auth.request.ActivateAccountRequest;
 import me.ifmo.backend.dto.auth.request.LoginRequest;
+import me.ifmo.backend.dto.auth.request.PasswordRecoveryRequest;
+import me.ifmo.backend.dto.auth.request.PasswordResetRequest;
 import me.ifmo.backend.dto.auth.request.RegisterRequest;
+import me.ifmo.backend.dto.auth.request.ResendActivationRequest;
+import me.ifmo.backend.dto.auth.response.AuthMessageResponse;
 import me.ifmo.backend.dto.auth.response.AuthResponse;
+import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
+import me.ifmo.backend.entities.AuthToken;
 import me.ifmo.backend.entities.Role;
 import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.UserRole;
+import me.ifmo.backend.entities.enums.AuthTokenType;
+import me.ifmo.backend.entities.enums.NotificationChannel;
+import me.ifmo.backend.entities.enums.NotificationType;
 import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.entities.enums.UserStatus;
 import me.ifmo.backend.entities.id.UserRoleId;
@@ -15,11 +25,14 @@ import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.UserMapper;
+import me.ifmo.backend.repositories.AuthTokenRepository;
 import me.ifmo.backend.repositories.RoleRepository;
 import me.ifmo.backend.repositories.UserRepository;
 import me.ifmo.backend.repositories.UserRoleRepository;
 import me.ifmo.backend.services.AuthService;
 import me.ifmo.backend.services.JwtService;
+import me.ifmo.backend.services.NotificationService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +41,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -39,27 +53,38 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
+    private final AuthTokenRepository authTokenRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final NotificationService notificationService;
+
+    @Value("${security.auth.activation-token-expiration-minutes:1440}")
+    private long activationTokenExpirationMinutes;
+
+    @Value("${security.auth.password-reset-token-expiration-minutes:60}")
+    private long passwordResetTokenExpirationMinutes;
 
     private String normalize(String value, String fieldName) {
-        if(fieldName.equals("Middle name")){
+        if (fieldName.equals("Middle name")) {
             if (value == null || value.strip().isBlank())
                 return null;
 
         } else {
-            if(fieldName.equals("Email"))
-                value = value.toLowerCase(Locale.ROOT);
-
             if (value == null || value.strip().isBlank())
                 throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
+
+            if (fieldName.equals("Email"))
+                value = value.toLowerCase(Locale.ROOT);
         }
         return value.strip();
     }
 
     private AuthResponse toAuthResponse(User user) {
         List<RoleCode> roles = userRoleRepository.findRoleCodesByUser_Id(user.getId());
+        if (roles.isEmpty())
+            throw new BusinessRuleException("User has no assigned roles");
+
         String token = jwtService.generate(user, roles);
 
         return new AuthResponse(token, "Bearer", jwtService.getAccessTokenExpiresIn(),
@@ -73,6 +98,58 @@ public class AuthServiceImpl implements AuthService {
         UserRole userRole = UserRole.builder().id(new UserRoleId(user.getId(), role.getId())).user(user).role(role).build();
 
         userRoleRepository.save(userRole);
+    }
+
+    private AuthToken createToken(User user, AuthTokenType type, long expirationMinutes) {
+        LocalDateTime now = LocalDateTime.now();
+        authTokenRepository.findByUser_IdAndTypeAndUsedAtIsNull(user.getId(), type)
+                .forEach(token -> token.setUsedAt(now));
+
+        AuthToken authToken = AuthToken.builder()
+                .user(user)
+                .type(type)
+                .token(UUID.randomUUID().toString())
+                .expiresAt(now.plusMinutes(expirationMinutes))
+                .build();
+
+        return authTokenRepository.save(authToken);
+    }
+
+    private AuthToken findValidToken(String tokenValue, AuthTokenType type) {
+        AuthToken token = authTokenRepository.findByTokenAndType(tokenValue, type).orElseThrow(
+                () -> new BusinessRuleException("Invalid or expired token"));
+
+        LocalDateTime now = LocalDateTime.now();
+        if (token.isUsed() || token.isExpired(now))
+            throw new BusinessRuleException("Invalid or expired token");
+
+        return token;
+    }
+
+    private void sendActivationEmail(User user, String token) {
+        notificationService.create(new CreateNotificationRequest(
+                user.getId(),
+                null,
+                null,
+                null,
+                NotificationType.ACCOUNT_ACTIVATION,
+                NotificationChannel.EMAIL,
+                "Library account activation",
+                "Use this activation code to confirm your account: %s".formatted(token)
+        ));
+    }
+
+    private void sendPasswordRecoveryEmail(User user, String token) {
+        notificationService.create(new CreateNotificationRequest(
+                user.getId(),
+                null,
+                null,
+                null,
+                NotificationType.PASSWORD_RECOVERY,
+                NotificationChannel.EMAIL,
+                "Library password recovery",
+                "Use this password recovery code to reset your password: %s".formatted(token)
+        ));
     }
 
     private void rejectInvalidCredentials(User user) {
@@ -97,7 +174,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthMessageResponse register(RegisterRequest request) {
         if (!request.password().equals(request.passwordConfirmation()))
             throw new BusinessRuleException("Password confirmation does not match");
 
@@ -117,15 +194,17 @@ public class AuthServiceImpl implements AuthService {
                 firstName, lastName, middleName));
 
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setStatus(UserStatus.ACTIVE);
-        user.setActivatedAt(LocalDateTime.now());
+        user.setStatus(UserStatus.PENDING_ACTIVATION);
+        user.setActivatedAt(null);
         user.setFailedLoginAttempts((short) 0);
         user.setLockedUntil(null);
 
         User saved = userRepository.save(user);
         assignDefaultReaderRole(saved);
+        AuthToken token = createToken(saved, AuthTokenType.ACCOUNT_ACTIVATION, activationTokenExpirationMinutes);
+        sendActivationEmail(saved, token.getToken());
 
-        return toAuthResponse(saved);
+        return new AuthMessageResponse("Registration created. Check email for account activation code.");
     }
 
     @Override
@@ -148,6 +227,84 @@ public class AuthServiceImpl implements AuthService {
         User saved = userRepository.save(user);
 
         return toAuthResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public AuthMessageResponse activate(ActivateAccountRequest request) {
+        AuthToken token = findValidToken(request.token(), AuthTokenType.ACCOUNT_ACTIVATION);
+        User user = token.getUser();
+
+        if (user.getStatus() != UserStatus.PENDING_ACTIVATION)
+            throw new BusinessRuleException("User account cannot be activated");
+
+        LocalDateTime now = LocalDateTime.now();
+        user.setStatus(UserStatus.ACTIVE);
+        user.setActivatedAt(now);
+        user.setFailedLoginAttempts((short) 0);
+        user.setLockedUntil(null);
+        token.setUsedAt(now);
+
+        userRepository.save(user);
+        authTokenRepository.save(token);
+
+        return new AuthMessageResponse("User account has been activated.");
+    }
+
+    @Override
+    @Transactional
+    public AuthMessageResponse resendActivation(ResendActivationRequest request) {
+        String email = normalize(request.email(), "Email");
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User with email '%s' not found".formatted(email)));
+
+        if (user.getStatus() != UserStatus.PENDING_ACTIVATION)
+            throw new BusinessRuleException("Activation can be resent only for pending accounts");
+
+        AuthToken token = createToken(user, AuthTokenType.ACCOUNT_ACTIVATION, activationTokenExpirationMinutes);
+        sendActivationEmail(user, token.getToken());
+
+        return new AuthMessageResponse("Activation email has been sent.");
+    }
+
+    @Override
+    @Transactional
+    public AuthMessageResponse requestPasswordRecovery(PasswordRecoveryRequest request) {
+        String email = normalize(request.email(), "Email");
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User with email '%s' not found".formatted(email)));
+
+        if (user.getStatus() == UserStatus.ARCHIVED)
+            throw new BusinessRuleException("Password recovery is not available for archived accounts");
+
+        AuthToken token = createToken(user, AuthTokenType.PASSWORD_RESET, passwordResetTokenExpirationMinutes);
+        sendPasswordRecoveryEmail(user, token.getToken());
+
+        return new AuthMessageResponse("Password recovery email has been sent.");
+    }
+
+    @Override
+    @Transactional
+    public AuthMessageResponse resetPassword(PasswordResetRequest request) {
+        if (!request.newPassword().equals(request.newPasswordConfirmation()))
+            throw new BusinessRuleException("Password confirmation does not match");
+
+        AuthToken token = findValidToken(request.token(), AuthTokenType.PASSWORD_RESET);
+        User user = token.getUser();
+
+        if (user.getStatus() == UserStatus.ARCHIVED)
+            throw new BusinessRuleException("Password reset is not available for archived accounts");
+
+        LocalDateTime now = LocalDateTime.now();
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setFailedLoginAttempts((short) 0);
+        user.setLockedUntil(null);
+        token.setUsedAt(now);
+
+        userRepository.save(user);
+        authTokenRepository.save(token);
+
+        return new AuthMessageResponse("Password has been changed.");
     }
 
     @Override
