@@ -12,11 +12,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/user-blocks")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
 public class UserBlockController {
 
     private final UserBlockService service;
@@ -33,8 +35,8 @@ public class UserBlockController {
     }
 
     @PostMapping("/{id}/cancel")
-    public UserBlockResponse cancel(@PathVariable Long id, @Valid @RequestBody CancelUserBlockRequest request) {
-        return service.cancel(id, request);
+    public UserBlockResponse cancel(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @Valid @RequestBody CancelUserBlockRequest request) {
+        return service.cancel(id, Long.valueOf(userDetails.getUsername()), request);
     }
 
     @PostMapping("/{id}/expire")
@@ -43,8 +45,7 @@ public class UserBlockController {
     }
 
     @GetMapping
-    public PageResponse<UserBlockResponse> search(@RequestParam(required = false) Long userId, @RequestParam(required = false) Long createdByUserId,
-                                                  @RequestParam(required = false) UserBlockStatus status, Pageable pageable) {
+    public PageResponse<UserBlockResponse> search(@RequestParam(required = false) Long userId, @RequestParam(required = false) Long createdByUserId, @RequestParam(required = false) UserBlockStatus status, Pageable pageable) {
         return service.search(userId, createdByUserId, status, pageable);
     }
 }
