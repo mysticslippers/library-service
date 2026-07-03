@@ -135,10 +135,17 @@ CREATE TYPE notification_type AS ENUM (
     'LOAN_DUE_SOON',
     'LOAN_OVERDUE',
     'LOAN_RETURNED',
+    'LOAN_RENEWED',
+    'LOAN_RENEWAL_REJECTED',
 
     'FINE_CREATED',
     'FINE_PAID',
     'FINE_CANCELLED',
+    'FINE_MANUALLY_CLEARED',
+
+    'USER_BLOCKED',
+    'USER_UNBLOCKED',
+    'USER_WARNING_CREATED',
 
     'SYSTEM_MESSAGE'
     );
@@ -154,6 +161,7 @@ CREATE TYPE notification_status AS ENUM (
     'SENT',
     'DELIVERED',
     'FAILED',
+    'UNDELIVERED',
     'CANCELLED'
     );
 
