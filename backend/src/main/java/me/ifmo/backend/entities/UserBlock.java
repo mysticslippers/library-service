@@ -31,7 +31,7 @@ public class UserBlock {
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private User createdByUser;
 
-    @Column(name = "reason", nullable = false)
+    @Column(name = "reason", nullable = false, columnDefinition = "text")
     private String reason;
 
     @CreationTimestamp
