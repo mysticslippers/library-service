@@ -31,10 +31,10 @@ public class UserWarning {
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private User createdByUser;
 
-    @Column(name = "reason", nullable = false)
+    @Column(name = "reason", nullable = false, columnDefinition = "text")
     private String reason;
 
-    @Column(name = "comment")
+    @Column(name = "comment", columnDefinition = "text")
     private String comment;
 
     @CreationTimestamp
