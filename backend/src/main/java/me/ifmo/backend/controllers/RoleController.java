@@ -6,11 +6,13 @@ import me.ifmo.backend.dto.user.response.RoleResponse;
 import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.services.RoleService;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/roles")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class RoleController {
 
     private final RoleService service;
