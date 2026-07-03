@@ -71,3 +71,6 @@ security:
   jwt:
     secret: ${JWT_SECRET}
     access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:3600000}
+  auth:
+    activation-token-expiration-minutes: ${AUTH_ACTIVATION_TOKEN_EXPIRATION_MINUTES:1440}
+    password-reset-token-expiration-minutes: ${AUTH_PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES:60}
