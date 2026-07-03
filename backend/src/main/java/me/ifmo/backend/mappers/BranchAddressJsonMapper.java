@@ -1,6 +1,6 @@
 package me.ifmo.backend.mappers;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.ifmo.backend.dto.library.request.BranchAddressRequest;
 import me.ifmo.backend.dto.library.response.BranchAddressResponse;
@@ -15,25 +15,17 @@ public class BranchAddressJsonMapper {
         this.objectMapper = objectMapper;
     }
 
-    public String toJson(BranchAddressRequest address) {
+    public JsonNode toJsonNode(BranchAddressRequest address) {
         if (address == null) {
             return null;
         }
-        try {
-            return objectMapper.writeValueAsString(address);
-        } catch (JsonProcessingException exception) {
-            throw new IllegalStateException("Failed to serialize branch address", exception);
-        }
+        return objectMapper.valueToTree(address);
     }
 
-    public BranchAddressResponse toResponse(String addressJson) {
-        if (addressJson == null || addressJson.isBlank()) {
+    public BranchAddressResponse toResponse(JsonNode addressJson) {
+        if (addressJson == null || addressJson.isNull()) {
             return null;
         }
-        try {
-            return objectMapper.readValue(addressJson, BranchAddressResponse.class);
-        } catch (JsonProcessingException exception) {
-            throw new IllegalStateException("Failed to deserialize branch address", exception);
-        }
+        return objectMapper.convertValue(addressJson, BranchAddressResponse.class);
     }
 }
