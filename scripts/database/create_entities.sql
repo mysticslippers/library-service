@@ -493,7 +493,7 @@ CREATE TABLE loans (
 
 CREATE UNIQUE INDEX uq_loans_one_active_per_copy
     ON loans (copy_id)
-    WHERE status IN ('ACTIVE', 'OVERDUE');
+    WHERE status IN ('ACTIVE', 'OVERDUE', 'LOST');
 
 CREATE INDEX idx_loans_user_status
     ON loans USING btree (user_id, status);
