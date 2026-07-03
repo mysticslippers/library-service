@@ -54,7 +54,7 @@ public class Notification {
     @Column(name = "subject")
     private String subject;
 
-    @Column(name = "body")
+    @Column(name = "body", columnDefinition = "text")
     private String body;
 
     @Builder.Default
