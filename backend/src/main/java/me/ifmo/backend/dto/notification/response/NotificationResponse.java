@@ -18,6 +18,11 @@ public record NotificationResponse(
         String subject,
         String body,
         NotificationStatus status,
-        LocalDateTime sentAt
+        LocalDateTime createdAt,
+        LocalDateTime sentAt,
+        LocalDateTime readAt,
+        String externalMessageId,
+        String errorMessage,
+        Integer attemptCount
 ) {
 }
