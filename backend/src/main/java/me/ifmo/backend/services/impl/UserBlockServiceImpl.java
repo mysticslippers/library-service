@@ -181,10 +181,14 @@ public class UserBlockServiceImpl implements UserBlockService {
             throw new BusinessRuleException("User block has not expired yet");
 
         block.setStatus(UserBlockStatus.EXPIRED);
+        block.setUnblockReason("Block expired");
         block.setUnblockedAt(LocalDateTime.now());
         activateUserIfBlocked(block.getUser());
 
         UserBlock saved = repository.save(block);
+        auditLogService.record(null, AuditEntityType.USER_BLOCK, saved.getId(), AuditAction.UNBLOCK,
+                Map.of("userId", block.getUser().getId(), "reason", "Block expired"));
+        notifyUser(block.getUser(), "Library account unblocked", "Your account has been unblocked because the block expired.");
         return mapper.toResponse(saved);
     }
 
