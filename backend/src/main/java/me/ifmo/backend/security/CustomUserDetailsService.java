@@ -3,6 +3,7 @@ package me.ifmo.backend.security;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.entities.User;
 import me.ifmo.backend.entities.enums.RoleCode;
+import me.ifmo.backend.entities.enums.UserStatus;
 import me.ifmo.backend.repositories.UserRepository;
 import me.ifmo.backend.repositories.UserRoleRepository;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -11,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -34,8 +36,9 @@ public class CustomUserDetailsService implements UserDetailsService {
         return org.springframework.security.core.userdetails.User.withUsername(user.getId().toString())
                 .password(user.getPasswordHash())
                 .authorities(authorities)
-                .disabled(user.getStatus().name().equals("ARCHIVED"))
-                .accountLocked(user.getStatus().name().equals("BLOCKED"))
+                .disabled(user.getStatus() != UserStatus.ACTIVE)
+                .accountLocked(user.getStatus() == UserStatus.BLOCKED
+                        || (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now())))
                 .build();
     }
 }
