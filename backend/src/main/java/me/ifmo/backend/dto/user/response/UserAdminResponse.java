@@ -1,5 +1,8 @@
 package me.ifmo.backend.dto.user.response;
 
+import me.ifmo.backend.dto.circulation.response.LoanResponse;
+import me.ifmo.backend.dto.circulation.response.ReservationResponse;
+import me.ifmo.backend.dto.fine.response.FineResponse;
 import me.ifmo.backend.entities.enums.UserStatus;
 
 import java.time.LocalDateTime;
@@ -19,6 +22,11 @@ public record UserAdminResponse(
         LocalDateTime activatedAt,
         LocalDateTime lastLoginAt,
         LocalDateTime lockedUntil,
-        List<RoleResponse> roles
+        List<RoleResponse> roles,
+        UserBlockResponse activeBlock,
+        List<UserWarningResponse> activeWarnings,
+        List<LoanResponse> activeLoans,
+        List<ReservationResponse> activeReservations,
+        List<FineResponse> activeFines
 ) {
 }
