@@ -30,7 +30,12 @@ CREATE TYPE role_code AS ENUM (
     'READER',
     'LIBRARIAN',
     'ADMIN'
-);
+    );
+
+CREATE TYPE auth_token_type AS ENUM (
+    'ACCOUNT_ACTIVATION',
+    'PASSWORD_RESET'
+    );
 
 CREATE TYPE user_block_status AS ENUM (
     'ACTIVE',
