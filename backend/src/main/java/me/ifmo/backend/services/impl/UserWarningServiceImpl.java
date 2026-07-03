@@ -113,7 +113,7 @@ public class UserWarningServiceImpl implements UserWarningService {
 
     private void notifyUser(User user, String reason) {
         notificationService.create(new CreateNotificationRequest(user.getId(), null, null, null,
-                NotificationType.ACCOUNT_STATUS_CHANGED, NotificationChannel.EMAIL,
+                NotificationType.USER_WARNING_CREATED, NotificationChannel.EMAIL,
                 "Library account warning", "A warning has been added to your account. Reason: %s".formatted(reason)));
     }
 
