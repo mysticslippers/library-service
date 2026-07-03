@@ -98,9 +98,9 @@ public class UserBlockServiceImpl implements UserBlockService {
             throw new BusinessRuleException("Insufficient access level for target user");
     }
 
-    private void notifyUser(User user, String subject, String body) {
+    private void notifyUser(User user, NotificationType type, String subject, String body) {
         notificationService.create(new CreateNotificationRequest(user.getId(), null, null, null,
-                NotificationType.ACCOUNT_STATUS_CHANGED, NotificationChannel.EMAIL, subject, body));
+                type, NotificationChannel.EMAIL, subject, body));
     }
 
     @Override
@@ -128,7 +128,8 @@ public class UserBlockServiceImpl implements UserBlockService {
         auditLogService.record(createdByUser.getId(), AuditEntityType.USER_BLOCK, saved.getId(), AuditAction.BLOCK,
                 Map.of("userId", user.getId(), "reason", reason));
 
-        notifyUser(user, "Library account blocked", "Your account has been blocked. Reason: %s".formatted(reason));
+        notifyUser(user, NotificationType.USER_BLOCKED, "Library account blocked",
+                "Your account has been blocked. Reason: %s".formatted(reason));
         return mapper.toResponse(saved);
     }
 
@@ -164,7 +165,8 @@ public class UserBlockServiceImpl implements UserBlockService {
         UserBlock saved = repository.save(block);
         auditLogService.record(unblockedByUser.getId(), AuditEntityType.USER_BLOCK, saved.getId(), AuditAction.UNBLOCK,
                 Map.of("userId", block.getUser().getId(), "reason", reason));
-        notifyUser(block.getUser(), "Library account unblocked", "Your account has been unblocked. Reason: %s".formatted(reason));
+        notifyUser(block.getUser(), NotificationType.USER_UNBLOCKED, "Library account unblocked",
+                "Your account has been unblocked. Reason: %s".formatted(reason));
         return mapper.toResponse(saved);
     }
 
@@ -188,7 +190,8 @@ public class UserBlockServiceImpl implements UserBlockService {
         UserBlock saved = repository.save(block);
         auditLogService.record(null, AuditEntityType.USER_BLOCK, saved.getId(), AuditAction.UNBLOCK,
                 Map.of("userId", block.getUser().getId(), "reason", "Block expired"));
-        notifyUser(block.getUser(), "Library account unblocked", "Your account has been unblocked because the block expired.");
+        notifyUser(block.getUser(), NotificationType.USER_UNBLOCKED, "Library account unblocked",
+                "Your account has been unblocked because the block expired.");
         return mapper.toResponse(saved);
     }
 
