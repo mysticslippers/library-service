@@ -11,6 +11,7 @@ import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Objects;
 
 @Entity
@@ -45,7 +46,7 @@ public class AuditLog {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "details", columnDefinition = "jsonb")
-    private String details;
+    private Map<String, Object> details;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
