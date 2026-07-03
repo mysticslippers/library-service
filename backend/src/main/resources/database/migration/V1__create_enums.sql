@@ -32,6 +32,11 @@ CREATE TYPE role_code AS ENUM (
     'ADMIN'
     );
 
+CREATE TYPE auth_token_type AS ENUM (
+    'ACCOUNT_ACTIVATION',
+    'PASSWORD_RESET'
+    );
+
 CREATE TYPE user_block_status AS ENUM (
     'ACTIVE',
     'EXPIRED',
