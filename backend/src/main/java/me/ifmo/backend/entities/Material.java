@@ -28,13 +28,13 @@ public class Material {
     @Column(name = "isbn", unique = true, length = 13)
     private String isbn;
 
-    @Column(name = "title", nullable = false, length = 255)
+    @Column(name = "title", nullable = false)
     private String title;
 
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @Column(name = "publisher", length = 255)
+    @Column(name = "publisher")
     private String publisher;
 
     @Column(name = "publication_year")
