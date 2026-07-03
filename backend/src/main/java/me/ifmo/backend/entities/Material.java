@@ -6,7 +6,6 @@ import me.ifmo.backend.entities.enums.MaterialStatus;
 import me.ifmo.backend.entities.enums.MaterialType;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcType;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
@@ -29,13 +28,13 @@ public class Material {
     @Column(name = "isbn", unique = true, length = 13)
     private String isbn;
 
-    @Column(name = "title", nullable = false)
+    @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @Column(name = "publisher")
+    @Column(name = "publisher", length = 255)
     private String publisher;
 
     @Column(name = "publication_year")
@@ -61,8 +60,7 @@ public class Material {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     @Override
