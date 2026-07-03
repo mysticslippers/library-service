@@ -1,49 +1,65 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.dto.catalog.response.MaterialShortResponse;
+import me.ifmo.backend.dto.circulation.response.ReservationResponse;
 import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
 import me.ifmo.backend.dto.user.request.*;
 import me.ifmo.backend.dto.user.response.UserAdminResponse;
 import me.ifmo.backend.dto.user.response.UserProfileResponse;
-import me.ifmo.backend.entities.Branch;
-import me.ifmo.backend.entities.Role;
-import me.ifmo.backend.entities.User;
-import me.ifmo.backend.entities.UserRole;
-import me.ifmo.backend.entities.enums.BranchStatus;
-import me.ifmo.backend.entities.enums.RoleCode;
-import me.ifmo.backend.entities.enums.UserStatus;
+import me.ifmo.backend.entities.*;
+import me.ifmo.backend.entities.enums.*;
 import me.ifmo.backend.entities.id.UserRoleId;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
-import me.ifmo.backend.mappers.UserMapper;
-import me.ifmo.backend.repositories.BranchRepository;
-import me.ifmo.backend.repositories.RoleRepository;
-import me.ifmo.backend.repositories.UserRepository;
-import me.ifmo.backend.repositories.UserRoleRepository;
+import me.ifmo.backend.mappers.*;
+import me.ifmo.backend.repositories.*;
+import me.ifmo.backend.services.AuditLogService;
+import me.ifmo.backend.services.NotificationService;
 import me.ifmo.backend.services.UserService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
+    private static final Set<LoanStatus> ACTIVE_LOAN_STATUSES =
+            Set.of(LoanStatus.ACTIVE, LoanStatus.OVERDUE);
+    private static final Set<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
+            Set.of(ReservationStatus.ACTIVE, ReservationStatus.READY_FOR_PICKUP);
+    private static final Pageable CARD_RELATED_PAGEABLE = PageRequest.of(0, 20);
+
     private final UserRepository repository;
     private final BranchRepository branchRepository;
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
+    private final UserBlockRepository userBlockRepository;
+    private final UserWarningRepository userWarningRepository;
+    private final LoanRepository loanRepository;
+    private final ReservationRepository reservationRepository;
+    private final FineRepository fineRepository;
+    private final MaterialAuthorRepository materialAuthorRepository;
+    private final MaterialGenreRepository materialGenreRepository;
     private final UserMapper mapper;
+    private final UserBlockMapper userBlockMapper;
+    private final UserWarningMapper userWarningMapper;
+    private final LoanMapper loanMapper;
+    private final ReservationMapper reservationMapper;
+    private final FineMapper fineMapper;
+    private final MaterialMapper materialMapper;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
 
     private String normalize(String value, String fieldName) {
         if(fieldName.equals("Middle name")){
@@ -72,7 +88,21 @@ public class UserServiceImpl implements UserService {
 
     private UserAdminResponse toAdminResponse(User user) {
         List<UserRole> userRoles = userRoleRepository.findByUser_Id(user.getId());
-        return mapper.toAdminResponse(user, userRoles);
+        UserAdminResponse base = mapper.toAdminResponse(user, userRoles);
+
+        return new UserAdminResponse(base.id(), base.email(), base.phone(), base.firstName(), base.lastName(),
+                base.middleName(), base.status(), base.homeBranchId(), base.homeBranchName(), base.registeredAt(),
+                base.activatedAt(), base.lastLoginAt(), base.lockedUntil(), base.roles(),
+                userBlockRepository.findByUser_IdAndStatus(user.getId(), UserBlockStatus.ACTIVE)
+                        .map(userBlockMapper::toResponse).orElse(null),
+                userWarningRepository.findByUser_IdAndStatus(user.getId(), UserWarningStatus.ACTIVE, CARD_RELATED_PAGEABLE)
+                        .map(userWarningMapper::toResponse).toList(),
+                loanRepository.findByUser_IdAndStatusIn(user.getId(), ACTIVE_LOAN_STATUSES, CARD_RELATED_PAGEABLE)
+                        .map(loanMapper::toResponse).toList(),
+                reservationRepository.findByUser_IdAndStatusIn(user.getId(), ACTIVE_RESERVATION_STATUSES, CARD_RELATED_PAGEABLE)
+                        .map(this::toReservationResponse).toList(),
+                fineRepository.findByUser_IdAndStatus(user.getId(), FineStatus.ACTIVE, CARD_RELATED_PAGEABLE)
+                        .map(fineMapper::toResponse).toList());
     }
 
     private UserProfileResponse toProfileResponse(User user) {
@@ -96,6 +126,66 @@ public class UserServiceImpl implements UserService {
         };
     }
 
+    private int roleRank(RoleCode roleCode) {
+        return switch (roleCode) {
+            case READER -> 1;
+            case LIBRARIAN -> 2;
+            case ADMIN -> 3;
+        };
+    }
+
+    private int maxRoleRank(Long userId) {
+        return userRoleRepository.findRoleCodesByUser_Id(userId).stream()
+                .mapToInt(this::roleRank)
+                .max()
+                .orElse(0);
+    }
+
+    private User findActiveActor(Long actorUserId) {
+        User actor = repository.findById(actorUserId).orElseThrow(
+                () -> new ResourceNotFoundException("Actor user with id '%s' not found".formatted(actorUserId)));
+
+        if (actor.getStatus() != UserStatus.ACTIVE)
+            throw new BusinessRuleException("Actor user must be active");
+
+        if (maxRoleRank(actor.getId()) < roleRank(RoleCode.LIBRARIAN))
+            throw new BusinessRuleException("Actor user must be library staff");
+
+        return actor;
+    }
+
+    private void validateActorCanManageTarget(User actor, User target) {
+        if (actor.getId().equals(target.getId()))
+            throw new BusinessRuleException("User cannot manage own account");
+
+        if (maxRoleRank(actor.getId()) <= maxRoleRank(target.getId()))
+            throw new BusinessRuleException("Insufficient access level for target user");
+    }
+
+    private void validateActorCanAssignRole(User actor, RoleCode roleCode) {
+        if (maxRoleRank(actor.getId()) <= roleRank(roleCode))
+            throw new BusinessRuleException("Insufficient access level for target role");
+    }
+
+    private MaterialShortResponse toMaterialShortResponse(Material material) {
+        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
+        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
+        return materialMapper.toShortResponse(material, authors, genres);
+    }
+
+    private ReservationResponse toReservationResponse(Reservation reservation) {
+        return reservationMapper.toResponse(reservation, toMaterialShortResponse(reservation.getMaterial()));
+    }
+
+    private void recordUserAudit(Long actorUserId, Long userId, AuditAction action, Map<String, Object> details) {
+        auditLogService.record(actorUserId, AuditEntityType.USER, userId, action, details);
+    }
+
+    private void notifyUser(User user, String subject, String body) {
+        notificationService.create(new CreateNotificationRequest(
+                user.getId(), null, null, null, NotificationType.ACCOUNT_STATUS_CHANGED, NotificationChannel.EMAIL, subject, body));
+    }
+
     private void assignRoleIfAbsent(User user, RoleCode roleCode) {
         Role role = roleRepository.findByCode(roleCode).orElseThrow(
                 () -> new ResourceNotFoundException("Role with code '%s' not found".formatted(roleCode)));
@@ -111,7 +201,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserAdminResponse create(CreateUserRequest request) {
+    public UserAdminResponse create(Long actorUserId, CreateUserRequest request) {
+        User actor = findActiveActor(actorUserId);
+
         String email = normalize(request.email(), "Email");
         String phone = normalize(request.phone(), "Phone");
         String firstName = normalize(request.firstName(), "First name");
@@ -124,8 +216,11 @@ public class UserServiceImpl implements UserService {
         if (repository.existsByPhone(phone))
             throw new DuplicateResourceException("User with phone '%s' already exists".formatted(phone));
 
+        Set<RoleCode> roles = request.roles() == null || request.roles().isEmpty() ? Set.of(RoleCode.READER) : request.roles();
+        roles.forEach(role -> validateActorCanAssignRole(actor, role));
+
         User user = mapper.toEntity(new CreateUserRequest(email, phone, request.password(), firstName, lastName,
-                middleName, request.homeBranchId(), request.roles()));
+                middleName, request.homeBranchId(), roles));
 
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setStatus(UserStatus.ACTIVE);
@@ -136,10 +231,11 @@ public class UserServiceImpl implements UserService {
 
         User saved = repository.save(user);
 
-        Set<RoleCode> roles = request.roles() == null || request.roles().isEmpty() ? Set.of(RoleCode.READER) : request.roles();
-
         for (RoleCode roleCode : roles)
             assignRoleIfAbsent(saved, roleCode);
+
+        recordUserAudit(actor.getId(), saved.getId(), AuditAction.CREATE,
+                Map.of("roles", roles.stream().map(RoleCode::name).toList()));
 
         return toAdminResponse(saved);
     }
@@ -164,9 +260,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserAdminResponse update(Long id, UpdateUserRequest request) {
+    public UserAdminResponse update(Long actorUserId, Long id, UpdateUserRequest request) {
+        User actor = findActiveActor(actorUserId);
         User user = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
+        validateActorCanManageTarget(actor, user);
 
         if (user.getStatus() == UserStatus.ARCHIVED)
             throw new BusinessRuleException("Archived user cannot be updated");
@@ -192,14 +290,17 @@ public class UserServiceImpl implements UserService {
             user.setBranch(findActiveBranch(request.homeBranchId()));
 
         User saved = repository.save(user);
+        recordUserAudit(actor.getId(), saved.getId(), AuditAction.UPDATE, Map.of("updated", true));
         return toAdminResponse(saved);
     }
 
     @Override
     @Transactional
-    public UserAdminResponse changeStatus(Long id, ChangeUserStatusRequest request) {
+    public UserAdminResponse changeStatus(Long actorUserId, Long id, ChangeUserStatusRequest request) {
+        User actor = findActiveActor(actorUserId);
         User user = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
+        validateActorCanManageTarget(actor, user);
 
         UserStatus targetStatus = request.status();
 
@@ -208,6 +309,9 @@ public class UserServiceImpl implements UserService {
 
         if (!isTransitionAllowed(user.getStatus(), targetStatus))
             throw new BusinessRuleException("User status transition from '%s' to '%s' is not allowed".formatted(user.getStatus(), targetStatus));
+
+        if (targetStatus == UserStatus.BLOCKED || (user.getStatus() == UserStatus.BLOCKED && targetStatus == UserStatus.ACTIVE))
+            throw new BusinessRuleException("Use user block operations to block or unblock users");
 
         if (targetStatus == UserStatus.ACTIVE && user.getActivatedAt() == null)
             user.setActivatedAt(LocalDateTime.now());
@@ -220,28 +324,43 @@ public class UserServiceImpl implements UserService {
         user.setStatus(targetStatus);
 
         User saved = repository.save(user);
+        recordUserAudit(actor.getId(), saved.getId(), AuditAction.STATUS_CHANGED,
+                Map.of("status", targetStatus.name(), "reason", request.reason() != null ? request.reason() : ""));
+        notifyUser(saved, "Library account status changed",
+                "Your account status has been changed to %s.".formatted(targetStatus));
         return toAdminResponse(saved);
     }
 
     @Override
     @Transactional
-    public UserAdminResponse assignRole(Long id, AssignUserRoleRequest request) {
+    public UserAdminResponse assignRole(Long actorUserId, Long id, AssignUserRoleRequest request) {
+        User actor = findActiveActor(actorUserId);
         User user = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
+        validateActorCanManageTarget(actor, user);
+        validateActorCanAssignRole(actor, request.roleCode());
 
         if (user.getStatus() == UserStatus.ARCHIVED)
             throw new BusinessRuleException("Cannot assign role to archived user");
 
         assignRoleIfAbsent(user, request.roleCode());
 
+        recordUserAudit(actor.getId(), user.getId(), AuditAction.ROLE_CHANGED,
+                Map.of("assignedRole", request.roleCode().name()));
+        notifyUser(user, "Library account role changed",
+                "Role %s has been assigned to your account.".formatted(request.roleCode()));
+
         return toAdminResponse(user);
     }
 
     @Override
     @Transactional
-    public UserAdminResponse revokeRole(Long id, AssignUserRoleRequest request) {
+    public UserAdminResponse revokeRole(Long actorUserId, Long id, AssignUserRoleRequest request) {
+        User actor = findActiveActor(actorUserId);
         User user = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
+        validateActorCanManageTarget(actor, user);
+        validateActorCanAssignRole(actor, request.roleCode());
 
         UserRole userRole = userRoleRepository.findByUser_IdAndRole_Code(user.getId(), request.roleCode()).orElseThrow(
                 () -> new ResourceNotFoundException("User role '%s' not found for user with id '%s'".formatted(request.roleCode(), user.getId())));
@@ -252,6 +371,11 @@ public class UserServiceImpl implements UserService {
             throw new BusinessRuleException("User must have at least one role");
 
         userRoleRepository.delete(userRole);
+
+        recordUserAudit(actor.getId(), user.getId(), AuditAction.ROLE_CHANGED,
+                Map.of("revokedRole", request.roleCode().name()));
+        notifyUser(user, "Library account role changed",
+                "Role %s has been revoked from your account.".formatted(request.roleCode()));
 
         return toAdminResponse(user);
     }
