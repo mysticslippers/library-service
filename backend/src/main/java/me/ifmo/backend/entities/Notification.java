@@ -70,6 +70,19 @@ public class Notification {
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
 
+    @Column(name = "read_at")
+    private LocalDateTime readAt;
+
+    @Column(name = "external_message_id")
+    private String externalMessageId;
+
+    @Column(name = "error_message", columnDefinition = "text")
+    private String errorMessage;
+
+    @Builder.Default
+    @Column(name = "attempt_count", nullable = false)
+    private Integer attemptCount = 0;
+
     @Override
     public String toString() {
         return "Notification{" +
@@ -85,6 +98,10 @@ public class Notification {
                 ", status=" + status +
                 ", createdAt=" + createdAt +
                 ", sentAt=" + sentAt +
+                ", readAt=" + readAt +
+                ", externalMessageId='" + externalMessageId + '\'' +
+                ", errorMessage='" + errorMessage + '\'' +
+                ", attemptCount=" + attemptCount +
                 '}';
     }
 
