@@ -13,7 +13,7 @@ public interface UserBlockService {
 
     UserBlockResponse getUserBlockById(Long id);
 
-    UserBlockResponse cancel(Long id, CancelUserBlockRequest request);
+    UserBlockResponse cancel(Long id, Long unblockedByUserId, CancelUserBlockRequest request);
 
     UserBlockResponse expire(Long id);
 
