@@ -11,6 +11,8 @@ public record UserBlockResponse(
         String reason,
         LocalDateTime blockedAt,
         LocalDateTime expiresAt,
+        UserShortResponse unblockedByUser,
+        String unblockReason,
         LocalDateTime unblockedAt,
         UserBlockStatus status
 ) {
