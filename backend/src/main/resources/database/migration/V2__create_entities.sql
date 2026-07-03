@@ -197,24 +197,31 @@ CREATE TABLE user_blocks (
                              id                  BIGSERIAL PRIMARY KEY,
                              user_id             BIGINT NOT NULL,
                              created_by_user_id  BIGINT NOT NULL,
-                             reason              TEXT NOT NULL,
-                             blocked_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                             expires_at          TIMESTAMP,
-                             unblocked_at        TIMESTAMP,
-                             status              user_block_status NOT NULL DEFAULT 'ACTIVE',
+                              reason              TEXT NOT NULL,
+                              blocked_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              expires_at          TIMESTAMP,
+                              unblocked_by_user_id BIGINT,
+                              unblock_reason      TEXT,
+                              unblocked_at        TIMESTAMP,
+                              status              user_block_status NOT NULL DEFAULT 'ACTIVE',
 
                              CONSTRAINT fk_user_blocks_user
                                  FOREIGN KEY (user_id)
                                      REFERENCES users (id)
                                      ON DELETE CASCADE,
 
-                             CONSTRAINT fk_user_blocks_created_by
-                                 FOREIGN KEY (created_by_user_id)
-                                     REFERENCES users (id)
-                                     ON DELETE RESTRICT,
+                              CONSTRAINT fk_user_blocks_created_by
+                                  FOREIGN KEY (created_by_user_id)
+                                      REFERENCES users (id)
+                                      ON DELETE RESTRICT,
 
-                             CONSTRAINT chk_user_blocks_dates
-                                 CHECK (expires_at IS NULL OR expires_at > blocked_at),
+                              CONSTRAINT fk_user_blocks_unblocked_by
+                                  FOREIGN KEY (unblocked_by_user_id)
+                                      REFERENCES users (id)
+                                      ON DELETE SET NULL,
+
+                              CONSTRAINT chk_user_blocks_dates
+                                  CHECK (expires_at IS NULL OR expires_at > blocked_at),
 
                              CONSTRAINT chk_user_blocks_unblocked_at
                                  CHECK (unblocked_at IS NULL OR unblocked_at >= blocked_at)
