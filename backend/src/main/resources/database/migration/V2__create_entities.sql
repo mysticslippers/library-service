@@ -700,6 +700,10 @@ CREATE TABLE notifications (
                                status          notification_status NOT NULL DEFAULT 'PENDING',
                                created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                sent_at         TIMESTAMP,
+                               read_at         TIMESTAMP,
+                               external_message_id VARCHAR(255),
+                               error_message   TEXT,
+                               attempt_count   INTEGER NOT NULL DEFAULT 0,
 
                                CONSTRAINT fk_notifications_user
                                    FOREIGN KEY (user_id)
@@ -728,7 +732,13 @@ CREATE TABLE notifications (
                                    CHECK (
                                        (status IN ('SENT', 'DELIVERED') AND sent_at IS NOT NULL)
                                            OR status NOT IN ('SENT', 'DELIVERED')
-                                       )
+                                       ),
+
+                               CONSTRAINT chk_notifications_read_at
+                                   CHECK (read_at IS NULL OR read_at >= created_at),
+
+                               CONSTRAINT chk_notifications_attempt_count
+                                   CHECK (attempt_count >= 0)
 );
 
 CREATE INDEX idx_notifications_user_status
