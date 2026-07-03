@@ -6,5 +6,6 @@ public enum NotificationStatus {
     SENT,
     DELIVERED,
     FAILED,
+    UNDELIVERED,
     CANCELLED
 }
