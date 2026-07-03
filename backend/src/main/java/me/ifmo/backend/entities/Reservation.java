@@ -58,7 +58,7 @@ public class Reservation {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
-    @Column(name = "cancellation_reason")
+    @Column(name = "cancellation_reason", columnDefinition = "text")
     private String cancellationReason;
 
     @Override
