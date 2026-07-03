@@ -8,19 +8,19 @@ import org.springframework.data.domain.Pageable;
 
 public interface UserService {
 
-    UserAdminResponse create(CreateUserRequest request);
+    UserAdminResponse create(Long actorUserId, CreateUserRequest request);
 
     UserAdminResponse getUserById(Long id);
 
     UserProfileResponse getProfile(Long id);
 
-    UserAdminResponse update(Long id, UpdateUserRequest request);
+    UserAdminResponse update(Long actorUserId, Long id, UpdateUserRequest request);
 
-    UserAdminResponse changeStatus(Long id, ChangeUserStatusRequest request);
+    UserAdminResponse changeStatus(Long actorUserId, Long id, ChangeUserStatusRequest request);
 
-    UserAdminResponse assignRole(Long id, AssignUserRoleRequest request);
+    UserAdminResponse assignRole(Long actorUserId, Long id, AssignUserRoleRequest request);
 
-    UserAdminResponse revokeRole(Long id, AssignUserRoleRequest request);
+    UserAdminResponse revokeRole(Long actorUserId, Long id, AssignUserRoleRequest request);
 
     PageResponse<UserAdminResponse> search(UserSearchRequest request, Pageable pageable);
 }
