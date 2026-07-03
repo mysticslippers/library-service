@@ -11,9 +11,13 @@ public interface NotificationService {
 
     NotificationResponse create(CreateNotificationRequest request);
 
-    NotificationResponse getNotificationById(Long id);
+    NotificationResponse getNotificationById(Long actorUserId, Long id);
 
     NotificationResponse updateStatus(Long id, UpdateNotificationStatusRequest request);
 
-    PageResponse<NotificationResponse> search(NotificationSearchRequest request, Pageable pageable);
+    NotificationResponse markAsRead(Long actorUserId, Long id);
+
+    NotificationResponse resend(Long actorUserId, Long id);
+
+    PageResponse<NotificationResponse> search(Long actorUserId, NotificationSearchRequest request, Pageable pageable);
 }
