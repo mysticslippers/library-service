@@ -41,6 +41,13 @@ public class UserBlock {
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unblocked_by_user_id")
+    private User unblockedByUser;
+
+    @Column(name = "unblock_reason", columnDefinition = "text")
+    private String unblockReason;
+
     @Column(name = "unblocked_at")
     private LocalDateTime unblockedAt;
 
@@ -59,6 +66,8 @@ public class UserBlock {
                 ", reason='" + reason + '\'' +
                 ", blockedAt=" + blockedAt +
                 ", expiresAt=" + expiresAt +
+                ", unblockedByUserId=" + (unblockedByUser != null ? unblockedByUser.getId() : null) +
+                ", unblockReason='" + unblockReason + '\'' +
                 ", unblockedAt=" + unblockedAt +
                 ", status=" + status +
                 '}';
