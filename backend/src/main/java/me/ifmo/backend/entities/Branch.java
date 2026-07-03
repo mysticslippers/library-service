@@ -30,7 +30,7 @@ public class Branch {
     @JoinColumn(name = "library_id", nullable = false)
     private Library library;
 
-    @Column(name = "name", nullable = false, length = 255)
+    @Column(name = "name", nullable = false)
     private String name;
 
     @JdbcTypeCode(SqlTypes.JSON)
