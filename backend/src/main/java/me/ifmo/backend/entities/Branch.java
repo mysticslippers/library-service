@@ -1,5 +1,6 @@
 package me.ifmo.backend.entities;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.*;
 import me.ifmo.backend.entities.enums.BranchStatus;
@@ -29,12 +30,12 @@ public class Branch {
     @JoinColumn(name = "library_id", nullable = false)
     private Library library;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, length = 255)
     private String name;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "address", nullable = false, columnDefinition = "jsonb")
-    private String address;
+    private JsonNode address;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
