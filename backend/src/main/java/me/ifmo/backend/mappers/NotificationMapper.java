@@ -27,6 +27,8 @@ public interface NotificationMapper {
     @BeanMapping(ignoreByDefault = true, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "status", source = "request.status")
     @Mapping(target = "sentAt", source = "sentAt")
+    @Mapping(target = "externalMessageId", source = "request.externalMessageId")
+    @Mapping(target = "errorMessage", source = "request.errorMessage")
     void updateStatus(UpdateNotificationStatusRequest request, LocalDateTime sentAt, @MappingTarget Notification notification);
 
     @Mapping(target = "reservationId", source = "reservation.id")
