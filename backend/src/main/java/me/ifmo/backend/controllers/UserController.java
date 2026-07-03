@@ -10,19 +10,23 @@ import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.services.UserService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
 public class UserController {
 
     private final UserService service;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public UserAdminResponse create(@Valid @RequestBody CreateUserRequest request) {
-        return service.create(request);
+    public UserAdminResponse create(@AuthenticationPrincipal UserDetails userDetails, @Valid @RequestBody CreateUserRequest request) {
+        return service.create(Long.valueOf(userDetails.getUsername()), request);
     }
 
     @GetMapping("/{id}")
@@ -36,23 +40,25 @@ public class UserController {
     }
 
     @PatchMapping("/{id}")
-    public UserAdminResponse update(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
-        return service.update(id, request);
+    public UserAdminResponse update(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
+        return service.update(Long.valueOf(userDetails.getUsername()), id, request);
     }
 
     @PatchMapping("/{id}/status")
-    public UserAdminResponse changeStatus(@PathVariable Long id, @Valid @RequestBody ChangeUserStatusRequest request) {
-        return service.changeStatus(id, request);
+    public UserAdminResponse changeStatus(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @Valid @RequestBody ChangeUserStatusRequest request) {
+        return service.changeStatus(Long.valueOf(userDetails.getUsername()), id, request);
     }
 
     @PostMapping("/{id}/roles")
-    public UserAdminResponse assignRole(@PathVariable Long id, @Valid @RequestBody AssignUserRoleRequest request) {
-        return service.assignRole(id, request);
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserAdminResponse assignRole(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @Valid @RequestBody AssignUserRoleRequest request) {
+        return service.assignRole(Long.valueOf(userDetails.getUsername()), id, request);
     }
 
     @DeleteMapping("/{id}/roles/{roleCode}")
-    public UserAdminResponse revokeRole(@PathVariable Long id, @PathVariable RoleCode roleCode) {
-        return service.revokeRole(id, new AssignUserRoleRequest(roleCode));
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserAdminResponse revokeRole(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @PathVariable RoleCode roleCode) {
+        return service.revokeRole(Long.valueOf(userDetails.getUsername()), id, new AssignUserRoleRequest(roleCode));
     }
 
     @GetMapping
