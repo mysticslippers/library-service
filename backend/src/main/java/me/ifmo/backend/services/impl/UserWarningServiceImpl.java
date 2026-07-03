@@ -58,6 +58,13 @@ public class UserWarningServiceImpl implements UserWarningService {
         }
     }
 
+    private String normalizeReason(String value) {
+        if (value == null || value.strip().isBlank())
+            throw new BusinessRuleException("%s must not be blank".formatted("Warning reason"));
+
+        return value.strip();
+    }
+
     private User findTargetUser(Long id) {
         User user = userRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(id)));
@@ -117,7 +124,7 @@ public class UserWarningServiceImpl implements UserWarningService {
         User createdByUser = findActiveActor(createdByUserId);
         validateActorCanManageTarget(createdByUser, user);
 
-        String reason = normalize(request.reason(), "Warning reason");
+        String reason = normalizeReason(request.reason());
         String comment = normalize(request.comment(), "Comment");
 
         if (request.expiresAt() != null && !request.expiresAt().isAfter(LocalDateTime.now()))
