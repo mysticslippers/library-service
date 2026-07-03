@@ -12,7 +12,6 @@ import me.ifmo.backend.entities.enums.RoleCode;
 import org.mapstruct.*;
 
 import java.util.Collection;
-import java.util.List;
 
 @Mapper(uses = {RoleMapper.class},
         nullValueIterableMappingStrategy = NullValueMappingStrategy.RETURN_DEFAULT)
@@ -49,8 +48,6 @@ public interface UserMapper {
 
         UserShortResponse toShortResponse(User user);
 
-        List<UserShortResponse> toShortResponseList(Collection<User> users);
-
         @Mapping(target = "homeBranchId", source = "user.branch.id")
         @Mapping(target = "homeBranchName", source = "user.branch.name")
         @Mapping(target = "roles", source = "roles")
@@ -59,5 +56,10 @@ public interface UserMapper {
         @Mapping(target = "homeBranchId", source = "user.branch.id")
         @Mapping(target = "homeBranchName", source = "user.branch.name")
         @Mapping(target = "roles", source = "userRoles")
+        @Mapping(target = "activeBlock", ignore = true)
+        @Mapping(target = "activeWarnings", ignore = true)
+        @Mapping(target = "activeLoans", ignore = true)
+        @Mapping(target = "activeReservations", ignore = true)
+        @Mapping(target = "activeFines", ignore = true)
         UserAdminResponse toAdminResponse(User user, Collection<UserRole> userRoles);
 }
