@@ -128,10 +128,34 @@ CREATE INDEX idx_users_home_branch
 CREATE INDEX idx_users_registered_at
     ON users USING btree (registered_at);
 
+CREATE TABLE auth_tokens (
+                             id         BIGSERIAL PRIMARY KEY,
+                             user_id    BIGINT NOT NULL,
+                             token      VARCHAR(512) NOT NULL UNIQUE,
+                             type       auth_token_type NOT NULL,
+                             expires_at TIMESTAMP NOT NULL,
+                             used_at    TIMESTAMP,
+                             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                             CONSTRAINT fk_auth_tokens_user
+                                 FOREIGN KEY (user_id)
+                                     REFERENCES users (id)
+                                     ON DELETE CASCADE,
+
+                             CONSTRAINT chk_auth_tokens_expiration
+                                 CHECK (expires_at > created_at)
+);
+
+CREATE INDEX idx_auth_tokens_user_type_used
+    ON auth_tokens USING btree (user_id, type, used_at);
+
+CREATE INDEX idx_auth_tokens_expires_at
+    ON auth_tokens USING btree (expires_at);
+
 CREATE TABLE roles (
-                       id          BIGSERIAL PRIMARY KEY,
-                       code        role_code NOT NULL UNIQUE,
-                       name        VARCHAR(100) NOT NULL,
+                        id          BIGSERIAL PRIMARY KEY,
+                        code        role_code NOT NULL UNIQUE,
+                        name        VARCHAR(100) NOT NULL,
                        description TEXT
 );
 
