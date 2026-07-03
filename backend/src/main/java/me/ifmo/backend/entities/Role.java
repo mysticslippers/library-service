@@ -30,7 +30,7 @@ public class Role {
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "text")
     private String description;
 
     @Override
