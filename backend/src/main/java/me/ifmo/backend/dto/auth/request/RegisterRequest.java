@@ -17,10 +17,12 @@ public record RegisterRequest(
 
         @NotBlank
         @Size(min = 8, max = 255)
+        @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)\\S{8,255}$")
         String password,
 
         @NotBlank
         @Size(min = 8, max = 255)
+        @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)\\S{8,255}$")
         String passwordConfirmation,
 
         @NotBlank
