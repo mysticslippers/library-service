@@ -687,6 +687,60 @@ CREATE INDEX idx_payment_transactions_status
 CREATE INDEX idx_payment_transactions_created_at
     ON payment_transactions USING btree (created_at);
 
+CREATE TABLE notification_templates (
+                                        id                    BIGSERIAL PRIMARY KEY,
+                                        type                  notification_type NOT NULL,
+                                        channel               notification_channel NOT NULL,
+                                        subject_template      VARCHAR(255),
+                                        body_template         TEXT NOT NULL,
+                                        required_parameters   JSONB NOT NULL DEFAULT '[]'::jsonb,
+                                        status                notification_template_status NOT NULL DEFAULT 'ACTIVE',
+                                        created_at            TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                        updated_at            TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                                        CONSTRAINT chk_notification_templates_required_parameters
+                                            CHECK (jsonb_typeof(required_parameters) = 'array')
+);
+
+CREATE UNIQUE INDEX uq_notification_templates_one_active_per_type_channel
+    ON notification_templates (type, channel)
+    WHERE status = 'ACTIVE';
+
+CREATE INDEX idx_notification_templates_status
+    ON notification_templates USING btree (status);
+
+CREATE INDEX idx_notification_templates_type_channel
+    ON notification_templates USING btree (type, channel);
+
+CREATE TABLE notification_preferences (
+                                          id          BIGSERIAL PRIMARY KEY,
+                                          user_id     BIGINT NOT NULL,
+                                          type        notification_type NOT NULL,
+                                          channel     notification_channel NOT NULL,
+                                          enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+                                          preferred   BOOLEAN NOT NULL DEFAULT FALSE,
+                                          created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                          updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                                          CONSTRAINT fk_notification_preferences_user
+                                              FOREIGN KEY (user_id)
+                                                  REFERENCES users (id)
+                                                  ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX uq_notification_preferences_user_type_channel
+    ON notification_preferences (user_id, type, channel);
+
+CREATE UNIQUE INDEX uq_notification_preferences_one_preferred_channel
+    ON notification_preferences (user_id, type)
+    WHERE preferred = TRUE;
+
+CREATE INDEX idx_notification_preferences_user
+    ON notification_preferences USING btree (user_id);
+
+CREATE INDEX idx_notification_preferences_type_channel
+    ON notification_preferences USING btree (type, channel);
+
 CREATE TABLE notifications (
                                id              BIGSERIAL PRIMARY KEY,
                                user_id         BIGINT NOT NULL,
