@@ -155,6 +155,11 @@ CREATE TYPE notification_channel AS ENUM (
     'SMS'
     );
 
+CREATE TYPE notification_template_status AS ENUM (
+    'ACTIVE',
+    'ARCHIVED'
+    );
+
 CREATE TYPE notification_status AS ENUM (
     'PLANNED',
     'PENDING',
@@ -181,6 +186,8 @@ CREATE TYPE audit_entity_type AS ENUM (
     'FINE',
     'PAYMENT_TRANSACTION',
     'NOTIFICATION',
+    'NOTIFICATION_TEMPLATE',
+    'NOTIFICATION_PREFERENCE',
     'USER_BLOCK',
     'USER_WARNING'
     );
