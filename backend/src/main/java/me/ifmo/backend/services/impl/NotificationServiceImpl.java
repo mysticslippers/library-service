@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +33,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private static final Set<NotificationStatus> FINAL_STATUSES =
             Set.of(NotificationStatus.DELIVERED, NotificationStatus.UNDELIVERED, NotificationStatus.CANCELLED);
+    private static final Pattern TEMPLATE_PARAMETER_PATTERN = Pattern.compile("\\{([a-zA-Z][a-zA-Z0-9_]*)}");
 
     private final NotificationRepository repository;
     private final UserRepository userRepository;
@@ -38,21 +41,83 @@ public class NotificationServiceImpl implements NotificationService {
     private final ReservationRepository reservationRepository;
     private final LoanRepository loanRepository;
     private final FineRepository fineRepository;
+    private final NotificationTemplateRepository templateRepository;
+    private final NotificationPreferenceServiceImpl preferenceService;
     private final NotificationMapper mapper;
     private final AuditLogService auditLogService;
 
     @Value("${notification.delivery.max-attempts:3}")
     private int maxDeliveryAttempts;
 
-    private String normalize(String value, String fieldName) {
-        if(fieldName.equals("Subject")) {
-            if (value == null || value.strip().isBlank())
-                return null;
-        } else {
-            if (value == null || value.strip().isBlank())
-                throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
-        }
+    private String normalizeRequired(String value, String fieldName) {
+        if (value == null || value.strip().isBlank())
+            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
+
         return value.strip();
+    }
+
+    private String normalize(String value) {
+        if (value == null)
+            return null;
+
+        String normalized = value.strip();
+        return normalized.isBlank() ? null : normalized;
+    }
+
+    private String parameterValue(Map<String, Object> parameters, String key) {
+        Object value = parameters.get(key);
+        if (value == null)
+            throw new BusinessRuleException("Notification template parameter '%s' is required".formatted(key));
+
+        String stringValue = value.toString();
+        if (stringValue.isBlank())
+            throw new BusinessRuleException("Notification template parameter '%s' must not be blank".formatted(key));
+
+        return stringValue;
+    }
+
+    private String renderTemplate(String template, Map<String, Object> parameters) {
+        if (template == null)
+            return null;
+
+        Matcher matcher = TEMPLATE_PARAMETER_PATTERN.matcher(template);
+        StringBuffer rendered = new StringBuffer();
+        while (matcher.find()) {
+            String replacement = parameterValue(parameters, matcher.group(1));
+            matcher.appendReplacement(rendered, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(rendered);
+
+        return rendered.toString();
+    }
+
+    private NotificationContent resolveContent(CreateNotificationRequest request, NotificationChannel channel) {
+        Map<String, Object> parameters = request.parameters() != null ? request.parameters() : Map.of();
+        String subject = normalize(request.subject());
+        String body = normalize(request.body());
+
+        if (subject != null && body != null)
+            return new NotificationContent(subject, body);
+
+        NotificationTemplate template = templateRepository.findByTypeAndChannelAndStatus(
+                        request.type(), channel, NotificationTemplateStatus.ACTIVE).orElse(null);
+
+        if (template != null) {
+            for (String requiredParameter : template.getRequiredParameters())
+                parameterValue(parameters, requiredParameter);
+
+            if (subject == null)
+                subject = renderTemplate(template.getSubjectTemplate(), parameters);
+            if (body == null)
+                body = renderTemplate(template.getBodyTemplate(), parameters);
+        }
+
+        body = normalizeRequired(body, "Notification body");
+
+        if (channel == NotificationChannel.EMAIL)
+            subject = normalizeRequired(subject, "Email notification subject");
+
+        return new NotificationContent(subject, body);
     }
 
     private int roleRank(RoleCode roleCode) {
@@ -154,17 +219,20 @@ public class NotificationServiceImpl implements NotificationService {
                 throw new BusinessRuleException("Fine belongs to another user");
         }
 
-        String subject = normalize(request.subject(), "Subject");
-        String body = normalize(request.body(), "Notification body");
-
-        if (request.channel() == NotificationChannel.EMAIL && subject == null)
-            throw new BusinessRuleException("Email notification subject must not be blank");
+        NotificationChannel channel = preferenceService.resolveChannel(user.getId(), request.type(), request.channel());
+        NotificationContent content = resolveContent(request, channel);
 
         CreateNotificationRequest normalizedRequest = new CreateNotificationRequest(user.getId(), request.reservationId(),
-                request.loanId(), request.fineId(), request.type(), request.channel(), subject, body);
+                request.loanId(), request.fineId(), request.type(), channel, content.subject(), content.body(),
+                request.parameters() != null ? request.parameters() : Map.of());
 
         Notification notification = mapper.toEntity(normalizedRequest, user, reservation, loan, fine);
-        notification.setStatus(NotificationStatus.PENDING);
+        if (preferenceService.isNotificationEnabled(user.getId(), request.type(), channel)) {
+            notification.setStatus(NotificationStatus.PENDING);
+        } else {
+            notification.setStatus(NotificationStatus.CANCELLED);
+            notification.setErrorMessage("Disabled by user notification preferences");
+        }
 
         Notification saved = repository.save(notification);
         return mapper.toResponse(saved);
@@ -293,5 +361,8 @@ public class NotificationServiceImpl implements NotificationService {
         Page<NotificationResponse> responses = notifications.map(mapper::toResponse);
 
         return PageResponse.from(responses);
+    }
+
+    private record NotificationContent(String subject, String body) {
     }
 }
