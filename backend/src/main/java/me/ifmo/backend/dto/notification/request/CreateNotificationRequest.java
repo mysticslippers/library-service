@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Size;
 import me.ifmo.backend.entities.enums.NotificationChannel;
 import me.ifmo.backend.entities.enums.NotificationType;
 
+import java.util.Map;
+
 public record CreateNotificationRequest(
         @NotNull
         Long userId,
@@ -16,12 +18,18 @@ public record CreateNotificationRequest(
         @NotNull
         NotificationType type,
 
-        @NotNull
         NotificationChannel channel,
 
         @Size(max = 255)
         String subject,
 
-        String body
+        String body,
+
+        Map<String, Object> parameters
 ) {
+        public CreateNotificationRequest(Long userId, Long reservationId, Long loanId, Long fineId,
+                                         NotificationType type, NotificationChannel channel,
+                                         String subject, String body) {
+                this(userId, reservationId, loanId, fineId, type, channel, subject, body, Map.of());
+        }
 }
