@@ -81,7 +81,7 @@ public class NotificationServiceImpl implements NotificationService {
             return null;
 
         Matcher matcher = TEMPLATE_PARAMETER_PATTERN.matcher(template);
-        StringBuffer rendered = new StringBuffer();
+        StringBuilder rendered = new StringBuilder();
         while (matcher.find()) {
             String replacement = parameterValue(parameters, matcher.group(1));
             matcher.appendReplacement(rendered, Matcher.quoteReplacement(replacement));
