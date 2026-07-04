@@ -6,7 +6,9 @@ import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
 import me.ifmo.backend.dto.notification.request.NotificationSearchRequest;
 import me.ifmo.backend.dto.notification.request.UpdateNotificationStatusRequest;
+import me.ifmo.backend.dto.notification.response.NotificationDeliveryBatchResponse;
 import me.ifmo.backend.dto.notification.response.NotificationResponse;
+import me.ifmo.backend.services.NotificationDeliveryService;
 import me.ifmo.backend.services.NotificationService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class NotificationController {
 
     private final NotificationService service;
+    private final NotificationDeliveryService deliveryService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -49,6 +52,13 @@ public class NotificationController {
     @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
     public NotificationResponse resend(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
         return service.resend(Long.valueOf(userDetails.getUsername()), id);
+    }
+
+    @PostMapping("/process-pending")
+    @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
+    public NotificationDeliveryBatchResponse processPending(@AuthenticationPrincipal UserDetails userDetails,
+                                                            @RequestParam(defaultValue = "50") int limit) {
+        return deliveryService.processPending(Long.valueOf(userDetails.getUsername()), limit);
     }
 
     @GetMapping
