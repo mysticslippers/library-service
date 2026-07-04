@@ -14,4 +14,7 @@ public record UpdateNotificationStatusRequest(
         @Size(max = 2000)
         String errorMessage
 ) {
+        public UpdateNotificationStatusRequest(NotificationStatus status) {
+                this(status, null, null);
+        }
 }
