@@ -40,16 +40,20 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
     private final LoanRepository loanRepository;
     private final ReservationRepository reservationRepository;
     private final MaterialCopyMapper materialCopyMapper;
-
+    
     private String normalize(String value, String fieldName) {
-        if(fieldName.equals("Inventory number"))
+        if(fieldName.equals("Inventory number")){
             if (value == null || value.strip().isBlank())
                 throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
-        else{
-            return null;
-        }
 
-        return value.strip();
+            return value.strip();
+        } else {
+            if (value == null)
+                return null;
+
+            String normalized = value.strip();
+            return normalized.isBlank() ? null : normalized;
+        }
     }
 
     private boolean isTransitionAllowed(CopyStatus current, CopyStatus target) {
@@ -80,6 +84,16 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
                 || reservationRepository.findByCopy_IdAndStatusIn(copyId, BLOCKING_RESERVATION_STATUSES).isPresent();
     }
 
+    private Branch getActiveBranch(Long branchId) {
+        Branch branch = branchRepository.findById(branchId).orElseThrow(
+                () -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(branchId)));
+
+        if (branch.getStatus() != BranchStatus.ACTIVE)
+            throw new BusinessRuleException("Material copy can be assigned only to active branch");
+
+        return branch;
+    }
+
     @Override
     @Transactional
     public MaterialCopyResponse create(CreateMaterialCopyRequest request) {
@@ -89,11 +103,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
         if (material.getStatus() != MaterialStatus.ACTIVE)
             throw new BusinessRuleException("Material copy can be created only for active material");
 
-        Branch branch = branchRepository.findById(request.branchId()).orElseThrow(
-                        () -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(request.branchId())));
-
-        if (branch.getStatus() != BranchStatus.ACTIVE)
-            throw new BusinessRuleException("Material copy can be created only for active branch");
+        Branch branch = getActiveBranch(request.branchId());
 
         String inventoryNumber = normalize(request.inventoryNumber(), "Inventory number");
         String shelfLocation = normalize(request.shelfLocation(), "Shelf location");
@@ -138,9 +148,28 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
         if (copy.getStatus() == CopyStatus.REMOVED)
             throw new BusinessRuleException("Removed material copy cannot be updated");
 
+        String inventoryNumber = request.inventoryNumber() != null
+                ? normalize(request.inventoryNumber(), "Inventory number")
+                : null;
         String shelfLocation = normalize(request.shelfLocation(), "Shelf location");
 
-        materialCopyMapper.updateEntity(new UpdateMaterialCopyRequest(shelfLocation), copy);
+        if (inventoryNumber != null && !inventoryNumber.equals(copy.getInventoryNumber())) {
+            if (repository.existsByInventoryNumber(inventoryNumber))
+                throw new DuplicateResourceException(
+                        "Material copy with inventory number '%s' already exists".formatted(inventoryNumber));
+
+            copy.setInventoryNumber(inventoryNumber);
+        }
+
+        if (request.branchId() != null && !request.branchId().equals(copy.getBranch().getId())) {
+            if (hasActiveOperations(copy.getId()))
+                throw new ResourceInUseException("Material copy has active operations");
+
+            copy.setBranch(getActiveBranch(request.branchId()));
+        }
+
+        if (request.shelfLocation() != null)
+            copy.setShelfLocation(shelfLocation);
 
         MaterialCopy saved = repository.save(copy);
         return materialCopyMapper.toResponse(saved);
