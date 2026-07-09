@@ -284,15 +284,19 @@ CREATE TABLE genres (
 );
 
 CREATE TABLE authors (
-    id          BIGSERIAL PRIMARY KEY,
-    first_name  VARCHAR(100) NOT NULL,
-    last_name   VARCHAR(100) NOT NULL,
-    middle_name VARCHAR(100),
-    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                         id          BIGSERIAL PRIMARY KEY,
+                         first_name  VARCHAR(100) NOT NULL,
+                         last_name   VARCHAR(100) NOT NULL,
+                         middle_name VARCHAR(100),
+                         status      author_status NOT NULL DEFAULT 'ACTIVE',
+                         created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_authors_full_name
     ON authors USING btree (last_name, first_name, middle_name);
+
+CREATE INDEX idx_authors_status
+    ON authors USING btree (status);
 
 CREATE TABLE materials (
     id                  BIGSERIAL PRIMARY KEY,
