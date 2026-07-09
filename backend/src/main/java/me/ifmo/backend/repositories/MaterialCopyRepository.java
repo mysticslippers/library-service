@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 public interface MaterialCopyRepository extends JpaRepository<MaterialCopy, Long> {
 
@@ -28,6 +29,8 @@ public interface MaterialCopyRepository extends JpaRepository<MaterialCopy, Long
     Page<MaterialCopy> findByMaterial_IdAndStatus(Long materialId, CopyStatus status, Pageable pageable);
 
     boolean existsByMaterial_IdAndStatusNot(Long materialId, CopyStatus status);
+
+    boolean existsByMaterial_IdAndStatusIn(Long materialId, Collection<CopyStatus> statuses);
 
     Page<MaterialCopy> findByBranch_IdAndStatus(Long branchId, CopyStatus status, Pageable pageable);
 
