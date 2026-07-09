@@ -1,6 +1,7 @@
 package me.ifmo.backend.repositories;
 
 import me.ifmo.backend.entities.Author;
+import me.ifmo.backend.entities.enums.AuthorStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,7 +40,8 @@ public interface AuthorRepository extends JpaRepository<Author, Long> {
                WHERE (:query IS NULL OR :query = ''
                    OR lower(author.firstName) LIKE lower(concat('%', :query, '%')) 
                    OR lower(coalesce(author.middleName, '')) LIKE lower(concat('%', :query, '%')) 
-                   OR lower(author.lastName) LIKE lower(concat('%', :query, '%'))) 
+                   OR lower(author.lastName) LIKE lower(concat('%', :query, '%')))
+                   AND author.status = :status
     """)
-    Page<Author> search(@Param("query") String query, Pageable pageable);
+    Page<Author> search(@Param("query") String query, @Param("status") AuthorStatus status, Pageable pageable);
 }
