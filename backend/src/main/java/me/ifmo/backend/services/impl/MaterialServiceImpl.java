@@ -6,6 +6,7 @@ import me.ifmo.backend.dto.catalog.response.MaterialResponse;
 import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.CopyStatus;
+import me.ifmo.backend.entities.enums.AuthorStatus;
 import me.ifmo.backend.entities.enums.MaterialStatus;
 import me.ifmo.backend.entities.id.MaterialAuthorId;
 import me.ifmo.backend.entities.id.MaterialGenreId;
@@ -76,6 +77,9 @@ public class MaterialServiceImpl implements MaterialService {
             Author author = authorRepository.findById(authorRequest.authorId()).orElseThrow(
                     () -> new ResourceNotFoundException(
                             "Author with id '%s' not found".formatted(authorRequest.authorId())));
+
+            if (author.getStatus() == AuthorStatus.ARCHIVED)
+                throw new BusinessRuleException("Archived author cannot be assigned to material");
 
             Integer authorOrder = (authorRequest.authorOrder() != null) ? authorRequest.authorOrder() : defaultOrder;
 
