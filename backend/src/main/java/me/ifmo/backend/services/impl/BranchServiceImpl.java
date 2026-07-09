@@ -38,12 +38,11 @@ public class BranchServiceImpl implements BranchService {
     private final LoanRepository loanRepository;
     private final ReservationRepository reservationRepository;
     private final MaterialCopyRepository materialCopyRepository;
-    private final BranchMapper mapper;
+    private final BranchMapper branchMapper;
 
-    private String normalize(String value, String fieldName) {
-        if (value == null || value.strip().isBlank()) {
-            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
-        }
+    private String normalize(String value) {
+        if (value == null || value.strip().isBlank())
+            throw new BusinessRuleException("%s must not be blank".formatted("Branch name"));
 
         return value.strip();
     }
@@ -70,15 +69,15 @@ public class BranchServiceImpl implements BranchService {
         if (library.getStatus() != LibraryStatus.ACTIVE)
             throw new BusinessRuleException("Branch can be created only for active library");
 
-        String name = normalize(request.name(), "Branch name");
+        String name = normalize(request.name());
         if (repository.existsByLibrary_IdAndNameIgnoreCase(library.getId(), name))
             throw new DuplicateResourceException("Branch with name '%s' already exists in library with id '%s'"
                             .formatted(name, library.getId()));
 
-        Branch branch = mapper.toEntity(new CreateBranchRequest(library.getId(), name, request.address()), library);
+        Branch branch = branchMapper.toEntity(new CreateBranchRequest(library.getId(), name, request.address()), library);
 
         Branch saved = repository.save(branch);
-        return mapper.toResponse(saved);
+        return branchMapper.toResponse(saved);
     }
 
     @Override
@@ -88,7 +87,7 @@ public class BranchServiceImpl implements BranchService {
                 () -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(id))
         );
 
-        return mapper.toResponse(branch);
+        return branchMapper.toResponse(branch);
     }
 
     @Override
@@ -100,17 +99,17 @@ public class BranchServiceImpl implements BranchService {
         if (branch.getStatus() == BranchStatus.ARCHIVED)
             throw new BusinessRuleException("Archived branch cannot be updated");
 
-        String name = request.name() != null ? normalize(request.name(), "Branch name") : null;
+        String name = request.name() != null ? normalize(request.name()) : null;
 
         if (name != null && !name.equalsIgnoreCase(branch.getName())
                 && repository.existsByLibrary_IdAndNameIgnoreCase(branch.getLibrary().getId(), name))
             throw new DuplicateResourceException("Branch with name '%s' already exists in library with id '%s'"
                             .formatted(name, branch.getLibrary().getId()));
 
-        mapper.updateEntity(new UpdateBranchRequest(name, request.address()), branch);
+        branchMapper.updateEntity(new UpdateBranchRequest(name, request.address()), branch);
 
         Branch saved = repository.save(branch);
-        return mapper.toResponse(saved);
+        return branchMapper.toResponse(saved);
     }
 
     @Override
@@ -122,7 +121,7 @@ public class BranchServiceImpl implements BranchService {
         BranchStatus status = request.status();
 
         if (branch.getStatus() == status)
-            return mapper.toResponse(branch);
+            return branchMapper.toResponse(branch);
 
         if (!isTransitionAllowed(branch.getStatus(), status))
             throw new BusinessRuleException("Branch status transition from '%s' to '%s' is not allowed"
@@ -145,7 +144,7 @@ public class BranchServiceImpl implements BranchService {
         branch.setStatus(status);
 
         Branch saved = repository.save(branch);
-        return mapper.toResponse(saved);
+        return branchMapper.toResponse(saved);
     }
 
     @Override
@@ -162,7 +161,7 @@ public class BranchServiceImpl implements BranchService {
         else
             branches = repository.findByLibrary_IdAndStatus(libraryId, status, pageable);
 
-        Page<BranchResponse> responses = branches.map(mapper::toResponse);
+        Page<BranchResponse> responses = branches.map(branchMapper::toResponse);
 
         return PageResponse.from(responses);
     }

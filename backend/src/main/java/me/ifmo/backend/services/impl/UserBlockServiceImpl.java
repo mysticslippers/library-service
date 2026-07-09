@@ -40,7 +40,7 @@ public class UserBlockServiceImpl implements UserBlockService {
     private final UserBlockRepository repository;
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
-    private final UserBlockMapper mapper;
+    private final UserBlockMapper userBlockMapper;
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
 
@@ -120,7 +120,7 @@ public class UserBlockServiceImpl implements UserBlockService {
 
         CreateUserBlockRequest normalizedRequest = new CreateUserBlockRequest(user.getId(), reason, request.expiresAt());
 
-        UserBlock block = mapper.toEntity(normalizedRequest, user, createdByUser);
+        UserBlock block = userBlockMapper.toEntity(normalizedRequest, user, createdByUser);
         block.setStatus(UserBlockStatus.ACTIVE);
         user.setStatus(UserStatus.BLOCKED);
 
@@ -130,7 +130,7 @@ public class UserBlockServiceImpl implements UserBlockService {
 
         notifyUser(user, NotificationType.USER_BLOCKED, "Library account blocked",
                 "Your account has been blocked. Reason: %s".formatted(reason));
-        return mapper.toResponse(saved);
+        return userBlockMapper.toResponse(saved);
     }
 
     @Override
@@ -139,7 +139,7 @@ public class UserBlockServiceImpl implements UserBlockService {
         UserBlock block = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User block with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(block);
+        return userBlockMapper.toResponse(block);
     }
 
     @Override
@@ -167,7 +167,7 @@ public class UserBlockServiceImpl implements UserBlockService {
                 Map.of("userId", block.getUser().getId(), "reason", reason));
         notifyUser(block.getUser(), NotificationType.USER_UNBLOCKED, "Library account unblocked",
                 "Your account has been unblocked. Reason: %s".formatted(reason));
-        return mapper.toResponse(saved);
+        return userBlockMapper.toResponse(saved);
     }
 
     @Override
@@ -192,13 +192,13 @@ public class UserBlockServiceImpl implements UserBlockService {
                 Map.of("userId", block.getUser().getId(), "reason", "Block expired"));
         notifyUser(block.getUser(), NotificationType.USER_UNBLOCKED, "Library account unblocked",
                 "Your account has been unblocked because the block expired.");
-        return mapper.toResponse(saved);
+        return userBlockMapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserBlockResponse> search(Long userId, Long createdByUserId, UserBlockStatus status, Pageable pageable) {
-        Page<UserBlockResponse> responses = repository.search(userId, createdByUserId, status, pageable).map(mapper::toResponse);
+        Page<UserBlockResponse> responses = repository.search(userId, createdByUserId, status, pageable).map(userBlockMapper::toResponse);
         return PageResponse.from(responses);
     }
 }

@@ -42,7 +42,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
 
     private final NotificationPreferenceRepository repository;
     private final UserRepository userRepository;
-    private final NotificationPreferenceMapper mapper;
+    private final NotificationPreferenceMapper notificationPreferenceMapper;
     private final AuditLogService auditLogService;
 
     static boolean isMandatory(NotificationType type) {
@@ -63,7 +63,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
                         .map(channel -> {
                             NotificationPreference preference = existing.getOrDefault(type, Map.of()).get(channel);
                             if (preference != null)
-                                return mapper.toResponse(preference, isMandatory(type));
+                                return notificationPreferenceMapper.toResponse(preference, isMandatory(type));
 
                             return new NotificationPreferenceResponse(null, actorUserId, type, channel,
                                     true, channel == NotificationChannel.EMAIL, isMandatory(type), null, null);
@@ -108,7 +108,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
                 isNew ? AuditAction.CREATE : AuditAction.UPDATE,
                 Map.of("type", saved.getType().name(), "channel", saved.getChannel().name(),
                         "enabled", saved.getEnabled(), "preferred", saved.getPreferred()));
-        return mapper.toResponse(saved, isMandatory(saved.getType()));
+        return notificationPreferenceMapper.toResponse(saved, isMandatory(saved.getType()));
     }
 
     public boolean isNotificationEnabled(Long userId, NotificationType type, NotificationChannel channel) {

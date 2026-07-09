@@ -43,7 +43,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final FineRepository fineRepository;
     private final NotificationTemplateRepository templateRepository;
     private final NotificationPreferenceServiceImpl preferenceService;
-    private final NotificationMapper mapper;
+    private final NotificationMapper notificationMapper;
     private final AuditLogService auditLogService;
 
     @Value("${notification.delivery.max-attempts:3}")
@@ -226,7 +226,7 @@ public class NotificationServiceImpl implements NotificationService {
                 request.loanId(), request.fineId(), request.type(), channel, content.subject(), content.body(),
                 request.parameters() != null ? request.parameters() : Map.of());
 
-        Notification notification = mapper.toEntity(normalizedRequest, user, reservation, loan, fine);
+        Notification notification = notificationMapper.toEntity(normalizedRequest, user, reservation, loan, fine);
         if (preferenceService.isNotificationEnabled(user.getId(), request.type(), channel)) {
             notification.setStatus(NotificationStatus.PENDING);
         } else {
@@ -235,7 +235,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         Notification saved = repository.save(notification);
-        return mapper.toResponse(saved);
+        return notificationMapper.toResponse(saved);
     }
 
     @Override
@@ -246,7 +246,7 @@ public class NotificationServiceImpl implements NotificationService {
                 () -> new ResourceNotFoundException("Notification with id '%s' not found".formatted(id)));
         validateCanView(actor, notification);
 
-        return mapper.toResponse(notification);
+        return notificationMapper.toResponse(notification);
     }
 
     @Override
@@ -291,13 +291,13 @@ public class NotificationServiceImpl implements NotificationService {
         else
             request = new UpdateNotificationStatusRequest(targetStatus, externalMessageId, errorMessage);
 
-        mapper.updateStatus(request, sentAt, notification);
+        notificationMapper.updateStatus(request, sentAt, notification);
 
         if (notification.getStatus() == NotificationStatus.SENT || notification.getStatus() == NotificationStatus.DELIVERED)
             notification.setErrorMessage(null);
 
         Notification saved = repository.save(notification);
-        return mapper.toResponse(saved);
+        return notificationMapper.toResponse(saved);
     }
 
     @Override
@@ -312,7 +312,7 @@ public class NotificationServiceImpl implements NotificationService {
             notification.setReadAt(LocalDateTime.now());
 
         Notification saved = repository.save(notification);
-        return mapper.toResponse(saved);
+        return notificationMapper.toResponse(saved);
     }
 
     @Override
@@ -337,7 +337,7 @@ public class NotificationServiceImpl implements NotificationService {
         Notification saved = repository.save(notification);
         auditLogService.record(actor.getId(), AuditEntityType.NOTIFICATION, saved.getId(), AuditAction.UPDATE,
                 Map.of("action", "RESEND"));
-        return mapper.toResponse(saved);
+        return notificationMapper.toResponse(saved);
     }
 
     @Override
@@ -358,7 +358,7 @@ public class NotificationServiceImpl implements NotificationService {
                 request.loanId(), request.fineId(), request.type(), request.channel(), request.status(),
                 request.createdFrom(), request.createdTo(), request.sentFrom(), request.sentTo(), query, pageable);
 
-        Page<NotificationResponse> responses = notifications.map(mapper::toResponse);
+        Page<NotificationResponse> responses = notifications.map(notificationMapper::toResponse);
 
         return PageResponse.from(responses);
     }

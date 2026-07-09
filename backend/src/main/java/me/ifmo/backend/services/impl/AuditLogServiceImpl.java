@@ -27,7 +27,7 @@ public class AuditLogServiceImpl implements AuditLogService {
 
     private final AuditLogRepository repository;
     private final UserRepository userRepository;
-    private final AuditLogMapper mapper;
+    private final AuditLogMapper auditLogMapper;
 
     @Override
     @Transactional
@@ -46,10 +46,10 @@ public class AuditLogServiceImpl implements AuditLogService {
             actor = userRepository.findById(actorUserId).orElseThrow(
                     () -> new ResourceNotFoundException("Actor user with id '%s' not found".formatted(actorUserId)));
 
-        AuditLog auditLog = mapper.toEntity(actor, type, entityId, action, details != null ? details : Map.of());
+        AuditLog auditLog = auditLogMapper.toEntity(actor, type, entityId, action, details != null ? details : Map.of());
 
         AuditLog saved = repository.save(auditLog);
-        return mapper.toResponse(saved);
+        return auditLogMapper.toResponse(saved);
     }
 
     @Override
@@ -58,7 +58,7 @@ public class AuditLogServiceImpl implements AuditLogService {
         AuditLog auditLog = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("AuditLog with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(auditLog);
+        return auditLogMapper.toResponse(auditLog);
     }
 
     @Override
@@ -67,7 +67,7 @@ public class AuditLogServiceImpl implements AuditLogService {
         Page<AuditLog> auditLogs = repository.search(request.actorUserId(), request.type(), request.entityId(),
                 request.action(), request.createdFrom(), request.createdTo(), pageable);
 
-        Page<AuditLogResponse> responses = auditLogs.map(mapper::toResponse);
+        Page<AuditLogResponse> responses = auditLogs.map(auditLogMapper::toResponse);
 
         return PageResponse.from(responses);
     }

@@ -40,7 +40,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final LibraryRuleRepository libraryRuleRepository;
     private final MaterialAuthorRepository materialAuthorRepository;
     private final MaterialGenreRepository materialGenreRepository;
-    private final ReservationMapper mapper;
+    private final ReservationMapper reservationMapper;
     private final MaterialMapper materialMapper;
 
     private String normalize(String value, String fieldName) {
@@ -59,7 +59,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private ReservationResponse toResponse(Reservation reservation) {
-        return mapper.toResponse(reservation, toMaterialShortResponse(reservation.getMaterial()));
+        return reservationMapper.toResponse(reservation, toMaterialShortResponse(reservation.getMaterial()));
     }
 
     private LibraryRule getActualRule(Long branchId) {
@@ -130,7 +130,7 @@ public class ReservationServiceImpl implements ReservationService {
 
         copy.setStatus(CopyStatus.RESERVED);
 
-        Reservation reservation = mapper.toEntity(user, material, copy, branch, expiresAt);
+        Reservation reservation = reservationMapper.toEntity(user, material, copy, branch, expiresAt);
         reservation.setStatus(ReservationStatus.READY_FOR_PICKUP);
         reservation.setReadyAt(now);
 

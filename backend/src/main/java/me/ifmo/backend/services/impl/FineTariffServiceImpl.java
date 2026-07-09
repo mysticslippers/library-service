@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
 public class FineTariffServiceImpl implements FineTariffService {
 
     private final FineTariffRepository repository;
-    private final FineTariffMapper mapper;
+    private final FineTariffMapper fineTariffMapper;
 
     private void validate(BigDecimal amountPerDay, BigDecimal fixedAmount, BigDecimal maxAmount) {
         boolean hasAmountPerDay = amountPerDay != null && amountPerDay.compareTo(BigDecimal.ZERO) > 0;
@@ -55,12 +55,12 @@ public class FineTariffServiceImpl implements FineTariffService {
                     activeTariff.setValidTo(now);
                 });
 
-        FineTariff tariff = mapper.toEntity(request);
+        FineTariff tariff = fineTariffMapper.toEntity(request);
         tariff.setStatus(FineTariffStatus.ACTIVE);
         tariff.setValidTo(request.validTo());
 
         FineTariff saved = repository.save(tariff);
-        return mapper.toResponse(saved);
+        return fineTariffMapper.toResponse(saved);
     }
 
     @Override
@@ -69,7 +69,7 @@ public class FineTariffServiceImpl implements FineTariffService {
         FineTariff tariff = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Fine tariff with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(tariff);
+        return fineTariffMapper.toResponse(tariff);
     }
 
     @Override
@@ -79,7 +79,7 @@ public class FineTariffServiceImpl implements FineTariffService {
                         LocalDateTime.now()).orElseThrow(
                         () -> new ResourceNotFoundException("Actual fine tariff for violation type '%s' not found".formatted(violationType)));
 
-        return mapper.toResponse(tariff);
+        return fineTariffMapper.toResponse(tariff);
     }
 
     @Override
@@ -100,10 +100,10 @@ public class FineTariffServiceImpl implements FineTariffService {
         if (request.validTo() != null && !request.validTo().isAfter(tariff.getValidFrom()))
             throw new BusinessRuleException("Fine tariff validTo must be after validFrom");
 
-        mapper.updateEntity(request, tariff);
+        fineTariffMapper.updateEntity(request, tariff);
 
         FineTariff saved = repository.save(tariff);
-        return mapper.toResponse(saved);
+        return fineTariffMapper.toResponse(saved);
     }
 
     @Override
@@ -115,7 +115,7 @@ public class FineTariffServiceImpl implements FineTariffService {
         FineTariffStatus status = request.status();
 
         if (tariff.getStatus() == status)
-            return mapper.toResponse(tariff);
+            return fineTariffMapper.toResponse(tariff);
 
         if (tariff.getStatus() == FineTariffStatus.ARCHIVED)
             throw new BusinessRuleException("Archived fine tariff status cannot be changed");
@@ -138,7 +138,7 @@ public class FineTariffServiceImpl implements FineTariffService {
         tariff.setStatus(status);
 
         FineTariff saved = repository.save(tariff);
-        return mapper.toResponse(saved);
+        return fineTariffMapper.toResponse(saved);
     }
 
     @Override
@@ -155,7 +155,7 @@ public class FineTariffServiceImpl implements FineTariffService {
         else
             tariffs = repository.findByViolationTypeAndStatus(violationType, status, pageable);
 
-        Page<FineTariffResponse> responses = tariffs.map(mapper::toResponse);
+        Page<FineTariffResponse> responses = tariffs.map(fineTariffMapper::toResponse);
 
         return PageResponse.from(responses);
     }

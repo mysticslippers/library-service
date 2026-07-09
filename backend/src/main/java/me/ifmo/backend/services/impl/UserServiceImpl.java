@@ -50,7 +50,7 @@ public class UserServiceImpl implements UserService {
     private final FineRepository fineRepository;
     private final MaterialAuthorRepository materialAuthorRepository;
     private final MaterialGenreRepository materialGenreRepository;
-    private final UserMapper mapper;
+    private final UserMapper userMapper;
     private final UserBlockMapper userBlockMapper;
     private final UserWarningMapper userWarningMapper;
     private final LoanMapper loanMapper;
@@ -88,7 +88,7 @@ public class UserServiceImpl implements UserService {
 
     private UserAdminResponse toAdminResponse(User user) {
         List<UserRole> userRoles = userRoleRepository.findByUser_Id(user.getId());
-        UserAdminResponse base = mapper.toAdminResponse(user, userRoles);
+        UserAdminResponse base = userMapper.toAdminResponse(user, userRoles);
 
         return new UserAdminResponse(base.id(), base.email(), base.phone(), base.firstName(), base.lastName(),
                 base.middleName(), base.status(), base.homeBranchId(), base.homeBranchName(), base.registeredAt(),
@@ -107,7 +107,7 @@ public class UserServiceImpl implements UserService {
 
     private UserProfileResponse toProfileResponse(User user) {
         List<RoleCode> roles = userRoleRepository.findRoleCodesByUser_Id(user.getId());
-        return mapper.toProfileResponse(user, new LinkedHashSet<>(roles));
+        return userMapper.toProfileResponse(user, new LinkedHashSet<>(roles));
     }
 
     private boolean isTransitionAllowed(UserStatus current, UserStatus target) {
@@ -219,7 +219,7 @@ public class UserServiceImpl implements UserService {
         Set<RoleCode> roles = request.roles() == null || request.roles().isEmpty() ? Set.of(RoleCode.READER) : request.roles();
         roles.forEach(role -> validateActorCanAssignRole(actor, role));
 
-        User user = mapper.toEntity(new CreateUserRequest(email, phone, request.password(), firstName, lastName,
+        User user = userMapper.toEntity(new CreateUserRequest(email, phone, request.password(), firstName, lastName,
                 middleName, request.homeBranchId(), roles));
 
         user.setPasswordHash(passwordEncoder.encode(request.password()));
@@ -281,7 +281,7 @@ public class UserServiceImpl implements UserService {
         if (phone != null && !phone.equals(user.getPhone()) && repository.existsByPhone(phone))
             throw new DuplicateResourceException("User with phone '%s' already exists".formatted(phone));
 
-        mapper.updateEntity(new UpdateUserRequest(email, phone, firstName, lastName, middleName, request.homeBranchId()), user);
+        userMapper.updateEntity(new UpdateUserRequest(email, phone, firstName, lastName, middleName, request.homeBranchId()), user);
 
         if (request.middleName() != null)
             user.setMiddleName(middleName);

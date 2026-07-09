@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RoleServiceImpl implements RoleService {
 
     private final RoleRepository repository;
-    private final RoleMapper mapper;
+    private final RoleMapper roleMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -27,7 +27,7 @@ public class RoleServiceImpl implements RoleService {
         Role role = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Role with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(role);
+        return roleMapper.toResponse(role);
     }
 
     @Override
@@ -36,13 +36,13 @@ public class RoleServiceImpl implements RoleService {
         Role role = repository.findByCode(code).orElseThrow(
                 () -> new ResourceNotFoundException("Role with code '%s' not found".formatted(code)));
 
-        return mapper.toResponse(role);
+        return roleMapper.toResponse(role);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<RoleResponse> search(Pageable pageable) {
-        Page<RoleResponse> responses = repository.findAll(pageable).map(mapper::toResponse);
+        Page<RoleResponse> responses = repository.findAll(pageable).map(roleMapper::toResponse);
         return PageResponse.from(responses);
     }
 }

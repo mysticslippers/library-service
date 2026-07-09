@@ -36,7 +36,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
 
     private final PaymentTransactionRepository repository;
     private final FineRepository fineRepository;
-    private final PaymentTransactionMapper mapper;
+    private final PaymentTransactionMapper paymentTransactionMapper;
 
     private String normalize(String value) {
         if (value == null || value.strip().isBlank()) {
@@ -94,11 +94,11 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         if (repository.findByFine_IdAndStatus(fine.getId(), PaymentStatus.PENDING).isPresent())
             throw new BusinessRuleException("Fine already has pending payment transaction");
 
-        PaymentTransaction transaction = mapper.toEntity(fine, externalPayment, request.amount());
+        PaymentTransaction transaction = paymentTransactionMapper.toEntity(fine, externalPayment, request.amount());
         transaction.setStatus(PaymentStatus.CREATED);
 
         PaymentTransaction saved = repository.save(transaction);
-        return mapper.toResponse(saved);
+        return paymentTransactionMapper.toResponse(saved);
     }
 
     @Override
@@ -107,7 +107,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         PaymentTransaction transaction = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Payment transaction with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(transaction);
+        return paymentTransactionMapper.toResponse(transaction);
     }
 
     @Override
@@ -122,7 +122,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
                 () -> new ResourceNotFoundException(
                         "Payment transaction with external payment id '%s' not found".formatted(normalizedExternalPayment)));
 
-        return mapper.toResponse(transaction);
+        return paymentTransactionMapper.toResponse(transaction);
     }
 
     @Override
@@ -142,7 +142,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
             throw new DuplicateResourceException(
                     "Payment transaction with external payment id '%s' already exists".formatted(externalPayment));
 
-        mapper.updateStatus(new UpdatePaymentStatusRequest(targetStatus, externalPayment), transaction);
+        paymentTransactionMapper.updateStatus(new UpdatePaymentStatusRequest(targetStatus, externalPayment), transaction);
         transaction.setUpdatedAt(LocalDateTime.now());
 
         if (targetStatus == PaymentStatus.SUCCESS) {
@@ -156,7 +156,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         }
 
         PaymentTransaction saved = repository.save(transaction);
-        return mapper.toResponse(saved);
+        return paymentTransactionMapper.toResponse(saved);
     }
 
     @Override
@@ -164,7 +164,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
     public PageResponse<PaymentTransactionResponse> search(PaymentTransactionSearchRequest request, Pageable pageable) {
         Page<PaymentTransaction> transactions = repository.search(request.fineId(), request.status(), request.createdFrom(), request.createdTo(), pageable);
 
-        Page<PaymentTransactionResponse> responses = transactions.map(mapper::toResponse);
+        Page<PaymentTransactionResponse> responses = transactions.map(paymentTransactionMapper::toResponse);
 
         return PageResponse.from(responses);
     }

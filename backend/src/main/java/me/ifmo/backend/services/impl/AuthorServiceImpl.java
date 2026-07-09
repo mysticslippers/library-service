@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthorServiceImpl implements AuthorService {
 
     private final AuthorRepository repository;
-    private final AuthorMapper mapper;
+    private final AuthorMapper authorMapper;
 
     private String normalize(String value, String fieldName) {
         if (value == null) {
@@ -56,10 +56,10 @@ public class AuthorServiceImpl implements AuthorService {
             throw new DuplicateResourceException("Author with the same full name already exists");
 
         CreateAuthorRequest normalizedRequest = new CreateAuthorRequest(firstName, lastName, middleName);
-        Author author = mapper.toEntity(normalizedRequest);
+        Author author = authorMapper.toEntity(normalizedRequest);
 
         Author saved = repository.save(author);
-        return mapper.toResponse(saved);
+        return authorMapper.toResponse(saved);
     }
 
     @Override
@@ -68,7 +68,7 @@ public class AuthorServiceImpl implements AuthorService {
         Author author = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Author with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(author);
+        return authorMapper.toResponse(author);
     }
 
     @Override
@@ -101,13 +101,13 @@ public class AuthorServiceImpl implements AuthorService {
                 request.middleName() != null ? middleName : null
         );
 
-        mapper.updateEntity(normalizedRequest, author);
+        authorMapper.updateEntity(normalizedRequest, author);
 
         if(request.middleName() != null && middleName == null)
             author.setMiddleName(null);
 
         Author saved = repository.save(author);
-        return mapper.toResponse(saved);
+        return authorMapper.toResponse(saved);
     }
 
     @Override
@@ -126,7 +126,7 @@ public class AuthorServiceImpl implements AuthorService {
     public PageResponse<AuthorResponse> search(AuthorSearchRequest request, Pageable pageable) {
         String query = (request == null || request.query() == null) ? "" : request.query().strip();
 
-        Page<AuthorResponse> responses = repository.search(query, AuthorStatus.ACTIVE, pageable).map(mapper::toResponse);
+        Page<AuthorResponse> responses = repository.search(query, AuthorStatus.ACTIVE, pageable).map(authorMapper::toResponse);
 
         return PageResponse.from(responses);
     }

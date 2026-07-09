@@ -43,7 +43,7 @@ public class LibraryServiceImpl implements LibraryService {
     private final BranchRepository branchRepository;
     private final LoanRepository loanRepository;
     private final ReservationRepository reservationRepository;
-    private final LibraryMapper mapper;
+    private final LibraryMapper libraryMapper;
 
     private String normalize(String value, String fieldName) {
         if (value == null || value.strip().isBlank())
@@ -73,10 +73,10 @@ public class LibraryServiceImpl implements LibraryService {
         if (repository.existsByCode(code))
             throw new DuplicateResourceException("Library with code '%s' already exists".formatted(code));
 
-        Library library = mapper.toEntity(new CreateLibraryRequest(code, name));
+        Library library = libraryMapper.toEntity(new CreateLibraryRequest(code, name));
 
         Library saved = repository.save(library);
-        return mapper.toResponse(saved);
+        return libraryMapper.toResponse(saved);
     }
 
     @Override
@@ -85,7 +85,7 @@ public class LibraryServiceImpl implements LibraryService {
         Library library = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Library with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(library);
+        return libraryMapper.toResponse(library);
     }
 
     @Override
@@ -96,7 +96,7 @@ public class LibraryServiceImpl implements LibraryService {
         Library library = repository.findByCode(normalizedCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Library with code '%s' not found".formatted(normalizedCode)));
 
-        return mapper.toResponse(library);
+        return libraryMapper.toResponse(library);
     }
 
     @Override
@@ -116,10 +116,10 @@ public class LibraryServiceImpl implements LibraryService {
         if (code != null && !code.equals(library.getCode()) && repository.existsByCode(code))
             throw new DuplicateResourceException("Library with code '%s' already exists".formatted(code));
 
-        mapper.updateEntity(new UpdateLibraryRequest(code, name), library);
+        libraryMapper.updateEntity(new UpdateLibraryRequest(code, name), library);
 
         Library saved = repository.save(library);
-        return mapper.toResponse(saved);
+        return libraryMapper.toResponse(saved);
     }
 
     @Override
@@ -131,7 +131,7 @@ public class LibraryServiceImpl implements LibraryService {
         LibraryStatus status = request.status();
 
         if (library.getStatus() == status)
-            return mapper.toResponse(library);
+            return libraryMapper.toResponse(library);
 
         if (!isTransitionAllowed(library.getStatus(), status))
             throw new BusinessRuleException(
@@ -151,7 +151,7 @@ public class LibraryServiceImpl implements LibraryService {
 
         library.setStatus(status);
         Library saved = repository.save(library);
-        return mapper.toResponse(saved);
+        return libraryMapper.toResponse(saved);
     }
 
     @Override
@@ -169,7 +169,7 @@ public class LibraryServiceImpl implements LibraryService {
         else
             libraries = repository.findByNameContainingIgnoreCaseAndStatus(normalizedQuery, status, pageable);
 
-        Page<LibraryResponse> responses = libraries.map(mapper::toResponse);
+        Page<LibraryResponse> responses = libraries.map(libraryMapper::toResponse);
 
         return PageResponse.from(responses);
     }

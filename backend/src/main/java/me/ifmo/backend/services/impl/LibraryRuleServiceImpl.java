@@ -29,7 +29,7 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
 
     private final LibraryRuleRepository repository;
     private final BranchRepository branchRepository;
-    private final LibraryRuleMapper mapper;
+    private final LibraryRuleMapper libraryRuleMapper;
 
     @Override
     @Transactional
@@ -46,12 +46,12 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
                     activeRule.setValidTo(LocalDateTime.now());
                 });
 
-        LibraryRule rule = mapper.toEntity(request, branch);
+        LibraryRule rule = libraryRuleMapper.toEntity(request, branch);
         rule.setStatus(LibraryRuleStatus.ACTIVE);
         rule.setValidTo(null);
 
         LibraryRule saved = repository.save(rule);
-        return mapper.toResponse(saved);
+        return libraryRuleMapper.toResponse(saved);
     }
 
     @Override
@@ -60,7 +60,7 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
         LibraryRule rule = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Library rule with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(rule);
+        return libraryRuleMapper.toResponse(rule);
     }
 
     @Override
@@ -70,7 +70,7 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
                 LocalDateTime.now()).orElseThrow(() ->
                 new ResourceNotFoundException("Actual library rule for branch with id '%s' not found".formatted(branchId)));
 
-        return mapper.toResponse(rule);
+        return libraryRuleMapper.toResponse(rule);
     }
 
     @Override
@@ -85,10 +85,10 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
         if (request.validTo() != null && !request.validTo().isAfter(rule.getValidFrom()))
             throw new BusinessRuleException("Library rule validTo must be after validFrom");
 
-        mapper.updateEntity(request, rule);
+        libraryRuleMapper.updateEntity(request, rule);
 
         LibraryRule saved = repository.save(rule);
-        return mapper.toResponse(saved);
+        return libraryRuleMapper.toResponse(saved);
     }
 
     @Override
@@ -100,7 +100,7 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
         LibraryRuleStatus status = request.status();
 
         if (rule.getStatus() == status)
-            return mapper.toResponse(rule);
+            return libraryRuleMapper.toResponse(rule);
 
         if (rule.getStatus() == LibraryRuleStatus.ARCHIVED)
             throw new BusinessRuleException("Archived library rule status cannot be changed");
@@ -127,7 +127,7 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
         rule.setStatus(status);
 
         LibraryRule saved = repository.save(rule);
-        return mapper.toResponse(saved);
+        return libraryRuleMapper.toResponse(saved);
     }
 
     @Override
@@ -144,7 +144,7 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
         else
             rules = repository.findByBranch_IdAndStatus(branchId, status, pageable);
 
-        Page<LibraryRuleResponse> responses = rules.map(mapper::toResponse);
+        Page<LibraryRuleResponse> responses = rules.map(libraryRuleMapper::toResponse);
         return PageResponse.from(responses);
     }
 }

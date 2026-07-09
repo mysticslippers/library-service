@@ -37,7 +37,7 @@ public class LoanServiceImpl implements LoanService {
     private final BranchRepository branchRepository;
     private final ReservationRepository reservationRepository;
     private final LibraryRuleRepository libraryRuleRepository;
-    private final LoanMapper mapper;
+    private final LoanMapper loanMapper;
 
     private LibraryRule getActualRule(Long branchId) {
         return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now())
@@ -134,12 +134,12 @@ public class LoanServiceImpl implements LoanService {
 
         copy.setStatus(CopyStatus.LOANED);
 
-        Loan loan = mapper.toEntity(user, copy, reservation, branch, issuedByUser, dueAt);
+        Loan loan = loanMapper.toEntity(user, copy, reservation, branch, issuedByUser, dueAt);
         loan.setStatus(LoanStatus.ACTIVE);
         loan.setRenewalCount(0);
 
         Loan saved = repository.save(loan);
-        return mapper.toResponse(saved);
+        return loanMapper.toResponse(saved);
     }
 
     @Override
@@ -148,7 +148,7 @@ public class LoanServiceImpl implements LoanService {
         Loan loan = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(loan);
+        return loanMapper.toResponse(loan);
     }
 
     @Override
@@ -167,7 +167,7 @@ public class LoanServiceImpl implements LoanService {
         loan.getCopy().setStatus(resultingCopyStatus);
 
         Loan saved = repository.save(loan);
-        return mapper.toResponse(saved);
+        return loanMapper.toResponse(saved);
     }
 
     @Override
@@ -193,7 +193,7 @@ public class LoanServiceImpl implements LoanService {
         loan.setRenewalCount(loan.getRenewalCount() + 1);
 
         Loan saved = repository.save(loan);
-        return mapper.toResponse(saved);
+        return loanMapper.toResponse(saved);
     }
 
     @Override
@@ -211,7 +211,7 @@ public class LoanServiceImpl implements LoanService {
         loan.setStatus(LoanStatus.OVERDUE);
 
         Loan saved = repository.save(loan);
-        return mapper.toResponse(saved);
+        return loanMapper.toResponse(saved);
     }
 
     @Override
@@ -227,7 +227,7 @@ public class LoanServiceImpl implements LoanService {
         loan.getCopy().setStatus(CopyStatus.LOST);
 
         Loan saved = repository.save(loan);
-        return mapper.toResponse(saved);
+        return loanMapper.toResponse(saved);
     }
 
     @Override
@@ -237,7 +237,7 @@ public class LoanServiceImpl implements LoanService {
                 request.status(), request.loanedFrom(), request.loanedTo(), request.dueBefore(), request.returnedFrom(),
                 request.returnedTo(), pageable);
 
-        Page<LoanResponse> responses = loans.map(mapper::toResponse);
+        Page<LoanResponse> responses = loans.map(loanMapper::toResponse);
 
         return PageResponse.from(responses);
     }

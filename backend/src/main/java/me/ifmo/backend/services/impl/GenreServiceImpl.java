@@ -25,7 +25,7 @@ import java.util.Locale;
 public class GenreServiceImpl implements GenreService {
 
     private final GenreRepository repository;
-    private final GenreMapper mapper;
+    private final GenreMapper genreMapper;
 
     private String normalize(String value, String fieldName) {
         if (value == null || value.strip().isBlank())
@@ -46,12 +46,12 @@ public class GenreServiceImpl implements GenreService {
         if(repository.existsByNameIgnoreCase(normalizedName))
             throw new DuplicateResourceException("Genre with name '%s' already exists".formatted(normalizedName));
 
-        Genre genre = mapper.toEntity(request);
+        Genre genre = genreMapper.toEntity(request);
         genre.setName(normalizedName);
         genre.setCode(normalizedCode);
 
         Genre saved = repository.save(genre);
-        return mapper.toResponse(saved);
+        return genreMapper.toResponse(saved);
     }
 
     @Override
@@ -60,7 +60,7 @@ public class GenreServiceImpl implements GenreService {
         Genre genre = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No genre with id '%s' found".formatted(id)));
 
-        return mapper.toResponse(genre);
+        return genreMapper.toResponse(genre);
     }
 
     @Override
@@ -71,7 +71,7 @@ public class GenreServiceImpl implements GenreService {
         Genre genre = repository.findByCode(normalizedCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Genre with code '%s' not found".formatted(code)));
 
-        return mapper.toResponse(genre);
+        return genreMapper.toResponse(genre);
     }
 
     @Override
@@ -96,10 +96,10 @@ public class GenreServiceImpl implements GenreService {
 
         UpdateGenreRequest normalizedRequest = new UpdateGenreRequest(normalizedCode, normalizedName);
 
-        mapper.updateEntity(normalizedRequest, genre);
+        genreMapper.updateEntity(normalizedRequest, genre);
 
         Genre saved = repository.save(genre);
-        return mapper.toResponse(saved);
+        return genreMapper.toResponse(saved);
     }
 
     @Override
@@ -120,7 +120,7 @@ public class GenreServiceImpl implements GenreService {
 
         Page<Genre> genres = repository.search(normalizedQuery, GenreStatus.ACTIVE, pageable);
 
-        Page<GenreResponse> responses = genres.map(mapper::toResponse);
+        Page<GenreResponse> responses = genres.map(genreMapper::toResponse);
 
         return PageResponse.from(responses);
     }

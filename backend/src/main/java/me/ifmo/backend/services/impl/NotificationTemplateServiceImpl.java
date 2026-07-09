@@ -33,7 +33,7 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
     private static final Pattern PARAMETER_PATTERN = Pattern.compile("\\{([a-zA-Z][a-zA-Z0-9_]*)}");
 
     private final NotificationTemplateRepository repository;
-    private final NotificationTemplateMapper mapper;
+    private final NotificationTemplateMapper notificationTemplateMapper;
     private final AuditLogService auditLogService;
 
     private String normalizeRequired(String value, String fieldName) {
@@ -99,14 +99,14 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
 
         validateTemplate(subjectTemplate, bodyTemplate, requiredParameters);
 
-        NotificationTemplate template = mapper.toEntity(new CreateNotificationTemplateRequest(request.type(),
+        NotificationTemplate template = notificationTemplateMapper.toEntity(new CreateNotificationTemplateRequest(request.type(),
                 request.channel(), subjectTemplate, bodyTemplate, requiredParameters));
         template.setStatus(NotificationTemplateStatus.ACTIVE);
 
         NotificationTemplate saved = repository.save(template);
         auditLogService.record(actorUserId, AuditEntityType.NOTIFICATION_TEMPLATE, saved.getId(), AuditAction.CREATE,
                 Map.of("type", saved.getType().name(), "channel", saved.getChannel().name()));
-        return mapper.toResponse(saved);
+        return notificationTemplateMapper.toResponse(saved);
     }
 
     @Override
@@ -133,11 +133,11 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
 
         validateTemplate(subjectTemplate, bodyTemplate, requiredParameters);
 
-        mapper.updateEntity(new UpdateNotificationTemplateRequest(subjectTemplate, bodyTemplate, requiredParameters), template);
+        notificationTemplateMapper.updateEntity(new UpdateNotificationTemplateRequest(subjectTemplate, bodyTemplate, requiredParameters), template);
         NotificationTemplate saved = repository.save(template);
         auditLogService.record(actorUserId, AuditEntityType.NOTIFICATION_TEMPLATE, saved.getId(), AuditAction.UPDATE,
                 Map.of("type", saved.getType().name(), "channel", saved.getChannel().name()));
-        return mapper.toResponse(saved);
+        return notificationTemplateMapper.toResponse(saved);
     }
 
     @Override
@@ -150,7 +150,7 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
         NotificationTemplate saved = repository.save(template);
         auditLogService.record(actorUserId, AuditEntityType.NOTIFICATION_TEMPLATE, saved.getId(), AuditAction.ARCHIVE,
                 Map.of("type", saved.getType().name(), "channel", saved.getChannel().name()));
-        return mapper.toResponse(saved);
+        return notificationTemplateMapper.toResponse(saved);
     }
 
     @Override
@@ -159,13 +159,13 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
         NotificationTemplate template = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Notification template with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(template);
+        return notificationTemplateMapper.toResponse(template);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<NotificationTemplateResponse> search(NotificationTemplateStatus status, Pageable pageable) {
         Page<NotificationTemplate> templates = status != null ? repository.findByStatus(status, pageable) : repository.findAll(pageable);
-        return PageResponse.from(templates.map(mapper::toResponse));
+        return PageResponse.from(templates.map(notificationTemplateMapper::toResponse));
     }
 }

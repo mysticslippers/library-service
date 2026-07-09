@@ -39,7 +39,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
     private final BranchRepository branchRepository;
     private final LoanRepository loanRepository;
     private final ReservationRepository reservationRepository;
-    private final MaterialCopyMapper mapper;
+    private final MaterialCopyMapper materialCopyMapper;
 
     private String normalize(String value, String fieldName) {
         if(fieldName.equals("Inventory number"))
@@ -102,11 +102,11 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
             throw new DuplicateResourceException(
                     "Material copy with inventory number '%s' already exists".formatted(inventoryNumber));
 
-        MaterialCopy copy = mapper.toEntity(new CreateMaterialCopyRequest(material.getId(), branch.getId(), inventoryNumber, shelfLocation),
+        MaterialCopy copy = materialCopyMapper.toEntity(new CreateMaterialCopyRequest(material.getId(), branch.getId(), inventoryNumber, shelfLocation),
                 branch, material);
 
         MaterialCopy saved = repository.save(copy);
-        return mapper.toResponse(saved);
+        return materialCopyMapper.toResponse(saved);
     }
 
     @Override
@@ -115,7 +115,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
         MaterialCopy copy = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(copy);
+        return materialCopyMapper.toResponse(copy);
     }
 
     @Override
@@ -126,7 +126,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
         MaterialCopy copy = repository.findByInventoryNumber(normalizedInventoryNumber).orElseThrow(
                 () -> new ResourceNotFoundException("Material copy with inventory number '%s' not found".formatted(normalizedInventoryNumber)));
 
-        return mapper.toResponse(copy);
+        return materialCopyMapper.toResponse(copy);
     }
 
     @Override
@@ -140,10 +140,10 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
 
         String shelfLocation = normalize(request.shelfLocation(), "Shelf location");
 
-        mapper.updateEntity(new UpdateMaterialCopyRequest(shelfLocation), copy);
+        materialCopyMapper.updateEntity(new UpdateMaterialCopyRequest(shelfLocation), copy);
 
         MaterialCopy saved = repository.save(copy);
-        return mapper.toResponse(saved);
+        return materialCopyMapper.toResponse(saved);
     }
 
     @Override
@@ -155,7 +155,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
         CopyStatus status = request.status();
 
         if (copy.getStatus() == status)
-            return mapper.toResponse(copy);
+            return materialCopyMapper.toResponse(copy);
 
         if (!isTransitionAllowed(copy.getStatus(), status))
             throw new BusinessRuleException("Material copy status transition from '%s' to '%s' is not allowed"
@@ -175,7 +175,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
         copy.setStatus(status);
 
         MaterialCopy saved = repository.save(copy);
-        return mapper.toResponse(saved);
+        return materialCopyMapper.toResponse(saved);
     }
 
     @Override
@@ -200,7 +200,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
         else
             copies = repository.findByMaterial_IdAndBranch_IdAndStatus(materialId, branchId, status, pageable);
 
-        Page<MaterialCopyResponse> responses = copies.map(mapper::toResponse);
+        Page<MaterialCopyResponse> responses = copies.map(materialCopyMapper::toResponse);
         return PageResponse.from(responses);
     }
 }

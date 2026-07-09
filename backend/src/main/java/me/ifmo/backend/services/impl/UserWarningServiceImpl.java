@@ -39,7 +39,7 @@ public class UserWarningServiceImpl implements UserWarningService {
     private final UserWarningRepository repository;
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
-    private final UserWarningMapper mapper;
+    private final UserWarningMapper userWarningMapper;
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
 
@@ -132,14 +132,14 @@ public class UserWarningServiceImpl implements UserWarningService {
 
         CreateUserWarningRequest normalizedRequest = new CreateUserWarningRequest(user.getId(), reason, comment, request.expiresAt());
 
-        UserWarning warning = mapper.toEntity(normalizedRequest, user, createdByUser);
+        UserWarning warning = userWarningMapper.toEntity(normalizedRequest, user, createdByUser);
         warning.setStatus(UserWarningStatus.ACTIVE);
 
         UserWarning saved = repository.save(warning);
         auditLogService.record(createdByUser.getId(), AuditEntityType.USER_WARNING, saved.getId(), AuditAction.WARNING_CREATED,
                 Map.of("userId", user.getId(), "reason", reason));
         notifyUser(user, reason);
-        return mapper.toResponse(saved);
+        return userWarningMapper.toResponse(saved);
     }
 
     @Override
@@ -148,7 +148,7 @@ public class UserWarningServiceImpl implements UserWarningService {
         UserWarning warning = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User warning with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(warning);
+        return userWarningMapper.toResponse(warning);
     }
 
     @Override
@@ -166,7 +166,7 @@ public class UserWarningServiceImpl implements UserWarningService {
         warning.setStatus(UserWarningStatus.CANCELLED);
 
         UserWarning saved = repository.save(warning);
-        return mapper.toResponse(saved);
+        return userWarningMapper.toResponse(saved);
     }
 
     @Override
@@ -184,13 +184,13 @@ public class UserWarningServiceImpl implements UserWarningService {
         warning.setStatus(UserWarningStatus.EXPIRED);
 
         UserWarning saved = repository.save(warning);
-        return mapper.toResponse(saved);
+        return userWarningMapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserWarningResponse> search(Long userId, Long createdByUserId, UserWarningStatus status, Pageable pageable) {
-        Page<UserWarningResponse> responses = repository.search(userId, createdByUserId, status, pageable).map(mapper::toResponse);
+        Page<UserWarningResponse> responses = repository.search(userId, createdByUserId, status, pageable).map(userWarningMapper::toResponse);
         return PageResponse.from(responses);
     }
 }

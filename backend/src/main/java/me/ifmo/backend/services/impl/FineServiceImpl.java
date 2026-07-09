@@ -33,13 +33,12 @@ public class FineServiceImpl implements FineService {
     private final LoanRepository loanRepository;
     private final MaterialCopyRepository materialCopyRepository;
     private final FineTariffRepository fineTariffRepository;
-    private final FineMapper mapper;
+    private final FineMapper fineMapper;
 
-    private String normalize(String value, String fieldName) {
+    private void normalize(String value) {
         if (value == null || value.strip().isBlank())
-            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
+            throw new BusinessRuleException("%s must not be blank".formatted("Cancellation reason"));
 
-        return value.strip();
     }
 
     private void validate(BigDecimal amount) {
@@ -94,11 +93,11 @@ public class FineServiceImpl implements FineService {
                 throw new BusinessRuleException("Fine tariff violation type does not match fine reason");
         }
 
-        Fine fine = mapper.toEntity(user, loan, copy, tariff, request.reason(), request.amount());
+        Fine fine = fineMapper.toEntity(user, loan, copy, tariff, request.reason(), request.amount());
         fine.setStatus(FineStatus.ACTIVE);
 
         Fine saved = repository.save(fine);
-        return mapper.toResponse(saved);
+        return fineMapper.toResponse(saved);
     }
 
     @Override
@@ -107,7 +106,7 @@ public class FineServiceImpl implements FineService {
         Fine fine = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Fine with id '%s' not found".formatted(id)));
 
-        return mapper.toResponse(fine);
+        return fineMapper.toResponse(fine);
     }
 
     @Override
@@ -119,13 +118,13 @@ public class FineServiceImpl implements FineService {
         if (fine.getStatus() != FineStatus.ACTIVE)
             throw new BusinessRuleException("Only active fine can be cancelled");
 
-        normalize(request.reason(), "Cancellation reason");
+        normalize(request.reason());
 
         fine.setStatus(FineStatus.CANCELLED);
         fine.setCancelledAt(LocalDateTime.now());
 
         Fine saved = repository.save(fine);
-        return mapper.toResponse(saved);
+        return fineMapper.toResponse(saved);
     }
 
     @Override
@@ -142,7 +141,7 @@ public class FineServiceImpl implements FineService {
         fine.setPaidAt(LocalDateTime.now());
 
         Fine saved = repository.save(fine);
-        return mapper.toResponse(saved);
+        return fineMapper.toResponse(saved);
     }
 
     @Override
@@ -151,7 +150,7 @@ public class FineServiceImpl implements FineService {
         Page<Fine> fines = repository.search(request.userId(), request.loanId(), request.copyId(), request.reason(),
                 request.status(), request.createdFrom(), request.createdTo(), pageable);
 
-        Page<FineResponse> responses = fines.map(mapper::toResponse);
+        Page<FineResponse> responses = fines.map(fineMapper::toResponse);
 
         return PageResponse.from(responses);
     }
