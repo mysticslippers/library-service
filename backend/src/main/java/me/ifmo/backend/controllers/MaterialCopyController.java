@@ -11,11 +11,13 @@ import me.ifmo.backend.entities.enums.CopyStatus;
 import me.ifmo.backend.services.MaterialCopyService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/material-copies")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
 public class MaterialCopyController {
 
     private final MaterialCopyService service;
