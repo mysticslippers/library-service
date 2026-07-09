@@ -10,6 +10,7 @@ import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.services.AuthorService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,6 +22,7 @@ public class AuthorController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
     public AuthorResponse create(@Valid @RequestBody CreateAuthorRequest request) {
         return service.create(request);
     }
@@ -31,6 +33,7 @@ public class AuthorController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
     public AuthorResponse update(@PathVariable Long id, @Valid @RequestBody UpdateAuthorRequest request) {
         return service.update(id, request);
     }
@@ -42,6 +45,7 @@ public class AuthorController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
     public void delete(@PathVariable Long id) {
         service.delete(id);
     }
