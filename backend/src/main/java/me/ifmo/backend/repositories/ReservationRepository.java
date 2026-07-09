@@ -23,6 +23,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     boolean existsByUser_IdAndMaterial_IdAndStatusIn(Long userId, Long materialId, Collection<ReservationStatus> statuses);
 
+    boolean existsByMaterial_IdAndStatusIn(Long materialId, Collection<ReservationStatus> statuses);
+
     Page<Reservation> findByMaterial_IdAndStatus(Long materialId, ReservationStatus status, Pageable pageable);
 
     Page<Reservation> findByBranch_IdAndStatus(Long branchId, ReservationStatus status, Pageable pageable);
