@@ -15,11 +15,13 @@ public interface GenreMapper {
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "code", source = "code")
     @Mapping(target = "name", source = "name")
+    @Mapping(target = "status", ignore = true)
     Genre toEntity(CreateGenreRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "status", ignore = true)
     void updateEntity(UpdateGenreRequest request, @MappingTarget Genre genre);
 
     GenreResponse toResponse(Genre genre);
