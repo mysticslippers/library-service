@@ -16,6 +16,9 @@ public record MaterialResponse(
         String language,
         MaterialStatus status,
         List<MaterialAuthorResponse> authors,
-        List<GenreResponse> genres
+        List<GenreResponse> genres,
+        long totalCopies,
+        long availableCopies,
+        List<MaterialCopyResponse> copies
 ) {
 }
