@@ -12,13 +12,13 @@ public interface MaterialService {
 
     MaterialResponse create(CreateMaterialRequest request);
 
-    MaterialResponse getMaterialById(Long id);
+    MaterialResponse getMaterialById(Long actorUserId, Long id);
 
-    MaterialResponse getMaterialByIsbn(String isbn);
+    MaterialResponse getMaterialByIsbn(Long actorUserId, String isbn);
 
     MaterialResponse update(Long id, UpdateMaterialRequest request);
 
     MaterialResponse changeStatus(Long id, ChangeMaterialStatusRequest request);
 
-    PageResponse<MaterialResponse> search(MaterialSearchRequest request, Pageable pageable);
+    PageResponse<MaterialResponse> search(Long actorUserId, MaterialSearchRequest request, Pageable pageable);
 }
