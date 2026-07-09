@@ -277,11 +277,15 @@ CREATE INDEX idx_user_warnings_expires_at
     ON user_warnings USING btree (expires_at);
 
 CREATE TABLE genres (
-    id          BIGSERIAL PRIMARY KEY,
-    code        VARCHAR(50) NOT NULL UNIQUE,
-    name        VARCHAR(100) NOT NULL UNIQUE,
-    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        id          BIGSERIAL PRIMARY KEY,
+                        code        VARCHAR(50) NOT NULL UNIQUE,
+                        name        VARCHAR(100) NOT NULL UNIQUE,
+                        status      genre_status NOT NULL DEFAULT 'ACTIVE',
+                        created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_genres_status
+    ON genres USING btree (status);
 
 CREATE TABLE authors (
                          id          BIGSERIAL PRIMARY KEY,
