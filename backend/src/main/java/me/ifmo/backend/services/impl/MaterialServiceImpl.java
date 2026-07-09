@@ -7,6 +7,7 @@ import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.CopyStatus;
 import me.ifmo.backend.entities.enums.AuthorStatus;
+import me.ifmo.backend.entities.enums.GenreStatus;
 import me.ifmo.backend.entities.enums.MaterialStatus;
 import me.ifmo.backend.entities.id.MaterialAuthorId;
 import me.ifmo.backend.entities.id.MaterialGenreId;
@@ -104,6 +105,9 @@ public class MaterialServiceImpl implements MaterialService {
 
             Genre genre = genreRepository.findById(genreId).orElseThrow(
                     () -> new ResourceNotFoundException("Genre with id '%s' not found".formatted(genreId)));
+
+            if (genre.getStatus() == GenreStatus.ARCHIVED)
+                throw new BusinessRuleException("Archived genre cannot be assigned to material");
 
             materialGenres.add(MaterialGenre.builder().id(new MaterialGenreId(material.getId(), genre.getId()))
                     .material(material).genre(genre).build());
