@@ -56,7 +56,12 @@ CREATE TYPE material_type AS ENUM (
     'JOURNAL',
     'DISSERTATION',
     'OTHER'
-);
+    );
+
+CREATE TYPE author_status AS ENUM (
+    'ACTIVE',
+    'ARCHIVED'
+    );
 
 CREATE TYPE material_status AS ENUM (
     'ACTIVE',
