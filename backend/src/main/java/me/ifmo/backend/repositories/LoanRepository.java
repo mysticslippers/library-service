@@ -27,6 +27,8 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
 
     boolean existsByBranch_Library_IdAndStatusIn(Long libraryId, Collection<LoanStatus> statuses);
 
+    boolean existsByCopy_Material_IdAndStatusIn(Long materialId, Collection<LoanStatus> statuses);
+
     Optional<Loan> findByCopy_IdAndStatusIn(Long copyId, Collection<LoanStatus> statuses);
 
     Optional<Loan> findByReservation_Id(Long reservationId);
