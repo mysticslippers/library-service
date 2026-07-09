@@ -8,7 +8,11 @@ import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.CopyStatus;
 import me.ifmo.backend.entities.enums.AuthorStatus;
 import me.ifmo.backend.entities.enums.GenreStatus;
+import me.ifmo.backend.entities.enums.LoanStatus;
 import me.ifmo.backend.entities.enums.MaterialStatus;
+import me.ifmo.backend.entities.enums.MaterialType;
+import me.ifmo.backend.entities.enums.ReservationStatus;
+import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.entities.id.MaterialAuthorId;
 import me.ifmo.backend.entities.id.MaterialGenreId;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
@@ -20,6 +24,7 @@ import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.MaterialService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,10 +32,31 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class MaterialServiceImpl implements MaterialService {
+
+    private static final Set<CopyStatus> ACTIVE_COPY_STATUSES = Set.of(
+            CopyStatus.AVAILABLE,
+            CopyStatus.RESERVED,
+            CopyStatus.LOANED,
+            CopyStatus.DAMAGED,
+            CopyStatus.LOST,
+            CopyStatus.UNDER_REPAIR
+    );
+
+    private static final Set<LoanStatus> BLOCKING_LOAN_STATUSES = Set.of(
+            LoanStatus.ACTIVE,
+            LoanStatus.OVERDUE,
+            LoanStatus.LOST
+    );
+
+    private static final Set<ReservationStatus> BLOCKING_RESERVATION_STATUSES = Set.of(
+            ReservationStatus.ACTIVE,
+            ReservationStatus.READY_FOR_PICKUP
+    );
 
     private final MaterialRepository repository;
     private final AuthorRepository authorRepository;
@@ -38,36 +64,64 @@ public class MaterialServiceImpl implements MaterialService {
     private final MaterialAuthorRepository materialAuthorRepository;
     private final MaterialCopyRepository materialCopyRepository;
     private final MaterialGenreRepository materialGenreRepository;
+    private final LoanRepository loanRepository;
+    private final ReservationRepository reservationRepository;
+    private final UserRoleRepository userRoleRepository;
     private final MaterialMapper mapper;
 
-    private String normalize(String value, String fieldName){
-        String normalized;
+    private String normalize(String value, String fieldName) {
+        if (value == null || value.strip().isBlank())
+            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
 
-        if(fieldName.equals("Title")){
-            normalized = value.strip();
-
-            if (normalized.isBlank())
-                throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
-
-            return normalized;
-        } else {
-            if(value == null)
-                return null;
-
-            normalized = value.strip();
-            return normalized.isBlank() ? null : normalized;
-        }
+        return value.strip();
     }
 
-    private List<MaterialAuthor> saveAuthors(Material material, List<MaterialAuthorRequest> authorRequests) {
-        List<MaterialAuthor> materialAuthors = new ArrayList<>();
+    private String normalizeOptional(String value) {
+        if (value == null)
+            return null;
 
+        String normalized = value.strip();
+        return normalized.isBlank() ? null : normalized;
+    }
+
+    private boolean isCatalogStaff(Long actorUserId) {
+        return userRoleRepository.findRoleCodesByUser_Id(actorUserId).stream()
+                .anyMatch(role -> role == RoleCode.LIBRARIAN || role == RoleCode.ADMIN);
+    }
+
+    private void validateVisible(Material material, boolean staff) {
+        if (!staff && material.getStatus() != MaterialStatus.ACTIVE)
+            throw new ResourceNotFoundException("Material with id '%s' not found".formatted(material.getId()));
+    }
+
+    private void validateRequiredCatalogData(List<MaterialAuthorRequest> authors, Set<Long> genreIds,
+                                             Integer publicationYear, MaterialType materialType, String language) {
+        if (publicationYear == null)
+            throw new BusinessRuleException("Publication year must not be null");
+
+        if (materialType == null)
+            throw new BusinessRuleException("Material type must not be null");
+
+        normalize(language, "Language");
+
+        if (authors == null || authors.isEmpty())
+            throw new BusinessRuleException("Material must have at least one author");
+
+        if (genreIds == null || genreIds.isEmpty())
+            throw new BusinessRuleException("Material must have at least one genre");
+    }
+
+    private Set<Long> validateAuthorRequests(List<MaterialAuthorRequest> authorRequests, boolean required) {
         if (authorRequests == null)
-            return materialAuthors;
+            return Set.of();
+
+        if (required && authorRequests.isEmpty())
+            throw new BusinessRuleException("Material must have at least one author");
 
         Set<Long> authorIds = new HashSet<>();
-        int defaultOrder = 1;
+        Set<Integer> authorOrders = new HashSet<>();
 
+        int defaultOrder = 1;
         for (MaterialAuthorRequest authorRequest : authorRequests) {
             if (authorRequest == null || authorRequest.authorId() == null)
                 throw new BusinessRuleException("Author id must not be null");
@@ -81,6 +135,94 @@ public class MaterialServiceImpl implements MaterialService {
 
             if (author.getStatus() == AuthorStatus.ARCHIVED)
                 throw new BusinessRuleException("Archived author cannot be assigned to material");
+
+            Integer authorOrder = (authorRequest.authorOrder() != null) ? authorRequest.authorOrder() : defaultOrder;
+            if (!authorOrders.add(authorOrder))
+                throw new BusinessRuleException("Duplicate author order '%s'".formatted(authorOrder));
+
+            defaultOrder++;
+        }
+
+        return authorIds;
+    }
+
+    private void validateGenreIds(Set<Long> genreIds, boolean required) {
+        if (genreIds == null)
+            return;
+
+        if (required && genreIds.isEmpty())
+            throw new BusinessRuleException("Material must have at least one genre");
+
+        for (Long genreId : genreIds) {
+            if (genreId == null)
+                throw new BusinessRuleException("Genre id must not be null");
+
+            Genre genre = genreRepository.findById(genreId).orElseThrow(
+                    () -> new ResourceNotFoundException("Genre with id '%s' not found".formatted(genreId)));
+
+            if (genre.getStatus() == GenreStatus.ARCHIVED)
+                throw new BusinessRuleException("Archived genre cannot be assigned to material");
+        }
+
+    }
+
+    private void validateNoDuplicateMaterial(Long excludedId, String title, Integer publicationYear, Set<Long> authorIds) {
+        if (title == null || publicationYear == null || authorIds == null || authorIds.isEmpty())
+            return;
+
+        if (!repository.findDuplicateIds(excludedId, title, publicationYear, authorIds, authorIds.size()).isEmpty())
+            throw new DuplicateResourceException("Material with the same title, authors and publication year already exists");
+    }
+
+    private Set<Long> currentAuthorIds(Long materialId) {
+        return materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(materialId).stream()
+                .map(materialAuthor -> materialAuthor.getAuthor().getId())
+                .collect(Collectors.toSet());
+    }
+
+    private void validateCurrentReferencesActive(Long materialId) {
+        materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(materialId).stream()
+                .map(MaterialAuthor::getAuthor)
+                .filter(author -> author.getStatus() == AuthorStatus.ARCHIVED)
+                .findFirst()
+                .ifPresent(author -> {
+                    throw new BusinessRuleException("Archived author cannot be assigned to active material");
+                });
+
+        materialGenreRepository.findByMaterial_Id(materialId).stream()
+                .map(MaterialGenre::getGenre)
+                .filter(genre -> genre.getStatus() == GenreStatus.ARCHIVED)
+                .findFirst()
+                .ifPresent(genre -> {
+                    throw new BusinessRuleException("Archived genre cannot be assigned to active material");
+                });
+    }
+
+    private boolean hasBlockingOperations(Long materialId) {
+        return loanRepository.existsByCopy_Material_IdAndStatusIn(materialId, BLOCKING_LOAN_STATUSES)
+                || reservationRepository.existsByMaterial_IdAndStatusIn(materialId, BLOCKING_RESERVATION_STATUSES);
+    }
+
+    private void validateCanArchive(Long materialId) {
+        if (materialCopyRepository.existsByMaterial_IdAndStatusIn(materialId, ACTIVE_COPY_STATUSES))
+            throw new ResourceInUseException("Material has active copies");
+
+        if (hasBlockingOperations(materialId))
+            throw new ResourceInUseException("Material has active operations");
+    }
+
+    private List<MaterialAuthor> saveAuthors(Material material, List<MaterialAuthorRequest> authorRequests) {
+        List<MaterialAuthor> materialAuthors = new ArrayList<>();
+
+        if (authorRequests == null)
+            return materialAuthors;
+
+        int defaultOrder = 1;
+
+        for (MaterialAuthorRequest authorRequest : authorRequests) {
+            Author author = authorRepository.findById(authorRequest.authorId()).orElseThrow(
+                    () -> new ResourceNotFoundException(
+                            "Author with id '%s' not found".formatted(authorRequest.authorId())));
 
             Integer authorOrder = (authorRequest.authorOrder() != null) ? authorRequest.authorOrder() : defaultOrder;
 
@@ -100,14 +242,8 @@ public class MaterialServiceImpl implements MaterialService {
             return materialGenres;
 
         for (Long genreId : genreIds) {
-            if (genreId == null)
-                throw new BusinessRuleException("Genre id must not be null");
-
             Genre genre = genreRepository.findById(genreId).orElseThrow(
                     () -> new ResourceNotFoundException("Genre with id '%s' not found".formatted(genreId)));
-
-            if (genre.getStatus() == GenreStatus.ARCHIVED)
-                throw new BusinessRuleException("Archived genre cannot be assigned to material");
 
             materialGenres.add(MaterialGenre.builder().id(new MaterialGenreId(material.getId(), genre.getId()))
                     .material(material).genre(genre).build());
@@ -130,22 +266,36 @@ public class MaterialServiceImpl implements MaterialService {
         };
     }
 
-    private MaterialResponse toResponse(Material material) {
+    private MaterialResponse toResponse(Material material, boolean includeRemovedCopies) {
         List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
 
         List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
 
-        return mapper.toResponse(material, authors, genres);
+        List<MaterialCopy> copies = materialCopyRepository.findByMaterial_Id(material.getId()).stream()
+                .filter(copy -> includeRemovedCopies || copy.getStatus() != CopyStatus.REMOVED)
+                .toList();
+
+        long availableCopies = copies.stream()
+                .filter(copy -> copy.getStatus() == CopyStatus.AVAILABLE)
+                .count();
+
+        return mapper.toResponse(material, authors, genres, copies, copies.size(), availableCopies);
     }
 
     @Override
     @Transactional
     public MaterialResponse create(CreateMaterialRequest request) {
-        String normalizedIsbn = normalize(request.isbn(), "Isbn");
+        String normalizedIsbn = normalizeOptional(request.isbn());
         String normalizedTitle = normalize(request.title(), "Title");
-        String normalizedDescription = normalize(request.description(), "Description");
-        String normalizedPublisher = normalize(request.publisher(), "Publisher");
+        String normalizedDescription = normalizeOptional(request.description());
+        String normalizedPublisher = normalizeOptional(request.publisher());
         String normalizedLanguage = normalize(request.language(), "Language");
+
+        validateRequiredCatalogData(request.authors(), request.genreIds(), request.publicationYear(),
+                request.materialType(), normalizedLanguage);
+        Set<Long> authorIds = validateAuthorRequests(request.authors(), true);
+        validateGenreIds(request.genreIds(), true);
+        validateNoDuplicateMaterial(null, normalizedTitle, request.publicationYear(), authorIds);
 
         if (normalizedIsbn != null && repository.existsByIsbn(normalizedIsbn))
             throw new DuplicateResourceException(
@@ -162,27 +312,31 @@ public class MaterialServiceImpl implements MaterialService {
         List<MaterialAuthor> authors = saveAuthors(saved, request.authors());
         List<MaterialGenre> genres = saveGenres(saved, request.genreIds());
 
-        return mapper.toResponse(saved, authors, genres);
+        return toResponse(saved, true);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MaterialResponse getMaterialById(Long id) {
+    public MaterialResponse getMaterialById(Long actorUserId, Long id) {
+        boolean staff = isCatalogStaff(actorUserId);
         Material material = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(id)));
+        validateVisible(material, staff);
 
-        return toResponse(material);
+        return toResponse(material, staff);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MaterialResponse getMaterialByIsbn(String isbn) {
+    public MaterialResponse getMaterialByIsbn(Long actorUserId, String isbn) {
+        boolean staff = isCatalogStaff(actorUserId);
         String normalizedIsbn = normalize(isbn, "Isbn");
 
         Material material = repository.findByIsbn(normalizedIsbn).orElseThrow(
                 () -> new ResourceNotFoundException("Material with isbn '%s' not found".formatted(normalizedIsbn)));
+        validateVisible(material, staff);
 
-        return toResponse(material);
+        return toResponse(material, staff);
     }
 
     @Override
@@ -194,11 +348,26 @@ public class MaterialServiceImpl implements MaterialService {
         if (material.getStatus() == MaterialStatus.REMOVED)
             throw new BusinessRuleException("Removed material cannot be updated");
 
-        String isbn = request.isbn() != null ? normalize(request.isbn(), "Isbn") : null;
+        if (material.getStatus() == MaterialStatus.ARCHIVED)
+            throw new BusinessRuleException("Archived material cannot be updated");
+
+        String isbn = request.isbn() != null ? normalizeOptional(request.isbn()) : null;
         String title = request.title() != null ? normalize(request.title(), "Title") : null;
-        String description = request.description() != null ? normalize(request.description(), "Description") : null;
-        String publisher = request.publisher() != null ? normalize(request.publisher(), "Publisher") : null;
+        String description = request.description() != null ? normalizeOptional(request.description()) : null;
+        String publisher = request.publisher() != null ? normalizeOptional(request.publisher()) : null;
         String language = request.language() != null ? normalize(request.language(), "Language") : null;
+
+        if (request.genreIds() != null)
+            validateGenreIds(request.genreIds(), true);
+
+        String effectiveTitle = title != null ? title : material.getTitle();
+        Integer effectivePublicationYear = request.publicationYear() != null
+                ? request.publicationYear()
+                : material.getPublicationYear();
+        Set<Long> effectiveAuthorIds = request.authors() != null
+                ? validateAuthorRequests(request.authors(), true)
+                : currentAuthorIds(material.getId());
+        validateNoDuplicateMaterial(material.getId(), effectiveTitle, effectivePublicationYear, effectiveAuthorIds);
 
         if (isbn != null && !isbn.equals(material.getIsbn()) && repository.existsByIsbn(isbn))
             throw new DuplicateResourceException("Material with isbn '%s' already exists".formatted(isbn));
@@ -224,7 +393,7 @@ public class MaterialServiceImpl implements MaterialService {
             saveGenres(saved, request.genreIds());
         }
 
-        return toResponse(saved);
+        return toResponse(saved, true);
     }
 
     @Override
@@ -235,35 +404,45 @@ public class MaterialServiceImpl implements MaterialService {
 
         MaterialStatus status = request.status();
 
-        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
-
-        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
-
         if (material.getStatus() == status)
-            mapper.toResponse(material, authors, genres);
+            return toResponse(material, true);
 
         if (!isTransitionAllowed(material.getStatus(), status))
             throw new BusinessRuleException(
                     "Material status transition from '%s' to '%s' is not allowed".formatted(material.getStatus(), status));
 
+        if (status == MaterialStatus.ARCHIVED)
+            validateCanArchive(id);
+
         if (status == MaterialStatus.REMOVED && materialCopyRepository.existsByMaterial_IdAndStatusNot(id, CopyStatus.REMOVED))
             throw new ResourceInUseException("Material has non-removed copies");
+
+        if (status == MaterialStatus.ACTIVE)
+            validateCurrentReferencesActive(id);
 
         material.setStatus(status);
 
         Material saved = repository.save(material);
-        return toResponse(saved);
+        return toResponse(saved, true);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<MaterialResponse> search(MaterialSearchRequest request, Pageable pageable) {
+    public PageResponse<MaterialResponse> search(Long actorUserId, MaterialSearchRequest request, Pageable pageable) {
+        boolean staff = isCatalogStaff(actorUserId);
         String query = request.query() != null ? request.query().strip() : "";
+        MaterialStatus status = request.status();
 
-        Page<Material> materials = repository.search(query, request.materialType(), request.status(), request.publicationYear(),
+        if (!staff) {
+            if (status != null && status != MaterialStatus.ACTIVE)
+                throw new AccessDeniedException("Access is denied");
+            status = MaterialStatus.ACTIVE;
+        }
+
+        Page<Material> materials = repository.search(query, request.materialType(), status, request.publicationYear(),
                 request.authorId(), request.genreId(), request.branchId(), pageable);
 
-        Page<MaterialResponse> responses = materials.map(this::toResponse);
+        Page<MaterialResponse> responses = materials.map(material -> toResponse(material, staff));
 
         return PageResponse.from(responses);
     }
