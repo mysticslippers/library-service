@@ -27,6 +27,7 @@ public interface MaterialGenreMapper {
     @Mapping(target = "id", source = "genre.id")
     @Mapping(target = "code", source = "genre.code")
     @Mapping(target = "name", source = "genre.name")
+    @Mapping(target = "status", source = "genre.status")
     GenreResponse toResponse(MaterialGenre materialGenre);
 
     List<GenreResponse> toResponseList(Collection<MaterialGenre> materialGenres);
