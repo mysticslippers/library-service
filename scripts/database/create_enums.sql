@@ -47,7 +47,12 @@ CREATE TYPE user_warning_status AS ENUM (
     'ACTIVE',
     'EXPIRED',
     'CANCELLED'
-);
+    );
+
+CREATE TYPE genre_status AS ENUM (
+    'ACTIVE',
+    'ARCHIVED'
+    );
 
 CREATE TYPE material_type AS ENUM (
     'BOOK',
