@@ -7,13 +7,12 @@ import me.ifmo.backend.dto.catalog.request.UpdateAuthorRequest;
 import me.ifmo.backend.dto.catalog.response.AuthorResponse;
 import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.Author;
+import me.ifmo.backend.entities.enums.AuthorStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
-import me.ifmo.backend.exceptions.domain.ResourceInUseException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.AuthorMapper;
 import me.ifmo.backend.repositories.AuthorRepository;
-import me.ifmo.backend.repositories.MaterialAuthorRepository;
 import me.ifmo.backend.services.AuthorService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,25 +23,26 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthorServiceImpl implements AuthorService {
 
-    private final MaterialAuthorRepository materialAuthorRepository;
     private final AuthorRepository repository;
     private final AuthorMapper mapper;
 
     private String normalize(String value, String fieldName) {
-        if (fieldName.equals("Middle name")){
-            if(value == null)
+        if (value == null) {
+            if (fieldName.equals("Middle name"))
                 return null;
 
-            String normalized = value.strip();
-            return normalized.isBlank() ? null : normalized;
-        } else {
-            String normalized = value.strip();
-
-            if (normalized.isBlank())
-                throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
-
-            return normalized;
+            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
         }
+
+        String normalized = value.strip();
+        if (normalized.isBlank()) {
+            if (fieldName.equals("Middle name"))
+                return null;
+
+            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
+        }
+
+        return normalized;
     }
 
     @Override
@@ -76,6 +76,9 @@ public class AuthorServiceImpl implements AuthorService {
     public AuthorResponse update(Long id, UpdateAuthorRequest request) {
         Author author = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Author with id '%s' not found".formatted(id)));
+
+        if (author.getStatus() == AuthorStatus.ARCHIVED)
+            throw new BusinessRuleException("Archived author cannot be updated");
 
         String firstName = (request.firstName() != null) ? normalize(request.firstName(), "First name")
                 : author.getFirstName();
@@ -113,10 +116,9 @@ public class AuthorServiceImpl implements AuthorService {
         Author existing = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Author with id '%s' not found".formatted(id)));
 
-        if (materialAuthorRepository.existsByAuthor_Id(id))
-            throw new ResourceInUseException("Author with id '%s' is used by materials".formatted(id));
+        existing.setStatus(AuthorStatus.ARCHIVED);
 
-        repository.delete(existing);
+        repository.save(existing);
     }
 
     @Override
@@ -124,7 +126,7 @@ public class AuthorServiceImpl implements AuthorService {
     public PageResponse<AuthorResponse> search(AuthorSearchRequest request, Pageable pageable) {
         String query = (request == null || request.query() == null) ? "" : request.query().strip();
 
-        Page<AuthorResponse> responses = repository.search(query, pageable).map(mapper::toResponse);
+        Page<AuthorResponse> responses = repository.search(query, AuthorStatus.ACTIVE, pageable).map(mapper::toResponse);
 
         return PageResponse.from(responses);
     }
