@@ -6,13 +6,12 @@ import me.ifmo.backend.dto.catalog.request.UpdateGenreRequest;
 import me.ifmo.backend.dto.catalog.response.GenreResponse;
 import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.entities.Genre;
+import me.ifmo.backend.entities.enums.GenreStatus;
 import me.ifmo.backend.exceptions.domain.BusinessRuleException;
 import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
-import me.ifmo.backend.exceptions.domain.ResourceInUseException;
 import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
 import me.ifmo.backend.mappers.GenreMapper;
 import me.ifmo.backend.repositories.GenreRepository;
-import me.ifmo.backend.repositories.MaterialGenreRepository;
 import me.ifmo.backend.services.GenreService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,15 +24,21 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class GenreServiceImpl implements GenreService {
 
-    private final MaterialGenreRepository materialGenreRepository;
     private final GenreRepository repository;
     private final GenreMapper mapper;
+
+    private String normalize(String value, String fieldName) {
+        if (value == null || value.strip().isBlank())
+            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
+
+        return value.strip();
+    }
 
     @Override
     @Transactional
     public GenreResponse create(CreateGenreRequest request) {
-        String normalizedName = request.name().strip();
-        String normalizedCode = request.code().strip().toUpperCase(Locale.ROOT);
+        String normalizedName = normalize(request.name(), "Genre name");
+        String normalizedCode = normalize(request.code(), "Genre code").toUpperCase(Locale.ROOT);
 
         if(repository.existsByCode(normalizedCode))
             throw new DuplicateResourceException("Genre with code '%s' already exists".formatted(normalizedCode));
@@ -61,7 +66,7 @@ public class GenreServiceImpl implements GenreService {
     @Override
     @Transactional(readOnly = true)
     public GenreResponse getGenreByCode(String code){
-        String normalizedCode = code.strip().toUpperCase(Locale.ROOT);
+        String normalizedCode = normalize(code, "Genre code").toUpperCase(Locale.ROOT);
 
         Genre genre = repository.findByCode(normalizedCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Genre with code '%s' not found".formatted(code)));
@@ -75,14 +80,11 @@ public class GenreServiceImpl implements GenreService {
         Genre genre = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No genre with id '%s' found".formatted(id)));
 
-        String normalizedName = (request.name() != null) ? request.name().strip() : null;
-        String normalizedCode = (request.code() != null) ? request.code().strip().toUpperCase(Locale.ROOT) : null;
+        if (genre.getStatus() == GenreStatus.ARCHIVED)
+            throw new BusinessRuleException("Archived genre cannot be updated");
 
-        if(normalizedName != null && normalizedName.isBlank())
-            throw new BusinessRuleException("Genre name must not be blank");
-
-        if(normalizedCode != null && normalizedCode.isBlank())
-            throw new BusinessRuleException("Genre code must not be blank");
+        String normalizedName = (request.name() != null) ? normalize(request.name(), "Genre name") : null;
+        String normalizedCode = (request.code() != null) ? normalize(request.code(), "Genre code").toUpperCase(Locale.ROOT) : null;
 
         if(normalizedName != null && !normalizedName.equalsIgnoreCase(genre.getName())
                 && repository.existsByNameIgnoreCase(normalizedName))
@@ -106,10 +108,9 @@ public class GenreServiceImpl implements GenreService {
         Genre existing = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No genre with id '%s' found".formatted(id)));
 
-        if(materialGenreRepository.existsByGenre_Id(id))
-            throw new ResourceInUseException("Genre with id '%s' is used by materials".formatted(id));
+        existing.setStatus(GenreStatus.ARCHIVED);
 
-        repository.delete(existing);
+        repository.save(existing);
     }
 
     @Override
@@ -117,8 +118,7 @@ public class GenreServiceImpl implements GenreService {
     public PageResponse<GenreResponse> search(String query, Pageable pageable){
         String normalizedQuery = (query != null) ? query.strip() : "";
 
-        Page<Genre> genres = (!normalizedQuery.isBlank()) ? repository.findByNameContainingIgnoreCase(normalizedQuery, pageable)
-                : repository.findAll(pageable);
+        Page<Genre> genres = repository.search(normalizedQuery, GenreStatus.ACTIVE, pageable);
 
         Page<GenreResponse> responses = genres.map(mapper::toResponse);
 
