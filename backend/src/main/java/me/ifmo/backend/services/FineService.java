@@ -9,13 +9,13 @@ import org.springframework.data.domain.Pageable;
 
 public interface FineService {
 
-    FineResponse create(CreateFineRequest request);
+    FineResponse create(Long actorUserId, CreateFineRequest request);
 
-    FineResponse getFineById(Long id);
+    FineResponse getFineById(Long actorUserId, Long id);
 
-    FineResponse cancel(Long id, CancelFineRequest request);
+    FineResponse cancel(Long actorUserId, Long id, CancelFineRequest request);
 
-    FineResponse markPaid(Long id);
+    FineResponse markPaid(Long actorUserId, Long id);
 
-    PageResponse<FineResponse> search(FineSearchRequest request, Pageable pageable);
+    PageResponse<FineResponse> search(Long actorUserId, FineSearchRequest request, Pageable pageable);
 }
