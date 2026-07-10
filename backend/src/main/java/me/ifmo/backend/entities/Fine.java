@@ -65,6 +65,9 @@ public class Fine {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
+    @Column(name = "cancellation_reason", columnDefinition = "text")
+    private String cancellationReason;
+
     @Override
     public String toString() {
         return "Fine{" +
@@ -79,6 +82,7 @@ public class Fine {
                 ", createdAt=" + createdAt +
                 ", paidAt=" + paidAt +
                 ", cancelledAt=" + cancelledAt +
+                ", cancellationReason='" + cancellationReason + '\'' +
                 '}';
     }
 
