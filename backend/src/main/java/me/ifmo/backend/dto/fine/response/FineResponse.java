@@ -19,6 +19,7 @@ public record FineResponse(
         FineStatus status,
         LocalDateTime createdAt,
         LocalDateTime paidAt,
-        LocalDateTime cancelledAt
+        LocalDateTime cancelledAt,
+        String cancellationReason
 ) {
 }
