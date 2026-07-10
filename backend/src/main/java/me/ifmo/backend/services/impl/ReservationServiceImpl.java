@@ -18,6 +18,7 @@ import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.ReservationService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,14 +41,38 @@ public class ReservationServiceImpl implements ReservationService {
     private final LibraryRuleRepository libraryRuleRepository;
     private final MaterialAuthorRepository materialAuthorRepository;
     private final MaterialGenreRepository materialGenreRepository;
+    private final UserBlockRepository userBlockRepository;
+    private final FineRepository fineRepository;
+    private final LoanRepository loanRepository;
+    private final UserRoleRepository userRoleRepository;
     private final ReservationMapper reservationMapper;
     private final MaterialMapper materialMapper;
 
-    private String normalize(String value, String fieldName) {
+    private String normalize(String value) {
         if (value == null || value.strip().isBlank())
-            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
+            throw new BusinessRuleException("%s must not be blank".formatted("Cancellation reason"));
 
         return value.strip();
+    }
+
+    private boolean isStaff(Long actorUserId) {
+        return userRoleRepository.findRoleCodesByUser_Id(actorUserId).stream()
+                .anyMatch(role -> role == RoleCode.LIBRARIAN || role == RoleCode.ADMIN);
+    }
+
+    private void validateOwnerOrStaff(Reservation reservation, Long actorUserId) {
+        if (!reservation.getUser().getId().equals(actorUserId) && !isStaff(actorUserId))
+            throw new AccessDeniedException("Access is denied");
+    }
+
+    private void validateReservationOwner(Reservation reservation, Long actorUserId) {
+        if (!reservation.getUser().getId().equals(actorUserId))
+            throw new AccessDeniedException("Access is denied");
+    }
+
+    private void validateStaff(Long actorUserId) {
+        if (!isStaff(actorUserId))
+            throw new AccessDeniedException("Access is denied");
     }
 
     private MaterialShortResponse toMaterialShortResponse(Material material) {
@@ -65,6 +90,22 @@ public class ReservationServiceImpl implements ReservationService {
     private LibraryRule getActualRule(Long branchId) {
         return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now()).orElseThrow(
                 () -> new ResourceNotFoundException("Actual library rule for branch with id '%s' not found".formatted(branchId)));
+    }
+
+    private void validateUserCanReserve(User user) {
+        if (userBlockRepository.existsByUser_IdAndStatus(user.getId(), UserBlockStatus.ACTIVE))
+            throw new BusinessRuleException("User has active block");
+
+        if (fineRepository.countByUser_IdAndStatus(user.getId(), FineStatus.ACTIVE) > 0)
+            throw new BusinessRuleException("User has unpaid fines");
+
+        if (loanRepository.countByUser_IdAndStatusIn(user.getId(), Set.of(LoanStatus.OVERDUE, LoanStatus.LOST)) > 0)
+            throw new BusinessRuleException("User has overdue or lost loans");
+    }
+
+    private void releaseReservedCopy(Reservation reservation) {
+        if (reservation.getCopy().getStatus() == CopyStatus.RESERVED)
+            reservation.getCopy().setStatus(CopyStatus.AVAILABLE);
     }
 
     private MaterialCopy resolveCopy(CreateReservationRequest request) {
@@ -92,12 +133,17 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
-    public ReservationResponse create(CreateReservationRequest request) {
+    public ReservationResponse create(Long actorUserId, CreateReservationRequest request) {
+        if (!request.userId().equals(actorUserId) && !isStaff(actorUserId))
+            throw new AccessDeniedException("Access is denied");
+
         User user = userRepository.findById(request.userId()).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(request.userId())));
 
         if (user.getStatus() != UserStatus.ACTIVE)
             throw new BusinessRuleException("Reservation can be created only for active user");
+
+        validateUserCanReserve(user);
 
         Material material = materialRepository.findById(request.materialId()).orElseThrow(
                 () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(request.materialId())));
@@ -131,8 +177,7 @@ public class ReservationServiceImpl implements ReservationService {
         copy.setStatus(CopyStatus.RESERVED);
 
         Reservation reservation = reservationMapper.toEntity(user, material, copy, branch, expiresAt);
-        reservation.setStatus(ReservationStatus.READY_FOR_PICKUP);
-        reservation.setReadyAt(now);
+        reservation.setStatus(ReservationStatus.ACTIVE);
 
         Reservation saved = repository.save(reservation);
         return toResponse(saved);
@@ -140,27 +185,28 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional(readOnly = true)
-    public ReservationResponse getReservationById(Long id) {
+    public ReservationResponse getReservationById(Long actorUserId, Long id) {
         Reservation reservation = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+        validateOwnerOrStaff(reservation, actorUserId);
         return toResponse(reservation);
     }
 
     @Override
     @Transactional
-    public ReservationResponse cancelByUser(Long id, CancelReservationRequest request) {
+    public ReservationResponse cancelByUser(Long actorUserId, Long id, CancelReservationRequest request) {
         Reservation reservation = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+        validateReservationOwner(reservation, actorUserId);
 
         if (!ACTIVE_RESERVATION_STATUSES.contains(reservation.getStatus()))
             throw new BusinessRuleException("Only active reservation can be cancelled");
 
         reservation.setStatus(ReservationStatus.CANCELLED_BY_USER);
         reservation.setCancelledAt(LocalDateTime.now());
-        reservation.setCancellationReason(normalize(request.reason(), "Cancellation reason"));
+        reservation.setCancellationReason(normalize(request.reason()));
 
-        if (reservation.getCopy().getStatus() == CopyStatus.RESERVED)
-            reservation.getCopy().setStatus(CopyStatus.AVAILABLE);
+        releaseReservedCopy(reservation);
 
         Reservation saved = repository.save(reservation);
         return toResponse(saved);
@@ -168,7 +214,9 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
-    public ReservationResponse cancelByLibrarian(Long id, CancelReservationRequest request) {
+    public ReservationResponse cancelByLibrarian(Long actorUserId, Long id, CancelReservationRequest request) {
+        validateStaff(actorUserId);
+
         Reservation reservation = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
 
@@ -177,10 +225,9 @@ public class ReservationServiceImpl implements ReservationService {
 
         reservation.setStatus(ReservationStatus.CANCELLED_BY_LIBRARIAN);
         reservation.setCancelledAt(LocalDateTime.now());
-        reservation.setCancellationReason(normalize(request.reason(), "Cancellation reason"));
+        reservation.setCancellationReason(normalize(request.reason()));
 
-        if (reservation.getCopy().getStatus() == CopyStatus.RESERVED)
-            reservation.getCopy().setStatus(CopyStatus.AVAILABLE);
+        releaseReservedCopy(reservation);
 
         Reservation saved = repository.save(reservation);
         return toResponse(saved);
@@ -188,17 +235,21 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
-    public ReservationResponse expire(Long id) {
+    public ReservationResponse expire(Long actorUserId, Long id) {
+        validateStaff(actorUserId);
+
         Reservation reservation = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
 
         if (!ACTIVE_RESERVATION_STATUSES.contains(reservation.getStatus()))
             throw new BusinessRuleException("Only active reservation can be expired");
 
+        if (reservation.getExpiresAt().isAfter(LocalDateTime.now()))
+            throw new BusinessRuleException("Reservation has not expired yet");
+
         reservation.setStatus(ReservationStatus.EXPIRED);
 
-        if (reservation.getCopy().getStatus() == CopyStatus.RESERVED)
-            reservation.getCopy().setStatus(CopyStatus.AVAILABLE);
+        releaseReservedCopy(reservation);
 
         Reservation saved = repository.save(reservation);
         return toResponse(saved);
@@ -206,12 +257,44 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
-    public ReservationResponse markUsed(Long id) {
+    public ReservationResponse markReadyForPickup(Long actorUserId, Long id) {
+        validateStaff(actorUserId);
+
+        Reservation reservation = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+
+        if (reservation.getStatus() != ReservationStatus.ACTIVE)
+            throw new BusinessRuleException("Only active reservation can be marked as ready for pickup");
+
+        if (reservation.getExpiresAt().isBefore(LocalDateTime.now()))
+            throw new BusinessRuleException("Expired reservation cannot be marked as ready for pickup");
+
+        if (reservation.getCopy().getStatus() != CopyStatus.RESERVED)
+            throw new BusinessRuleException("Reserved material copy has invalid status");
+
+        reservation.setStatus(ReservationStatus.READY_FOR_PICKUP);
+        reservation.setReadyAt(LocalDateTime.now());
+
+        Reservation saved = repository.save(reservation);
+        return toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public ReservationResponse markUsed(Long actorUserId, Long id) {
+        validateStaff(actorUserId);
+
         Reservation reservation = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
 
         if (reservation.getStatus() != ReservationStatus.READY_FOR_PICKUP)
             throw new BusinessRuleException("Only ready for pickup reservation can be marked as used");
+
+        if (reservation.getExpiresAt().isBefore(LocalDateTime.now()))
+            throw new BusinessRuleException("Expired reservation cannot be marked as used");
+
+        if (reservation.getCopy().getStatus() != CopyStatus.RESERVED)
+            throw new BusinessRuleException("Reserved material copy has invalid status");
 
         reservation.setStatus(ReservationStatus.USED);
 
@@ -221,10 +304,19 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<ReservationResponse> search(ReservationSearchRequest request, Pageable pageable) {
+    public PageResponse<ReservationResponse> search(Long actorUserId, ReservationSearchRequest request, Pageable pageable) {
+        boolean staff = isStaff(actorUserId);
+        Long userId = request.userId();
+
+        if (!staff) {
+            if (userId != null && !userId.equals(actorUserId))
+                throw new AccessDeniedException("Access is denied");
+            userId = actorUserId;
+        }
+
         String query = request.query() != null ? request.query().strip() : "";
 
-        Page<Reservation> reservations = repository.search(request.userId(), request.materialId(), request.copyId(),
+        Page<Reservation> reservations = repository.search(userId, request.materialId(), request.copyId(),
                 request.branchId(), request.status(), request.createdFrom(), request.createdTo(), request.expiresBefore(),
                 query, pageable);
 
