@@ -10,6 +10,9 @@ import me.ifmo.backend.dto.common.response.PageResponse;
 import me.ifmo.backend.services.ReservationService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,37 +24,46 @@ public class ReservationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ReservationResponse create(@Valid @RequestBody CreateReservationRequest request) {
-        return service.create(request);
+    public ReservationResponse create(@AuthenticationPrincipal UserDetails userDetails, @Valid @RequestBody CreateReservationRequest request) {
+        return service.create(Long.valueOf(userDetails.getUsername()), request);
     }
 
     @GetMapping("/{id}")
-    public ReservationResponse getReservationById(@PathVariable Long id) {
-        return service.getReservationById(id);
+    public ReservationResponse getReservationById(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
+        return service.getReservationById(Long.valueOf(userDetails.getUsername()), id);
     }
 
     @PostMapping("/{id}/cancel-by-user")
-    public ReservationResponse cancelByUser(@PathVariable Long id, @Valid @RequestBody CancelReservationRequest request) {
-        return service.cancelByUser(id, request);
+    public ReservationResponse cancelByUser(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @Valid @RequestBody CancelReservationRequest request) {
+        return service.cancelByUser(Long.valueOf(userDetails.getUsername()), id, request);
     }
 
     @PostMapping("/{id}/cancel-by-librarian")
-    public ReservationResponse cancelByLibrarian(@PathVariable Long id, @Valid @RequestBody CancelReservationRequest request) {
-        return service.cancelByLibrarian(id, request);
+    @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
+    public ReservationResponse cancelByLibrarian(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @Valid @RequestBody CancelReservationRequest request) {
+        return service.cancelByLibrarian(Long.valueOf(userDetails.getUsername()), id, request);
     }
 
     @PostMapping("/{id}/expire")
-    public ReservationResponse expire(@PathVariable Long id) {
-        return service.expire(id);
+    @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
+    public ReservationResponse expire(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
+        return service.expire(Long.valueOf(userDetails.getUsername()), id);
+    }
+
+    @PostMapping("/{id}/ready")
+    @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
+    public ReservationResponse markReadyForPickup(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
+        return service.markReadyForPickup(Long.valueOf(userDetails.getUsername()), id);
     }
 
     @PostMapping("/{id}/mark-used")
-    public ReservationResponse markUsed(@PathVariable Long id) {
-        return service.markUsed(id);
+    @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
+    public ReservationResponse markUsed(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
+        return service.markUsed(Long.valueOf(userDetails.getUsername()), id);
     }
 
     @GetMapping
-    public PageResponse<ReservationResponse> search(@Valid @ModelAttribute ReservationSearchRequest request, Pageable pageable) {
-        return service.search(request, pageable);
+    public PageResponse<ReservationResponse> search(@AuthenticationPrincipal UserDetails userDetails, @Valid @ModelAttribute ReservationSearchRequest request, Pageable pageable) {
+        return service.search(Long.valueOf(userDetails.getUsername()), request, pageable);
     }
 }
