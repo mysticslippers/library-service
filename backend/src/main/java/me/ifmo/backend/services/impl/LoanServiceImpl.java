@@ -18,6 +18,7 @@ import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.LoanService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,11 +38,28 @@ public class LoanServiceImpl implements LoanService {
     private final BranchRepository branchRepository;
     private final ReservationRepository reservationRepository;
     private final LibraryRuleRepository libraryRuleRepository;
+    private final UserBlockRepository userBlockRepository;
+    private final FineRepository fineRepository;
+    private final UserRoleRepository userRoleRepository;
     private final LoanMapper loanMapper;
 
+    private boolean isStaff(Long actorUserId) {
+        return userRoleRepository.findRoleCodesByUser_Id(actorUserId).stream()
+                .anyMatch(role -> role == RoleCode.LIBRARIAN || role == RoleCode.ADMIN);
+    }
+
+    private void validateStaff(Long actorUserId) {
+        if (!isStaff(actorUserId))
+            throw new AccessDeniedException("Access is denied");
+    }
+
+    private void validateOwnerOrStaff(Loan loan, Long actorUserId) {
+        if (!loan.getUser().getId().equals(actorUserId) && !isStaff(actorUserId))
+            throw new AccessDeniedException("Access is denied");
+    }
+
     private LibraryRule getActualRule(Long branchId) {
-        return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now())
-                .orElseThrow(
+        return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now()).orElseThrow(
                         () -> new ResourceNotFoundException("Actual library rule for branch with id '%s' not found".formatted(branchId)));
     }
 
@@ -53,6 +71,17 @@ public class LoanServiceImpl implements LoanService {
             throw new BusinessRuleException("%s must be active".formatted(fieldName));
 
         return user;
+    }
+
+    private void validateUserCanBorrow(User user) {
+        if (userBlockRepository.existsByUser_IdAndStatus(user.getId(), UserBlockStatus.ACTIVE))
+            throw new BusinessRuleException("User has active block");
+
+        if (fineRepository.countByUser_IdAndStatus(user.getId(), FineStatus.ACTIVE) > 0)
+            throw new BusinessRuleException("User has unpaid fines");
+
+        if (repository.countByUser_IdAndStatusIn(user.getId(), Set.of(LoanStatus.OVERDUE, LoanStatus.LOST)) > 0)
+            throw new BusinessRuleException("User has overdue or lost loans");
     }
 
     private CopyStatus resolveReturnCopyStatus(ReturnLoanRequest request) {
@@ -69,9 +98,15 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
-    public LoanResponse create(CreateLoanRequest request) {
+    public LoanResponse create(Long actorUserId, CreateLoanRequest request) {
+        validateStaff(actorUserId);
+
+        if (!request.issuedByUserId().equals(actorUserId))
+            throw new AccessDeniedException("Access is denied");
+
         User user = findUser(request.userId(), "User");
         User issuedByUser = findUser(request.issuedByUserId(), "Issued by user");
+        validateUserCanBorrow(user);
 
         Branch branch = branchRepository.findById(request.branchId()).orElseThrow(
                 () -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(request.branchId())));
@@ -106,6 +141,9 @@ public class LoanServiceImpl implements LoanService {
             if (reservation.getStatus() != ReservationStatus.READY_FOR_PICKUP)
                 throw new BusinessRuleException("Only ready for pickup reservation can be converted to loan");
 
+            if (reservation.getExpiresAt().isBefore(LocalDateTime.now()))
+                throw new BusinessRuleException("Reservation has expired");
+
             if (!reservation.getUser().getId().equals(user.getId()))
                 throw new BusinessRuleException("Reservation belongs to another user");
 
@@ -122,8 +160,13 @@ public class LoanServiceImpl implements LoanService {
                 throw new BusinessRuleException("Reserved material copy has invalid status");
 
             reservation.setStatus(ReservationStatus.USED);
-        } else if (copy.getStatus() != CopyStatus.AVAILABLE)
+        } else if (copy.getStatus() != CopyStatus.AVAILABLE) {
+            reservationRepository.findByCopy_IdAndStatusIn(copy.getId(),
+                    Set.of(ReservationStatus.ACTIVE, ReservationStatus.READY_FOR_PICKUP)).ifPresent(activeReservation -> {
+                        throw new ResourceInUseException("Material copy is reserved by another user");
+                    });
             throw new ResourceInUseException("Material copy is not available for loan");
+        }
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -144,16 +187,19 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional(readOnly = true)
-    public LoanResponse getLoanById(Long id) {
+    public LoanResponse getLoanById(Long actorUserId, Long id) {
         Loan loan = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
+        validateOwnerOrStaff(loan, actorUserId);
 
         return loanMapper.toResponse(loan);
     }
 
     @Override
     @Transactional
-    public LoanResponse returnLoan(Long id, ReturnLoanRequest request) {
+    public LoanResponse returnLoan(Long actorUserId, Long id, ReturnLoanRequest request) {
+        validateStaff(actorUserId);
+
         Loan loan = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
 
@@ -172,12 +218,18 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
-    public LoanResponse renew(Long id, RenewLoanRequest request) {
+    public LoanResponse renew(Long actorUserId, Long id, RenewLoanRequest request) {
         Loan loan = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
+        validateOwnerOrStaff(loan, actorUserId);
 
         if (loan.getStatus() != LoanStatus.ACTIVE)
             throw new BusinessRuleException("Only active loan can be renewed");
+
+        if (!loan.getDueAt().isAfter(LocalDateTime.now()))
+            throw new BusinessRuleException("Overdue loan cannot be renewed");
+
+        validateUserCanBorrow(loan.getUser());
 
         LibraryRule rule = getActualRule(loan.getBranch().getId());
 
@@ -188,6 +240,8 @@ public class LoanServiceImpl implements LoanService {
             throw new BusinessRuleException("Loan renewal limit has been reached");
 
         int renewalDays = request.renewalDays() != null ? request.renewalDays() : rule.getRenewalPeriodDays();
+        if (renewalDays <= 0)
+            throw new BusinessRuleException("Renewal days must be positive");
 
         loan.setDueAt(loan.getDueAt().plusDays(renewalDays));
         loan.setRenewalCount(loan.getRenewalCount() + 1);
@@ -198,7 +252,9 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
-    public LoanResponse markOverdue(Long id) {
+    public LoanResponse markOverdue(Long actorUserId, Long id) {
+        validateStaff(actorUserId);
+
         Loan loan = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
 
@@ -216,7 +272,9 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
-    public LoanResponse markLost(Long id) {
+    public LoanResponse markLost(Long actorUserId, Long id) {
+        validateStaff(actorUserId);
+
         Loan loan = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
 
@@ -232,8 +290,17 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<LoanResponse> search(LoanSearchRequest request, Pageable pageable) {
-        Page<Loan> loans = repository.search(request.userId(), request.copyId(), request.branchId(), request.issuedByUserId(),
+    public PageResponse<LoanResponse> search(Long actorUserId, LoanSearchRequest request, Pageable pageable) {
+        boolean staff = isStaff(actorUserId);
+        Long userId = request.userId();
+
+        if (!staff) {
+            if (userId != null && !userId.equals(actorUserId))
+                throw new AccessDeniedException("Access is denied");
+            userId = actorUserId;
+        }
+
+        Page<Loan> loans = repository.search(userId, request.copyId(), request.branchId(), request.issuedByUserId(),
                 request.status(), request.loanedFrom(), request.loanedTo(), request.dueBefore(), request.returnedFrom(),
                 request.returnedTo(), pageable);
 
