@@ -10,17 +10,17 @@ import org.springframework.data.domain.Pageable;
 
 public interface LoanService {
 
-    LoanResponse create(CreateLoanRequest request);
+    LoanResponse create(Long actorUserId, CreateLoanRequest request);
 
-    LoanResponse getLoanById(Long id);
+    LoanResponse getLoanById(Long actorUserId, Long id);
 
-    LoanResponse returnLoan(Long id, ReturnLoanRequest request);
+    LoanResponse returnLoan(Long actorUserId, Long id, ReturnLoanRequest request);
 
-    LoanResponse renew(Long id, RenewLoanRequest request);
+    LoanResponse renew(Long actorUserId, Long id, RenewLoanRequest request);
 
-    LoanResponse markOverdue(Long id);
+    LoanResponse markOverdue(Long actorUserId, Long id);
 
-    LoanResponse markLost(Long id);
+    LoanResponse markLost(Long actorUserId, Long id);
 
-    PageResponse<LoanResponse> search(LoanSearchRequest request, Pageable pageable);
+    PageResponse<LoanResponse> search(Long actorUserId, LoanSearchRequest request, Pageable pageable);
 }
