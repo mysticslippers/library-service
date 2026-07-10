@@ -9,17 +9,19 @@ import org.springframework.data.domain.Pageable;
 
 public interface ReservationService {
 
-    ReservationResponse create(CreateReservationRequest request);
+    ReservationResponse create(Long actorUserId, CreateReservationRequest request);
 
-    ReservationResponse getReservationById(Long id);
+    ReservationResponse getReservationById(Long actorUserId, Long id);
 
-    ReservationResponse cancelByUser(Long id, CancelReservationRequest request);
+    ReservationResponse cancelByUser(Long actorUserId, Long id, CancelReservationRequest request);
 
-    ReservationResponse cancelByLibrarian(Long id, CancelReservationRequest request);
+    ReservationResponse cancelByLibrarian(Long actorUserId, Long id, CancelReservationRequest request);
 
-    ReservationResponse expire(Long id);
+    ReservationResponse expire(Long actorUserId, Long id);
 
-    ReservationResponse markUsed(Long id);
+    ReservationResponse markReadyForPickup(Long actorUserId, Long id);
 
-    PageResponse<ReservationResponse> search(ReservationSearchRequest request, Pageable pageable);
+    ReservationResponse markUsed(Long actorUserId, Long id);
+
+    PageResponse<ReservationResponse> search(Long actorUserId, ReservationSearchRequest request, Pageable pageable);
 }

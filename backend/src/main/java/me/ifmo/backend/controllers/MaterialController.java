@@ -53,9 +53,7 @@ public class MaterialController {
     }
 
     @GetMapping
-    public PageResponse<MaterialResponse> search(@AuthenticationPrincipal UserDetails userDetails,
-                                                 @Valid @ModelAttribute MaterialSearchRequest request,
-                                                 Pageable pageable) {
+    public PageResponse<MaterialResponse> search(@AuthenticationPrincipal UserDetails userDetails, @Valid @ModelAttribute MaterialSearchRequest request, Pageable pageable) {
         return service.search(Long.valueOf(userDetails.getUsername()), request, pageable);
     }
 }

@@ -25,8 +25,7 @@ public class UserWarningController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public UserWarningResponse create(@AuthenticationPrincipal UserDetails userDetails,
-                                      @Valid @RequestBody CreateUserWarningRequest request) {
+    public UserWarningResponse create(@AuthenticationPrincipal UserDetails userDetails, @Valid @RequestBody CreateUserWarningRequest request) {
         return service.create(Long.valueOf(userDetails.getUsername()), request);
     }
 
@@ -36,8 +35,7 @@ public class UserWarningController {
     }
 
     @PostMapping("/{id}/cancel")
-    public UserWarningResponse cancel(@PathVariable Long id,
-                                      @Valid @RequestBody CancelUserWarningRequest request) {
+    public UserWarningResponse cancel(@PathVariable Long id, @Valid @RequestBody CancelUserWarningRequest request) {
         return service.cancel(id, request);
     }
 
@@ -47,10 +45,7 @@ public class UserWarningController {
     }
 
     @GetMapping
-    public PageResponse<UserWarningResponse> search(@RequestParam(required = false) Long userId,
-                                                    @RequestParam(required = false) Long createdByUserId,
-                                                    @RequestParam(required = false) UserWarningStatus status,
-                                                    Pageable pageable) {
+    public PageResponse<UserWarningResponse> search(@RequestParam(required = false) Long userId, @RequestParam(required = false) Long createdByUserId, @RequestParam(required = false) UserWarningStatus status, Pageable pageable) {
         return service.search(userId, createdByUserId, status, pageable);
     }
 }

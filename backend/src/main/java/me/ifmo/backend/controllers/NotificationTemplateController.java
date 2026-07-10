@@ -25,8 +25,7 @@ public class NotificationTemplateController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public NotificationTemplateResponse create(@AuthenticationPrincipal UserDetails userDetails,
-                                               @Valid @RequestBody CreateNotificationTemplateRequest request) {
+    public NotificationTemplateResponse create(@AuthenticationPrincipal UserDetails userDetails, @Valid @RequestBody CreateNotificationTemplateRequest request) {
         return service.create(Long.valueOf(userDetails.getUsername()), request);
     }
 
@@ -36,22 +35,17 @@ public class NotificationTemplateController {
     }
 
     @PatchMapping("/{id}")
-    public NotificationTemplateResponse update(@AuthenticationPrincipal UserDetails userDetails,
-                                               @PathVariable Long id,
-                                               @Valid @RequestBody UpdateNotificationTemplateRequest request) {
+    public NotificationTemplateResponse update(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @Valid @RequestBody UpdateNotificationTemplateRequest request) {
         return service.update(Long.valueOf(userDetails.getUsername()), id, request);
     }
 
     @PostMapping("/{id}/archive")
-    public NotificationTemplateResponse archive(@AuthenticationPrincipal UserDetails userDetails,
-                                                @PathVariable Long id) {
+    public NotificationTemplateResponse archive(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
         return service.archive(Long.valueOf(userDetails.getUsername()), id);
     }
 
     @GetMapping
-    public PageResponse<NotificationTemplateResponse> search(
-            @RequestParam(required = false) NotificationTemplateStatus status,
-            Pageable pageable) {
+    public PageResponse<NotificationTemplateResponse> search(@RequestParam(required = false) NotificationTemplateStatus status, Pageable pageable) {
         return service.search(status, pageable);
     }
 }

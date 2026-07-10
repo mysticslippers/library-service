@@ -24,8 +24,7 @@ public class NotificationPreferenceController {
     }
 
     @PutMapping
-    public NotificationPreferenceResponse update(@AuthenticationPrincipal UserDetails userDetails,
-                                                 @Valid @RequestBody UpdateNotificationPreferenceRequest request) {
+    public NotificationPreferenceResponse update(@AuthenticationPrincipal UserDetails userDetails, @Valid @RequestBody UpdateNotificationPreferenceRequest request) {
         return service.update(Long.valueOf(userDetails.getUsername()), request);
     }
 }

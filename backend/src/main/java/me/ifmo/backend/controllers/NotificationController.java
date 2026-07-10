@@ -56,15 +56,12 @@ public class NotificationController {
 
     @PostMapping("/process-pending")
     @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
-    public NotificationDeliveryBatchResponse processPending(@AuthenticationPrincipal UserDetails userDetails,
-                                                            @RequestParam(defaultValue = "50") int limit) {
+    public NotificationDeliveryBatchResponse processPending(@AuthenticationPrincipal UserDetails userDetails, @RequestParam(defaultValue = "50") int limit) {
         return deliveryService.processPending(Long.valueOf(userDetails.getUsername()), limit);
     }
 
     @GetMapping
-    public PageResponse<NotificationResponse> search(@AuthenticationPrincipal UserDetails userDetails,
-                                                     @Valid @ModelAttribute NotificationSearchRequest request,
-                                                     Pageable pageable) {
+    public PageResponse<NotificationResponse> search(@AuthenticationPrincipal UserDetails userDetails, @Valid @ModelAttribute NotificationSearchRequest request, Pageable pageable) {
         return service.search(Long.valueOf(userDetails.getUsername()), request, pageable);
     }
 }
