@@ -18,7 +18,7 @@ public record CreateFineRequest(
         ViolationType reason,
 
         @NotNull
-        @DecimalMin("0.00")
+        @DecimalMin("0.01")
         BigDecimal amount
 ) {
 }
