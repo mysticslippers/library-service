@@ -600,6 +600,7 @@ CREATE TABLE fines (
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     paid_at         TIMESTAMP,
     cancelled_at    TIMESTAMP,
+    cancellation_reason TEXT,
 
     CONSTRAINT fk_fines_user
         FOREIGN KEY (user_id)
@@ -622,7 +623,7 @@ CREATE TABLE fines (
         ON DELETE SET NULL,
 
     CONSTRAINT chk_fines_amount
-        CHECK (amount >= 0),
+        CHECK (amount > 0),
 
     CONSTRAINT chk_fines_paid_at
         CHECK (paid_at IS NULL OR paid_at >= created_at),
@@ -639,6 +640,12 @@ CREATE TABLE fines (
     CONSTRAINT chk_fines_cancelled_status
         CHECK (
             (status = 'CANCELLED' AND cancelled_at IS NOT NULL AND paid_at IS NULL)
+            OR status <> 'CANCELLED'
+        ),
+
+    CONSTRAINT chk_fines_cancellation_reason
+        CHECK (
+            (status = 'CANCELLED' AND cancellation_reason IS NOT NULL AND btrim(cancellation_reason) <> '')
             OR status <> 'CANCELLED'
         )
 );
