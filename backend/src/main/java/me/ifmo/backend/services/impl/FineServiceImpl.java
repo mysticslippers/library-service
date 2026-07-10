@@ -35,7 +35,7 @@ public class FineServiceImpl implements FineService {
     private final UserRoleRepository userRoleRepository;
     private final FineMapper fineMapper;
 
-    private String normalizeRequired(String value) {
+    private String normalize(String value) {
         if (value == null || value.strip().isBlank())
             throw new BusinessRuleException("%s must not be blank".formatted("Cancellation reason"));
 
@@ -140,7 +140,7 @@ public class FineServiceImpl implements FineService {
         if (fine.getStatus() != FineStatus.ACTIVE)
             throw new BusinessRuleException("Only active fine can be cancelled");
 
-        String reason = normalizeRequired(request.reason());
+        String reason = normalize(request.reason());
 
         fine.setStatus(FineStatus.CANCELLED);
         fine.setCancelledAt(LocalDateTime.now());
