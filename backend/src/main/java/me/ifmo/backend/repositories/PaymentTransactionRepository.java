@@ -24,6 +24,10 @@ public interface PaymentTransactionRepository extends CrudRepository<PaymentTran
 
     Optional<PaymentTransaction> findByFine_IdAndStatus(Long fineId, PaymentStatus status);
 
+    boolean existsByFine_IdAndStatus(Long fineId, PaymentStatus status);
+
+    boolean existsByFine_IdAndStatusIn(Long fineId, Collection<PaymentStatus> statuses);
+
     Page<PaymentTransaction> findByStatus(PaymentStatus status, Pageable pageable);
 
     Page<PaymentTransaction> findByStatusInAndCreatedAtBefore(Collection<PaymentStatus> statuses, LocalDateTime createdAt, Pageable pageable);
@@ -31,11 +35,13 @@ public interface PaymentTransactionRepository extends CrudRepository<PaymentTran
     @Query("""
        SELECT transaction FROM PaymentTransaction transaction
            WHERE (:fineId IS NULL OR transaction.fine.id = :fineId)
+             AND (:userId IS NULL OR transaction.fine.user.id = :userId)
              AND (:status IS NULL OR transaction.status = :status)
              AND (:createdFrom IS NULL OR transaction.createdAt >= :createdFrom)
              AND (:createdTo IS NULL OR transaction.createdAt <= :createdTo)
     """)
     Page<PaymentTransaction> search(@Param("fineId") Long fineId,
+                                    @Param("userId") Long userId,
                                     @Param("status") PaymentStatus status,
                                     @Param("createdFrom") LocalDateTime createdFrom,
                                     @Param("createdTo") LocalDateTime createdTo,
