@@ -15,18 +15,6 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
     Page<AuditLog> findByUser_Id(Long userId, Pageable pageable);
 
-    Page<AuditLog> findByType(AuditEntityType type, Pageable pageable);
-
-    Page<AuditLog> findByTypeAndEntityId(AuditEntityType type, Long entityId, Pageable pageable);
-
-    Page<AuditLog> findByAction(AuditAction action, Pageable pageable);
-
-    Page<AuditLog> findByTypeAndAction(AuditEntityType type, AuditAction action, Pageable pageable);
-
-    Page<AuditLog> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
-
-    Page<AuditLog> findByUser_IdAndCreatedAtBetween(Long userId, LocalDateTime from, LocalDateTime to, Pageable pageable);
-
     @Query("""
        SELECT auditLog FROM AuditLog auditLog
            WHERE (:actorUserId IS NULL OR auditLog.user.id = :actorUserId)
