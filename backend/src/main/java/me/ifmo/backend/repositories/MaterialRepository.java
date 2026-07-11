@@ -41,14 +41,6 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
 
     Page<Material> findByStatus(MaterialStatus status, Pageable pageable);
 
-    Page<Material> findByMaterialType(MaterialType type, Pageable pageable);
-
-    Page<Material> findByStatusAndMaterialType(MaterialStatus status, MaterialType type, Pageable pageable);
-
-    Page<Material> findByPublicationYear(Integer publicationYear, Pageable pageable);
-
-    Page<Material> findByPublisherContainingIgnoreCase(String publisher, Pageable pageable);
-
     @Query("""
            SELECT material FROM Material material
                WHERE (:query IS NULL OR :query = ''
