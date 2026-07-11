@@ -11,11 +11,13 @@ import me.ifmo.backend.entities.enums.LibraryStatus;
 import me.ifmo.backend.services.LibraryService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/libraries")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class LibraryController {
 
     private final LibraryService service;
