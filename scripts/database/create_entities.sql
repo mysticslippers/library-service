@@ -693,6 +693,10 @@ CREATE UNIQUE INDEX uq_payment_transactions_one_success_per_fine
     ON payment_transactions (fine_id)
     WHERE status = 'SUCCESS';
 
+CREATE UNIQUE INDEX uq_payment_transactions_one_in_progress_per_fine
+    ON payment_transactions (fine_id)
+    WHERE status IN ('CREATED', 'PENDING');
+
 CREATE INDEX idx_payment_transactions_fine_status
     ON payment_transactions USING btree (fine_id, status);
 
