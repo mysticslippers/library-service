@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
@@ -20,12 +19,6 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, Long> {
     boolean existsByUser_IdAndStatus(Long userId, UserBlockStatus status);
 
     Page<UserBlock> findByStatus(UserBlockStatus status, Pageable pageable);
-
-    Page<UserBlock> findByCreatedByUser_Id(Long createdByUserId, Pageable pageable);
-
-    Page<UserBlock> findByBlockedAtBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
-
-    Page<UserBlock> findByStatusAndExpiresAtBefore(UserBlockStatus status, LocalDateTime expiresAt, Pageable pageable);
 
     @Query("""
        SELECT userBlock FROM UserBlock userBlock
