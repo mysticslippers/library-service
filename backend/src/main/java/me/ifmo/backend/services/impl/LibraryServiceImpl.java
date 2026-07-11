@@ -55,12 +55,16 @@ public class LibraryServiceImpl implements LibraryService {
     private boolean isTransitionAllowed(LibraryStatus current, LibraryStatus target){
         return switch (current) {
             case ACTIVE ->
-                    target == LibraryStatus.INACTIVE || target == LibraryStatus.SUSPENDED;
+                    target == LibraryStatus.INACTIVE || target == LibraryStatus.SUSPENDED
+                            || target == LibraryStatus.ARCHIVED;
             case INACTIVE ->
-                    target == LibraryStatus.ACTIVE || target == LibraryStatus.ARCHIVED;
+                    target == LibraryStatus.ACTIVE || target == LibraryStatus.SUSPENDED
+                            || target == LibraryStatus.ARCHIVED;
             case SUSPENDED ->
+                    target == LibraryStatus.ACTIVE || target == LibraryStatus.INACTIVE
+                            || target == LibraryStatus.ARCHIVED;
+            case ARCHIVED ->
                     target == LibraryStatus.ACTIVE || target == LibraryStatus.INACTIVE;
-            case ARCHIVED -> false;
         };
     }
 
@@ -157,17 +161,10 @@ public class LibraryServiceImpl implements LibraryService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<LibraryResponse> search(String query, LibraryStatus status, Pageable pageable) {
-        Page<Library> libraries;
         String normalizedQuery = (query != null) ? query.strip() : "";
+        String searchQuery = normalizedQuery.isBlank() ? null : normalizedQuery;
 
-        if (normalizedQuery.isBlank() && status == null)
-            libraries = repository.findAll(pageable);
-        else if (normalizedQuery.isBlank())
-            libraries = repository.findByStatus(status, pageable);
-        else if (status == null)
-            libraries = repository.findByNameContainingIgnoreCase(normalizedQuery, pageable);
-        else
-            libraries = repository.findByNameContainingIgnoreCaseAndStatus(normalizedQuery, status, pageable);
+        Page<Library> libraries = repository.search(searchQuery, status, pageable);
 
         Page<LibraryResponse> responses = libraries.map(libraryMapper::toResponse);
 
