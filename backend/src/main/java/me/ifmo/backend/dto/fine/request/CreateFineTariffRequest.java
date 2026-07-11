@@ -11,13 +11,13 @@ public record CreateFineTariffRequest(
         @NotNull
         ViolationType violationType,
 
-        @DecimalMin("0.00")
+        @DecimalMin("0.01")
         BigDecimal amountPerDay,
 
-        @DecimalMin("0.00")
+        @DecimalMin("0.01")
         BigDecimal fixedAmount,
 
-        @DecimalMin("0.00")
+        @DecimalMin("0.01")
         BigDecimal maxAmount,
 
         LocalDateTime validTo
