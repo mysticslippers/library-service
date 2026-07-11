@@ -12,11 +12,9 @@ import java.util.Optional;
 
 public interface NotificationTemplateRepository extends JpaRepository<NotificationTemplate, Long> {
 
-    Optional<NotificationTemplate> findByTypeAndChannelAndStatus(NotificationType type, NotificationChannel channel,
-                                                                 NotificationTemplateStatus status);
+    Optional<NotificationTemplate> findByTypeAndChannelAndStatus(NotificationType type, NotificationChannel channel, NotificationTemplateStatus status);
 
-    boolean existsByTypeAndChannelAndStatus(NotificationType type, NotificationChannel channel,
-                                           NotificationTemplateStatus status);
+    boolean existsByTypeAndChannelAndStatus(NotificationType type, NotificationChannel channel, NotificationTemplateStatus status);
 
     Page<NotificationTemplate> findByStatus(NotificationTemplateStatus status, Pageable pageable);
 }

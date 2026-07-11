@@ -18,19 +18,11 @@ public interface PaymentTransactionRepository extends CrudRepository<PaymentTran
 
     boolean existsByExternalPayment(String externalPayment);
 
-    Page<PaymentTransaction> findByFine_Id(Long fineId, Pageable pageable);
-
-    Page<PaymentTransaction> findByFine_IdAndStatus(Long fineId, PaymentStatus status, Pageable pageable);
-
-    Optional<PaymentTransaction> findByFine_IdAndStatus(Long fineId, PaymentStatus status);
-
     boolean existsByFine_IdAndStatus(Long fineId, PaymentStatus status);
 
     boolean existsByFine_IdAndStatusIn(Long fineId, Collection<PaymentStatus> statuses);
 
     Page<PaymentTransaction> findByStatus(PaymentStatus status, Pageable pageable);
-
-    Page<PaymentTransaction> findByStatusInAndCreatedAtBefore(Collection<PaymentStatus> statuses, LocalDateTime createdAt, Pageable pageable);
 
     @Query("""
        SELECT transaction FROM PaymentTransaction transaction
