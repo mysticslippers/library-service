@@ -10,8 +10,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 
 public interface FineRepository extends JpaRepository<Fine, Long> {
@@ -20,13 +18,7 @@ public interface FineRepository extends JpaRepository<Fine, Long> {
 
     Page<Fine> findByUser_IdAndStatus(Long userId, FineStatus status, Pageable pageable);
 
-    Page<Fine> findByUser_IdAndStatusIn(Long userId, Collection<FineStatus> statuses, Pageable pageable);
-
-    List<Fine> findByLoan_Id(Long loanId);
-
     Optional<Fine> findByLoan_IdAndReasonAndStatus(Long loanId, ViolationType reason, FineStatus status);
-
-    Page<Fine> findByReasonAndStatus(ViolationType reason, FineStatus status, Pageable pageable);
 
     Long countByUser_IdAndStatus(Long userId, FineStatus status);
 
