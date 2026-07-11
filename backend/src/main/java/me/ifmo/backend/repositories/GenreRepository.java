@@ -16,8 +16,6 @@ public interface GenreRepository extends JpaRepository<Genre, Long> {
 
     boolean existsByCode(String code);
 
-    Optional<Genre> findByNameIgnoreCase(String name);
-
     boolean existsByNameIgnoreCase(String name);
 
     @Query("""
