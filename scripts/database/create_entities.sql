@@ -28,6 +28,9 @@ CREATE TABLE branches (
     CONSTRAINT uniqe_branches_library_name
         UNIQUE (library_id, name),
 
+    CONSTRAINT chk_branches_name_not_blank
+        CHECK (btrim(name) <> ''),
+
     CONSTRAINT chk_branches_address_is_object
         CHECK (jsonb_typeof(address) = 'object'),
 
@@ -36,8 +39,18 @@ CREATE TABLE branches (
             address ? 'city'
             AND address ? 'street'
             AND address ? 'building'
+        ),
+
+    CONSTRAINT chk_branches_address_required_values
+        CHECK (
+            COALESCE(btrim(address ->> 'city'), '') <> ''
+            AND COALESCE(btrim(address ->> 'street'), '') <> ''
+            AND COALESCE(btrim(address ->> 'building'), '') <> ''
         )
 );
+
+CREATE UNIQUE INDEX uq_branches_library_name_lower
+    ON branches (library_id, lower(name));
 
 CREATE INDEX idx_branches_address_city
     ON branches USING btree ((address ->> 'city'));
