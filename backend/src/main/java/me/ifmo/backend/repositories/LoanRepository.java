@@ -10,18 +10,13 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 
 public interface LoanRepository extends JpaRepository<Loan, Long> {
 
     Page<Loan> findByUser_Id(Long userId, Pageable pageable);
 
-    Page<Loan> findByUser_IdAndStatus(Long userId, LoanStatus status, Pageable pageable);
-
     Page<Loan> findByUser_IdAndStatusIn(Long userId, Collection<LoanStatus> statuses, Pageable pageable);
-
-    Page<Loan> findByBranch_IdAndStatus(Long branchId, LoanStatus status, Pageable pageable);
 
     boolean existsByBranch_IdAndStatusIn(Long branchId, Collection<LoanStatus> statuses);
 
@@ -32,10 +27,6 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
     Optional<Loan> findByCopy_IdAndStatusIn(Long copyId, Collection<LoanStatus> statuses);
 
     Optional<Loan> findByReservation_Id(Long reservationId);
-
-    List<Loan> findByStatusAndDueAtBefore(LoanStatus status, LocalDateTime dueAt);
-
-    List<Loan> findByStatusInAndDueAtBefore(Collection<LoanStatus> statuses, LocalDateTime dueAt);
 
     Long countByUser_IdAndStatusIn(Long userId, Collection<LoanStatus> statuses);
 
