@@ -27,13 +27,89 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class LibraryRuleServiceImpl implements LibraryRuleService {
 
+    private static final int DEFAULT_MAX_ACTIVE_RESERVATIONS = 5;
+    private static final int DEFAULT_MAX_ACTIVE_LOANS = 10;
+    private static final int DEFAULT_RESERVATION_TTL_DAYS = 3;
+    private static final int DEFAULT_LOAN_DAYS = 14;
+    private static final boolean DEFAULT_RENEWAL_ALLOWED = true;
+    private static final int DEFAULT_MAX_RENEWAL_COUNT = 2;
+    private static final int DEFAULT_RENEWAL_PERIOD_DAYS = 7;
+    private static final boolean DEFAULT_RESERVATION_ALLOWED = true;
+
     private final LibraryRuleRepository repository;
     private final BranchRepository branchRepository;
     private final LibraryRuleMapper libraryRuleMapper;
 
+    private void validateRule(Integer maxActiveReservations, Integer maxActiveLoans, Integer reservationTtlDays, Integer defaultLoanDays, Boolean renewalAllowed, Integer maxRenewalCount, Integer renewalPeriodDays, Boolean reservationAllowed, LocalDateTime validTo, LocalDateTime validFrom) {
+        if (maxActiveReservations == null || maxActiveReservations < 0)
+            throw new BusinessRuleException("Library rule maxActiveReservations must not be negative");
+
+        if (maxActiveLoans == null || maxActiveLoans < 0)
+            throw new BusinessRuleException("Library rule maxActiveLoans must not be negative");
+
+        if (reservationTtlDays == null || reservationTtlDays <= 0)
+            throw new BusinessRuleException("Library rule reservationTtlDays must be positive");
+
+        if (defaultLoanDays == null || defaultLoanDays <= 0)
+            throw new BusinessRuleException("Library rule defaultLoanDays must be positive");
+
+        if (renewalAllowed == null)
+            throw new BusinessRuleException("Library rule renewalAllowed must not be null");
+
+        if (maxRenewalCount == null || maxRenewalCount < 0)
+            throw new BusinessRuleException("Library rule maxRenewalCount must not be negative");
+
+        if (renewalPeriodDays == null || renewalPeriodDays <= 0)
+            throw new BusinessRuleException("Library rule renewalPeriodDays must be positive");
+
+        if (reservationAllowed == null)
+            throw new BusinessRuleException("Library rule reservationAllowed must not be null");
+
+        if (!reservationAllowed && maxActiveReservations > 0)
+            throw new BusinessRuleException("Library rule maxActiveReservations must be zero when reservations are disabled");
+
+        if (!renewalAllowed && maxRenewalCount > 0)
+            throw new BusinessRuleException("Library rule maxRenewalCount must be zero when renewals are disabled");
+
+        if (validTo != null && validFrom != null && !validTo.isAfter(validFrom))
+            throw new BusinessRuleException("Library rule validTo must be after validFrom");
+    }
+
+    private void validate(CreateLibraryRuleRequest request) {
+        validateRule(
+                request.maxActiveReservations() != null ? request.maxActiveReservations() : DEFAULT_MAX_ACTIVE_RESERVATIONS,
+                request.maxActiveLoans() != null ? request.maxActiveLoans() : DEFAULT_MAX_ACTIVE_LOANS,
+                request.reservationTtlDays() != null ? request.reservationTtlDays() : DEFAULT_RESERVATION_TTL_DAYS,
+                request.defaultLoanDays() != null ? request.defaultLoanDays() : DEFAULT_LOAN_DAYS,
+                request.renewalAllowed() != null ? request.renewalAllowed() : DEFAULT_RENEWAL_ALLOWED,
+                request.maxRenewalCount() != null ? request.maxRenewalCount() : DEFAULT_MAX_RENEWAL_COUNT,
+                request.renewalPeriodDays() != null ? request.renewalPeriodDays() : DEFAULT_RENEWAL_PERIOD_DAYS,
+                request.reservationAllowed() != null ? request.reservationAllowed() : DEFAULT_RESERVATION_ALLOWED,
+                request.validTo(),
+                LocalDateTime.now()
+        );
+    }
+
+    private void validate(UpdateLibraryRuleRequest request, LibraryRule rule) {
+        validateRule(
+                request.maxActiveReservations() != null ? request.maxActiveReservations() : rule.getMaxActiveReservations(),
+                request.maxActiveLoans() != null ? request.maxActiveLoans() : rule.getMaxActiveLoans(),
+                request.reservationTtlDays() != null ? request.reservationTtlDays() : rule.getReservationTtlDays(),
+                request.defaultLoanDays() != null ? request.defaultLoanDays() : rule.getDefaultLoanDays(),
+                request.renewalAllowed() != null ? request.renewalAllowed() : rule.getRenewalAllowed(),
+                request.maxRenewalCount() != null ? request.maxRenewalCount() : rule.getMaxRenewalCount(),
+                request.renewalPeriodDays() != null ? request.renewalPeriodDays() : rule.getRenewalPeriodDays(),
+                request.reservationAllowed() != null ? request.reservationAllowed() : rule.getReservationAllowed(),
+                request.validTo() != null ? request.validTo() : rule.getValidTo(),
+                rule.getValidFrom()
+        );
+    }
+
     @Override
     @Transactional
     public LibraryRuleResponse create(CreateLibraryRuleRequest request) {
+        validate(request);
+
         Branch branch = branchRepository.findById(request.branchId()).orElseThrow(
                 () -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(request.branchId())));
 
@@ -82,8 +158,7 @@ public class LibraryRuleServiceImpl implements LibraryRuleService {
         if (rule.getStatus() == LibraryRuleStatus.ARCHIVED)
             throw new BusinessRuleException("Archived library rule cannot be updated");
 
-        if (request.validTo() != null && !request.validTo().isAfter(rule.getValidFrom()))
-            throw new BusinessRuleException("Library rule validTo must be after validFrom");
+        validate(request, rule);
 
         libraryRuleMapper.updateEntity(request, rule);
 
