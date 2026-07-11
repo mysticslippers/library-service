@@ -14,8 +14,6 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UserRoleId> 
 
     List<UserRole> findByUser_Id(Long userId);
 
-    List<UserRole> findByRole_Code(RoleCode roleId);
-
     Optional<UserRole> findByUser_IdAndRole_Code(Long userId, RoleCode roleCode);
 
     boolean existsByUser_IdAndRole_Code(Long userId, RoleCode roleCode);
@@ -25,4 +23,5 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UserRoleId> 
             WHERE userRole.user.id = :userId
     """)
     List<RoleCode> findRoleCodesByUser_Id(@Param("userId") Long userId);
+
 }
