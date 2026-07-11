@@ -18,10 +18,6 @@ public interface LibraryRepository extends JpaRepository<Library, Long> {
 
     Page<Library> findByStatus(LibraryStatus status, Pageable pageable);
 
-    Page<Library> findByNameContainingIgnoreCase(String name, Pageable pageable);
-
-    Page<Library> findByNameContainingIgnoreCaseAndStatus(String name, LibraryStatus status, Pageable pageable);
-
     @Query("""
         SELECT library FROM Library library
             WHERE (:status IS NULL OR library.status = :status)
