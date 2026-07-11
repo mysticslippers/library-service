@@ -2,6 +2,7 @@ package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.dto.library.request.BranchAddressRequest;
 import me.ifmo.backend.dto.library.request.ChangeBranchStatusRequest;
 import me.ifmo.backend.dto.library.request.CreateBranchRequest;
 import me.ifmo.backend.dto.library.request.UpdateBranchRequest;
@@ -40,22 +41,40 @@ public class BranchServiceImpl implements BranchService {
     private final MaterialCopyRepository materialCopyRepository;
     private final BranchMapper branchMapper;
 
-    private String normalize(String value) {
+    private String normalize(String value, String fieldName) {
         if (value == null || value.strip().isBlank())
-            throw new BusinessRuleException("%s must not be blank".formatted("Branch name"));
+            throw new BusinessRuleException("%s must not be blank".formatted(fieldName));
 
         return value.strip();
+    }
+
+    private BranchAddressRequest normalizeAddress(BranchAddressRequest address, boolean required) {
+        if (address == null) {
+            if (required)
+                throw new BusinessRuleException("Branch address must not be null");
+
+            return null;
+        }
+
+        return new BranchAddressRequest(
+                normalize(address.city(), "Branch address city"),
+                normalize(address.street(), "Branch address street"),
+                normalize(address.building(), "Branch address building"));
     }
 
     private boolean isTransitionAllowed(BranchStatus current, BranchStatus target) {
         return switch (current) {
             case ACTIVE ->
-                    target == BranchStatus.TEMPORARILY_UNAVAILABLE || target == BranchStatus.DISABLED;
+                    target == BranchStatus.TEMPORARILY_UNAVAILABLE || target == BranchStatus.DISABLED
+                            || target == BranchStatus.ARCHIVED;
             case TEMPORARILY_UNAVAILABLE ->
-                    target == BranchStatus.ACTIVE || target == BranchStatus.DISABLED;
+                    target == BranchStatus.ACTIVE || target == BranchStatus.DISABLED
+                            || target == BranchStatus.ARCHIVED;
             case DISABLED ->
-                    target == BranchStatus.ACTIVE || target == BranchStatus.ARCHIVED;
-            case ARCHIVED -> false;
+                    target == BranchStatus.ACTIVE || target == BranchStatus.TEMPORARILY_UNAVAILABLE
+                            || target == BranchStatus.ARCHIVED;
+            case ARCHIVED ->
+                    target == BranchStatus.ACTIVE || target == BranchStatus.DISABLED;
         };
     }
 
@@ -69,12 +88,13 @@ public class BranchServiceImpl implements BranchService {
         if (library.getStatus() != LibraryStatus.ACTIVE)
             throw new BusinessRuleException("Branch can be created only for active library");
 
-        String name = normalize(request.name());
+        String name = normalize(request.name(), "Branch name");
         if (repository.existsByLibrary_IdAndNameIgnoreCase(library.getId(), name))
             throw new DuplicateResourceException("Branch with name '%s' already exists in library with id '%s'"
                             .formatted(name, library.getId()));
 
-        Branch branch = branchMapper.toEntity(new CreateBranchRequest(library.getId(), name, request.address()), library);
+        BranchAddressRequest address = normalizeAddress(request.address(), true);
+        Branch branch = branchMapper.toEntity(new CreateBranchRequest(library.getId(), name, address), library);
 
         Branch saved = repository.save(branch);
         return branchMapper.toResponse(saved);
@@ -99,14 +119,15 @@ public class BranchServiceImpl implements BranchService {
         if (branch.getStatus() == BranchStatus.ARCHIVED)
             throw new BusinessRuleException("Archived branch cannot be updated");
 
-        String name = request.name() != null ? normalize(request.name()) : null;
+        String name = request.name() != null ? normalize(request.name(), "Branch name") : null;
 
         if (name != null && !name.equalsIgnoreCase(branch.getName())
                 && repository.existsByLibrary_IdAndNameIgnoreCase(branch.getLibrary().getId(), name))
             throw new DuplicateResourceException("Branch with name '%s' already exists in library with id '%s'"
                             .formatted(name, branch.getLibrary().getId()));
 
-        branchMapper.updateEntity(new UpdateBranchRequest(name, request.address()), branch);
+        BranchAddressRequest address = normalizeAddress(request.address(), false);
+        branchMapper.updateEntity(new UpdateBranchRequest(name, address), branch);
 
         Branch saved = repository.save(branch);
         return branchMapper.toResponse(saved);
