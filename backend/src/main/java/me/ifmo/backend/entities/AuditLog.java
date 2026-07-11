@@ -44,9 +44,10 @@ public class AuditLog {
     @Column(name = "action", nullable = false, columnDefinition = "audit_action")
     private AuditAction action;
 
+    @Builder.Default
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "details", columnDefinition = "jsonb")
-    private Map<String, Object> details;
+    @Column(name = "details", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> details = Map.of();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
