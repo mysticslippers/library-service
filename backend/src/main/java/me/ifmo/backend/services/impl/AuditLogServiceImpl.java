@@ -29,6 +29,11 @@ public class AuditLogServiceImpl implements AuditLogService {
     private final UserRepository userRepository;
     private final AuditLogMapper auditLogMapper;
 
+    private void validate(AuditLogSearchRequest request) {
+        if (request.createdFrom() != null && request.createdTo() != null && request.createdFrom().isAfter(request.createdTo()))
+            throw new BusinessRuleException("Audit log createdFrom must not be after createdTo");
+    }
+
     @Override
     @Transactional
     public AuditLogResponse record(Long actorUserId, AuditEntityType type, Long entityId, AuditAction action,
@@ -39,6 +44,12 @@ public class AuditLogServiceImpl implements AuditLogService {
 
         if (action == null)
             throw new BusinessRuleException("Audit action must not be null");
+
+        if (actorUserId != null && actorUserId <= 0)
+            throw new BusinessRuleException("Actor user id must be positive");
+
+        if (entityId != null && entityId <= 0)
+            throw new BusinessRuleException("Audit entity id must be positive");
 
         User actor = null;
 
@@ -64,6 +75,8 @@ public class AuditLogServiceImpl implements AuditLogService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<AuditLogResponse> search(AuditLogSearchRequest request, Pageable pageable) {
+        validate(request);
+
         Page<AuditLog> auditLogs = repository.search(request.actorUserId(), request.type(), request.entityId(),
                 request.action(), request.createdFrom(), request.createdTo(), pageable);
 
