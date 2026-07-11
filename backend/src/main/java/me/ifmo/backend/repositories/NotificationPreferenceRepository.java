@@ -10,8 +10,7 @@ import java.util.Optional;
 
 public interface NotificationPreferenceRepository extends JpaRepository<NotificationPreference, Long> {
 
-    Optional<NotificationPreference> findByUser_IdAndTypeAndChannel(Long userId, NotificationType type,
-                                                                    NotificationChannel channel);
+    Optional<NotificationPreference> findByUser_IdAndTypeAndChannel(Long userId, NotificationType type, NotificationChannel channel);
 
     List<NotificationPreference> findByUser_Id(Long userId);
 }
