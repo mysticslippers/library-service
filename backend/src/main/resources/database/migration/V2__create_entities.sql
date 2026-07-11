@@ -560,13 +560,13 @@ CREATE TABLE fine_tariffs (
                               valid_to        TIMESTAMP,
 
                               CONSTRAINT chk_fine_tariffs_amount_per_day
-                                  CHECK (amount_per_day IS NULL OR amount_per_day >= 0),
+                                  CHECK (amount_per_day IS NULL OR amount_per_day > 0),
 
                               CONSTRAINT chk_fine_tariffs_fixed_amount
-                                  CHECK (fixed_amount IS NULL OR fixed_amount >= 0),
+                                  CHECK (fixed_amount IS NULL OR fixed_amount > 0),
 
                               CONSTRAINT chk_fine_tariffs_max_amount
-                                  CHECK (max_amount IS NULL OR max_amount >= 0),
+                                  CHECK (max_amount IS NULL OR max_amount > 0),
 
                               CONSTRAINT chk_fine_tariffs_amount_exists
                                   CHECK (amount_per_day IS NOT NULL OR fixed_amount IS NOT NULL),
@@ -575,7 +575,13 @@ CREATE TABLE fine_tariffs (
                                   CHECK (valid_to IS NULL OR valid_to > valid_from),
 
                               CONSTRAINT chk_fine_tariffs_max_amount_logic
-                                  CHECK (max_amount IS NULL OR fixed_amount IS NULL OR max_amount >= fixed_amount)
+                                  CHECK (
+                                      max_amount IS NULL
+                                          OR (
+                                          (fixed_amount IS NULL OR max_amount >= fixed_amount)
+                                              AND (amount_per_day IS NULL OR max_amount >= amount_per_day)
+                                          )
+                                      )
 );
 
 CREATE UNIQUE INDEX uq_fine_tariffs_one_active_per_violation
