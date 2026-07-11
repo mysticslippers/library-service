@@ -41,6 +41,9 @@ public class FineTariffServiceImpl implements FineTariffService {
 
         if (maxAmount != null && fixedAmount != null && maxAmount.compareTo(fixedAmount) < 0)
             throw new BusinessRuleException("Fine tariff maxAmount must not be less than fixedAmount");
+
+        if (maxAmount != null && amountPerDay != null && maxAmount.compareTo(amountPerDay) < 0)
+            throw new BusinessRuleException("Fine tariff maxAmount must not be less than amountPerDay");
     }
 
     @Override
@@ -49,6 +52,9 @@ public class FineTariffServiceImpl implements FineTariffService {
         validate(request.amountPerDay(), request.fixedAmount(), request.maxAmount());
 
         LocalDateTime now = LocalDateTime.now();
+
+        if (request.validTo() != null && !request.validTo().isAfter(now))
+            throw new BusinessRuleException("Fine tariff validTo must be in the future");
 
         repository.findByViolationTypeAndStatus(request.violationType(), FineTariffStatus.ACTIVE).ifPresent(activeTariff -> {
                     activeTariff.setStatus(FineTariffStatus.INACTIVE);
