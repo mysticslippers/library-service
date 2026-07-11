@@ -8,23 +8,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
-
 public interface UserWarningRepository extends JpaRepository<UserWarning, Long> {
 
     Page<UserWarning> findByUser_Id(Long userId, Pageable pageable);
 
     Page<UserWarning> findByUser_IdAndStatus(Long userId, UserWarningStatus status, Pageable pageable);
 
-    Long countByUser_IdAndStatus(Long userId, UserWarningStatus status);
-
     Page<UserWarning> findByStatus(UserWarningStatus status, Pageable pageable);
-
-    Page<UserWarning> findByCreatedByUser_Id(Long createdByUserId, Pageable pageable);
-
-    Page<UserWarning> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
-
-    Page<UserWarning> findByStatusAndExpiresAtBefore(UserWarningStatus status, LocalDateTime expiresAt, Pageable pageable);
 
     @Query("""
        SELECT userWarning FROM UserWarning userWarning
