@@ -11,11 +11,13 @@ import me.ifmo.backend.entities.enums.BranchStatus;
 import me.ifmo.backend.services.BranchService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/branches")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class BranchController {
 
     private final BranchService service;
