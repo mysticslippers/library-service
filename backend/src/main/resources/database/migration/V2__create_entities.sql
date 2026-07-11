@@ -3,7 +3,13 @@ CREATE TABLE libraries (
                            code        VARCHAR(50) NOT NULL UNIQUE,
                            name        VARCHAR(255) NOT NULL,
                            status      library_status NOT NULL DEFAULT 'ACTIVE',
-                           created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                           created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                           CONSTRAINT chk_libraries_code_not_blank
+                               CHECK (btrim(code) <> ''),
+
+                           CONSTRAINT chk_libraries_name_not_blank
+                               CHECK (btrim(name) <> '')
 );
 
 CREATE TABLE branches (
