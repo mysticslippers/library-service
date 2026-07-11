@@ -35,6 +35,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
              AND (:action IS NULL OR auditLog.action = :action)
              AND (:createdFrom IS NULL OR auditLog.createdAt >= :createdFrom)
              AND (:createdTo IS NULL OR auditLog.createdAt <= :createdTo)
+           ORDER BY auditLog.createdAt DESC
     """)
     Page<AuditLog> search(@Param("actorUserId") Long actorUserId,
                           @Param("type") AuditEntityType type,
