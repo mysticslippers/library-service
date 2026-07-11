@@ -12,11 +12,13 @@ import me.ifmo.backend.entities.enums.ViolationType;
 import me.ifmo.backend.services.FineTariffService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/fine-tariffs")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class FineTariffController {
 
     private final FineTariffService service;
