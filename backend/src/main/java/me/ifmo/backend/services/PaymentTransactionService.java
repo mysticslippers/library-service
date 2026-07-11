@@ -9,13 +9,13 @@ import org.springframework.data.domain.Pageable;
 
 public interface PaymentTransactionService {
 
-    PaymentTransactionResponse create(CreatePaymentTransactionRequest request);
+    PaymentTransactionResponse create(Long actorUserId, CreatePaymentTransactionRequest request);
 
-    PaymentTransactionResponse getPaymentTransactionById(Long id);
+    PaymentTransactionResponse getPaymentTransactionById(Long actorUserId, Long id);
 
-    PaymentTransactionResponse getByExternalPayment(String externalPayment);
+    PaymentTransactionResponse getByExternalPayment(Long actorUserId, String externalPayment);
 
-    PaymentTransactionResponse updateStatus(Long id, UpdatePaymentStatusRequest request);
+    PaymentTransactionResponse updateStatus(Long actorUserId, Long id, UpdatePaymentStatusRequest request);
 
-    PageResponse<PaymentTransactionResponse> search(PaymentTransactionSearchRequest request, Pageable pageable);
+    PageResponse<PaymentTransactionResponse> search(Long actorUserId, PaymentTransactionSearchRequest request, Pageable pageable);
 }
