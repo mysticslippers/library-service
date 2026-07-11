@@ -869,7 +869,7 @@ CREATE TABLE audit_logs (
     entity_type     audit_entity_type NOT NULL,
     entity_id       BIGINT,
     action          audit_action NOT NULL,
-    details         JSONB,
+    details         JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_audit_logs_actor_user
@@ -877,8 +877,11 @@ CREATE TABLE audit_logs (
         REFERENCES users (id)
         ON DELETE SET NULL,
 
+    CONSTRAINT chk_audit_logs_entity_id
+        CHECK (entity_id IS NULL OR entity_id > 0),
+
     CONSTRAINT chk_audit_logs_details_is_object
-        CHECK (details IS NULL OR jsonb_typeof(details) = 'object')
+        CHECK (jsonb_typeof(details) = 'object')
 );
 
 CREATE INDEX idx_audit_logs_actor_created_at
