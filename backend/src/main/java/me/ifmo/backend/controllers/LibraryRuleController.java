@@ -11,11 +11,13 @@ import me.ifmo.backend.entities.enums.LibraryRuleStatus;
 import me.ifmo.backend.services.LibraryRuleService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/library-rules")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class LibraryRuleController {
 
     private final LibraryRuleService service;
