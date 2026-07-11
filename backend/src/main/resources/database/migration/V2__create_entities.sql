@@ -99,6 +99,12 @@ CREATE TABLE library_rules (
                                CONSTRAINT chk_library_rules_renewal_period_days
                                    CHECK (renewal_period_days > 0),
 
+                               CONSTRAINT chk_library_rules_reservation_disabled
+                                   CHECK (reservation_allowed OR max_active_reservations = 0),
+
+                               CONSTRAINT chk_library_rules_renewal_disabled
+                                   CHECK (renewal_allowed OR max_renewal_count = 0),
+
                                CONSTRAINT chk_library_rules_valid_period
                                    CHECK (valid_to IS NULL OR valid_to > valid_from)
 );
