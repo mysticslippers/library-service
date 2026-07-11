@@ -10,6 +10,9 @@ import me.ifmo.backend.dto.fine.response.PaymentTransactionResponse;
 import me.ifmo.backend.services.PaymentTransactionService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,27 +24,28 @@ public class PaymentTransactionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PaymentTransactionResponse create(@Valid @RequestBody CreatePaymentTransactionRequest request) {
-        return service.create(request);
+    public PaymentTransactionResponse create(@AuthenticationPrincipal UserDetails userDetails, @Valid @RequestBody CreatePaymentTransactionRequest request) {
+        return service.create(Long.valueOf(userDetails.getUsername()), request);
     }
 
     @GetMapping("/{id}")
-    public PaymentTransactionResponse getPaymentTransactionById(@PathVariable Long id) {
-        return service.getPaymentTransactionById(id);
+    public PaymentTransactionResponse getPaymentTransactionById(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
+        return service.getPaymentTransactionById(Long.valueOf(userDetails.getUsername()), id);
     }
 
     @GetMapping("/external/{externalPayment}")
-    public PaymentTransactionResponse getByExternalPayment(@PathVariable String externalPayment) {
-        return service.getByExternalPayment(externalPayment);
+    public PaymentTransactionResponse getByExternalPayment(@AuthenticationPrincipal UserDetails userDetails, @PathVariable String externalPayment) {
+        return service.getByExternalPayment(Long.valueOf(userDetails.getUsername()), externalPayment);
     }
 
     @PatchMapping("/{id}/status")
-    public PaymentTransactionResponse updateStatus(@PathVariable Long id, @Valid @RequestBody UpdatePaymentStatusRequest request) {
-        return service.updateStatus(id, request);
+    @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
+    public PaymentTransactionResponse updateStatus(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @Valid @RequestBody UpdatePaymentStatusRequest request) {
+        return service.updateStatus(Long.valueOf(userDetails.getUsername()), id, request);
     }
 
     @GetMapping
-    public PageResponse<PaymentTransactionResponse> search(@Valid @ModelAttribute PaymentTransactionSearchRequest request, Pageable pageable) {
-        return service.search(request, pageable);
+    public PageResponse<PaymentTransactionResponse> search(@AuthenticationPrincipal UserDetails userDetails, @Valid @ModelAttribute PaymentTransactionSearchRequest request, Pageable pageable) {
+        return service.search(Long.valueOf(userDetails.getUsername()), request, pageable);
     }
 }
