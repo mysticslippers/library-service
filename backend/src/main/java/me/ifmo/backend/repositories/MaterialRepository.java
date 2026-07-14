@@ -1,6 +1,7 @@
 package me.ifmo.backend.repositories;
 
 import me.ifmo.backend.entities.Material;
+import me.ifmo.backend.entities.enums.CopyStatus;
 import me.ifmo.backend.entities.enums.MaterialStatus;
 import me.ifmo.backend.entities.enums.MaterialType;
 import org.springframework.data.domain.Page;
@@ -22,7 +23,7 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
     @Query("""
            SELECT material.id FROM Material material
                WHERE (:excludedId IS NULL OR material.id <> :excludedId)
-                   AND material.status <> me.ifmo.backend.entities.enums.MaterialStatus.REMOVED
+                   AND material.status <> :removedStatus
                    AND lower(material.title) = lower(:title)
                    AND material.publicationYear = :publicationYear
                    AND (SELECT count(materialAuthor)
@@ -34,6 +35,7 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
                                 AND materialAuthor.author.id IN :authorIds) = :authorCount
     """)
     List<Long> findDuplicateIds(@Param("excludedId") Long excludedId,
+                                @Param("removedStatus") MaterialStatus removedStatus,
                                 @Param("title") String title,
                                 @Param("publicationYear") Integer publicationYear,
                                 @Param("authorIds") Collection<Long> authorIds,
@@ -88,7 +90,7 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
                        SELECT copy FROM MaterialCopy copy
                            WHERE copy.material = material
                                AND copy.branch.id = :branchId
-                                   AND copy.status <> me.ifmo.backend.entities.enums.CopyStatus.REMOVED \s
+                                   AND copy.status <> :removedCopyStatus \s
                    ))
    \s""")
     Page<Material> search(@Param("query") String query,
@@ -98,5 +100,6 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
                           @Param("authorId") Long authorId,
                           @Param("genreId") Long genreId,
                           @Param("branchId") Long branchId,
+                          @Param("removedCopyStatus") CopyStatus removedCopyStatus,
                           Pageable pageable);
 }
