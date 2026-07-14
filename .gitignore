@@ -141,6 +141,9 @@ frontend/.env.*
 !frontend/.env.example
 !frontend/.env.template
 
+# Postman environments with local credentials
+postman/*.private.postman_environment.json
+
 
 # =========================
 # Docker / Database local files
