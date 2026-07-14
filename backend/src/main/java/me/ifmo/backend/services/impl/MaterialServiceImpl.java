@@ -163,7 +163,8 @@ public class MaterialServiceImpl implements MaterialService {
         if (title == null || publicationYear == null || authorIds == null || authorIds.isEmpty())
             return;
 
-        if (!repository.findDuplicateIds(excludedId, title, publicationYear, authorIds, authorIds.size()).isEmpty())
+        if (!repository.findDuplicateIds(excludedId, MaterialStatus.REMOVED, title, publicationYear,
+                authorIds, authorIds.size()).isEmpty())
             throw new DuplicateResourceException("Material with the same title, authors and publication year already exists");
     }
 
@@ -433,7 +434,7 @@ public class MaterialServiceImpl implements MaterialService {
         }
 
         Page<Material> materials = repository.search(query, request.materialType(), status, request.publicationYear(),
-                request.authorId(), request.genreId(), request.branchId(), pageable);
+                request.authorId(), request.genreId(), request.branchId(), CopyStatus.REMOVED, pageable);
 
         Page<MaterialResponse> responses = materials.map(material -> toResponse(material, staff));
 
