@@ -18,6 +18,7 @@ import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.LoanService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -300,9 +301,41 @@ public class LoanServiceImpl implements LoanService {
             userId = actorUserId;
         }
 
-        Page<Loan> loans = repository.search(userId, request.copyId(), request.branchId(), request.issuedByUserId(),
-                request.status(), request.loanedFrom(), request.loanedTo(), request.dueBefore(), request.returnedFrom(),
-                request.returnedTo(), pageable);
+        Long filterUserId = userId;
+        Specification<Loan> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+
+        if (filterUserId != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("user").get("id"), filterUserId));
+        if (request.copyId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("copy").get("id"), request.copyId()));
+        if (request.branchId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("branch").get("id"), request.branchId()));
+        if (request.issuedByUserId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("issuedByUser").get("id"), request.issuedByUserId()));
+        if (request.status() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), request.status()));
+        if (request.loanedFrom() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("loanedAt"), request.loanedFrom()));
+        if (request.loanedTo() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("loanedAt"), request.loanedTo()));
+        if (request.dueBefore() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("dueAt"), request.dueBefore()));
+        if (request.returnedFrom() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("returnedAt"), request.returnedFrom()));
+        if (request.returnedTo() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("returnedAt"), request.returnedTo()));
+
+        Page<Loan> loans = repository.findAll(specification, pageable);
 
         Page<LoanResponse> responses = loans.map(loanMapper::toResponse);
 
