@@ -101,8 +101,7 @@ public class AuditLogServiceImpl implements AuditLogService {
             specification = specification.and((root, query, criteriaBuilder) ->
                     criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), request.createdTo()));
 
-        Pageable effectivePageable = pageable.getSort().isSorted()
-                ? pageable
+        Pageable effectivePageable = pageable.getSort().isSorted() ? pageable
                 : PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<AuditLog> auditLogs = repository.findAll(specification, effectivePageable);

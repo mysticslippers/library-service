@@ -27,6 +27,7 @@ import me.ifmo.backend.services.NotificationService;
 import me.ifmo.backend.services.UserBlockService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -198,7 +199,20 @@ public class UserBlockServiceImpl implements UserBlockService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserBlockResponse> search(Long userId, Long createdByUserId, UserBlockStatus status, Pageable pageable) {
-        Page<UserBlockResponse> responses = repository.search(userId, createdByUserId, status, pageable).map(userBlockMapper::toResponse);
+        Specification<UserBlock> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+
+        if (userId != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("user").get("id"), userId));
+        if (createdByUserId != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("createdByUser").get("id"), createdByUserId));
+        if (status != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), status));
+
+        Page<UserBlockResponse> responses = repository.findAll(specification, pageable)
+                .map(userBlockMapper::toResponse);
         return PageResponse.from(responses);
     }
 }
