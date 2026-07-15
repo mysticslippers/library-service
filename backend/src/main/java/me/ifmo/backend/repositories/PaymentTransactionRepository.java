@@ -4,15 +4,13 @@ import me.ifmo.backend.entities.PaymentTransaction;
 import me.ifmo.backend.entities.enums.PaymentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.CrudRepository;
-import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Optional;
 
-public interface PaymentTransactionRepository extends CrudRepository<PaymentTransaction, Long> {
+public interface PaymentTransactionRepository extends CrudRepository<PaymentTransaction, Long>, JpaSpecificationExecutor<PaymentTransaction> {
 
     Optional<PaymentTransaction> findByExternalPayment(String externalPayment);
 
@@ -24,18 +22,4 @@ public interface PaymentTransactionRepository extends CrudRepository<PaymentTran
 
     Page<PaymentTransaction> findByStatus(PaymentStatus status, Pageable pageable);
 
-    @Query("""
-       SELECT transaction FROM PaymentTransaction transaction
-           WHERE (:fineId IS NULL OR transaction.fine.id = :fineId)
-             AND (:userId IS NULL OR transaction.fine.user.id = :userId)
-             AND (:status IS NULL OR transaction.status = :status)
-             AND (:createdFrom IS NULL OR transaction.createdAt >= :createdFrom)
-             AND (:createdTo IS NULL OR transaction.createdAt <= :createdTo)
-    """)
-    Page<PaymentTransaction> search(@Param("fineId") Long fineId,
-                                    @Param("userId") Long userId,
-                                    @Param("status") PaymentStatus status,
-                                    @Param("createdFrom") LocalDateTime createdFrom,
-                                    @Param("createdTo") LocalDateTime createdTo,
-                                    Pageable pageable);
 }
