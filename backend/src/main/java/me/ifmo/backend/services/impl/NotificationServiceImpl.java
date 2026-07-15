@@ -17,11 +17,13 @@ import me.ifmo.backend.services.NotificationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -30,6 +32,8 @@ import java.util.regex.Pattern;
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
+
+    private record NotificationContent(String subject, String body) {}
 
     private static final Set<NotificationStatus> FINAL_STATUSES =
             Set.of(NotificationStatus.DELIVERED, NotificationStatus.UNDELIVERED, NotificationStatus.CANCELLED);
@@ -344,7 +348,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional(readOnly = true)
     public PageResponse<NotificationResponse> search(Long actorUserId, NotificationSearchRequest request, Pageable pageable) {
         User actor = findActor(actorUserId);
-        String query = request.query() != null ? request.query().strip() : "";
+        String normalizedQuery = request.query() != null ? request.query().strip().toLowerCase(Locale.ROOT) : "";
         Long userId = request.userId();
 
         if (isStaff(actor)) {
@@ -354,15 +358,57 @@ public class NotificationServiceImpl implements NotificationService {
             userId = actor.getId();
         }
 
-        Page<Notification> notifications = repository.search(userId, request.reservationId(),
-                request.loanId(), request.fineId(), request.type(), request.channel(), request.status(),
-                request.createdFrom(), request.createdTo(), request.sentFrom(), request.sentTo(), query, pageable);
+        Long filterUserId = userId;
+        Specification<Notification> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+
+        if (filterUserId != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("user").get("id"), filterUserId));
+        if (request.reservationId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("reservation").get("id"), request.reservationId()));
+        if (request.loanId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("loan").get("id"), request.loanId()));
+        if (request.fineId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("fine").get("id"), request.fineId()));
+        if (request.type() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("type"), request.type()));
+        if (request.channel() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("channel"), request.channel()));
+        if (request.status() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), request.status()));
+        if (request.createdFrom() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), request.createdFrom()));
+        if (request.createdTo() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), request.createdTo()));
+        if (request.sentFrom() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("sentAt"), request.sentFrom()));
+        if (request.sentTo() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("sentAt"), request.sentTo()));
+        if (!normalizedQuery.isBlank()) {
+            String pattern = "%" + normalizedQuery + "%";
+            specification = specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(
+                            criteriaBuilder.coalesce(root.get("subject"), "")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(
+                            criteriaBuilder.coalesce(root.get("body"), "")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("user").get("email")), pattern)
+            ));
+        }
+
+        Page<Notification> notifications = repository.findAll(specification, pageable);
 
         Page<NotificationResponse> responses = notifications.map(notificationMapper::toResponse);
 
         return PageResponse.from(responses);
-    }
-
-    private record NotificationContent(String subject, String body) {
     }
 }
