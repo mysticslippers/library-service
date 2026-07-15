@@ -29,6 +29,16 @@ public class FineTariffServiceImpl implements FineTariffService {
     private final FineTariffRepository repository;
     private final FineTariffMapper fineTariffMapper;
 
+    private void deactivateActiveTariff(ViolationType violationType, LocalDateTime now, Long excludedTariffId) {
+        repository.findByViolationTypeAndStatus(violationType, FineTariffStatus.ACTIVE)
+                .filter(activeTariff -> !activeTariff.getId().equals(excludedTariffId))
+                .ifPresent(activeTariff -> {
+                    activeTariff.setStatus(FineTariffStatus.INACTIVE);
+                    activeTariff.setValidTo(now);
+                    repository.saveAndFlush(activeTariff);
+                });
+    }
+
     private void validate(BigDecimal amountPerDay, BigDecimal fixedAmount, BigDecimal maxAmount) {
         boolean hasAmountPerDay = amountPerDay != null && amountPerDay.compareTo(BigDecimal.ZERO) > 0;
         boolean hasFixedAmount = fixedAmount != null && fixedAmount.compareTo(BigDecimal.ZERO) > 0;
@@ -56,10 +66,7 @@ public class FineTariffServiceImpl implements FineTariffService {
         if (request.validTo() != null && !request.validTo().isAfter(now))
             throw new BusinessRuleException("Fine tariff validTo must be in the future");
 
-        repository.findByViolationTypeAndStatus(request.violationType(), FineTariffStatus.ACTIVE).ifPresent(activeTariff -> {
-                    activeTariff.setStatus(FineTariffStatus.INACTIVE);
-                    activeTariff.setValidTo(now);
-                });
+        deactivateActiveTariff(request.violationType(), now, null);
 
         FineTariff tariff = fineTariffMapper.toEntity(request);
         tariff.setStatus(FineTariffStatus.ACTIVE);
@@ -129,11 +136,7 @@ public class FineTariffServiceImpl implements FineTariffService {
         LocalDateTime now = LocalDateTime.now();
 
         if (status == FineTariffStatus.ACTIVE) {
-            repository.findByViolationTypeAndStatus(tariff.getViolationType(), FineTariffStatus.ACTIVE)
-                    .filter(activeTariff -> !activeTariff.getId().equals(tariff.getId())).ifPresent(activeTariff -> {
-                        activeTariff.setStatus(FineTariffStatus.INACTIVE);
-                        activeTariff.setValidTo(now);
-                    });
+            deactivateActiveTariff(tariff.getViolationType(), now, tariff.getId());
 
             tariff.setValidTo(null);
         }
