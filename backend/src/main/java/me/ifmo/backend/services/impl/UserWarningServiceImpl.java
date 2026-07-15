@@ -26,6 +26,7 @@ import me.ifmo.backend.services.NotificationService;
 import me.ifmo.backend.services.UserWarningService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -190,7 +191,19 @@ public class UserWarningServiceImpl implements UserWarningService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserWarningResponse> search(Long userId, Long createdByUserId, UserWarningStatus status, Pageable pageable) {
-        Page<UserWarningResponse> responses = repository.search(userId, createdByUserId, status, pageable).map(userWarningMapper::toResponse);
+        Specification<UserWarning> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+
+        if (userId != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("user").get("id"), userId));
+        if (createdByUserId != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("createdByUser").get("id"), createdByUserId));
+        if (status != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), status));
+
+        Page<UserWarningResponse> responses = repository.findAll(specification, pageable).map(userWarningMapper::toResponse);
         return PageResponse.from(responses);
     }
 }
