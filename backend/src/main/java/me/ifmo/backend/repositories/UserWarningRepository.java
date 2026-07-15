@@ -5,10 +5,9 @@ import me.ifmo.backend.entities.enums.UserWarningStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface UserWarningRepository extends JpaRepository<UserWarning, Long> {
+public interface UserWarningRepository extends JpaRepository<UserWarning, Long>, JpaSpecificationExecutor<UserWarning> {
 
     Page<UserWarning> findByUser_Id(Long userId, Pageable pageable);
 
@@ -16,14 +15,4 @@ public interface UserWarningRepository extends JpaRepository<UserWarning, Long> 
 
     Page<UserWarning> findByStatus(UserWarningStatus status, Pageable pageable);
 
-    @Query("""
-       SELECT userWarning FROM UserWarning userWarning
-           WHERE (:userId IS NULL OR userWarning.user.id = :userId)
-             AND (:createdByUserId IS NULL OR userWarning.createdByUser.id = :createdByUserId)
-             AND (:status IS NULL OR userWarning.status = :status)
-    """)
-    Page<UserWarning> search(@Param("userId") Long userId,
-                             @Param("createdByUserId") Long createdByUserId,
-                             @Param("status") UserWarningStatus status,
-                             Pageable pageable);
 }
