@@ -18,12 +18,14 @@ import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.ReservationService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -314,11 +316,48 @@ public class ReservationServiceImpl implements ReservationService {
             userId = actorUserId;
         }
 
-        String query = request.query() != null ? request.query().strip() : "";
+        Long filterUserId = userId;
+        Specification<Reservation> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
 
-        Page<Reservation> reservations = repository.search(userId, request.materialId(), request.copyId(),
-                request.branchId(), request.status(), request.createdFrom(), request.createdTo(), request.expiresBefore(),
-                query, pageable);
+        if (filterUserId != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("user").get("id"), filterUserId));
+        if (request.materialId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("material").get("id"), request.materialId()));
+        if (request.copyId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("copy").get("id"), request.copyId()));
+        if (request.branchId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("branch").get("id"), request.branchId()));
+        if (request.status() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), request.status()));
+        if (request.createdFrom() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), request.createdFrom()));
+        if (request.createdTo() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), request.createdTo()));
+        if (request.expiresBefore() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("expiresAt"), request.expiresBefore()));
+
+        String normalizedQuery = request.query() != null ? request.query().strip() : "";
+        if (!normalizedQuery.isEmpty()) {
+            String lowerPattern = "%" + normalizedQuery.toLowerCase(Locale.ROOT) + "%";
+            String inventoryPattern = "%" + normalizedQuery + "%";
+            specification = specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("material").get("title")), lowerPattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("user").get("email")), lowerPattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("user").get("firstName")), lowerPattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("user").get("lastName")), lowerPattern),
+                    criteriaBuilder.like(root.get("copy").get("inventoryNumber"), inventoryPattern)
+            ));
+        }
+
+        Page<Reservation> reservations = repository.findAll(specification, pageable);
 
         Page<ReservationResponse> responses = reservations.map(this::toResponse);
 
