@@ -211,8 +211,7 @@ public class UserBlockServiceImpl implements UserBlockService {
             specification = specification.and((root, query, criteriaBuilder) ->
                     criteriaBuilder.equal(root.get("status"), status));
 
-        Page<UserBlockResponse> responses = repository.findAll(specification, pageable)
-                .map(userBlockMapper::toResponse);
+        Page<UserBlockResponse> responses = repository.findAll(specification, pageable).map(userBlockMapper::toResponse);
         return PageResponse.from(responses);
     }
 }

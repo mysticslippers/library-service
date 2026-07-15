@@ -22,6 +22,7 @@ import me.ifmo.backend.services.UserService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -383,9 +384,28 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserAdminResponse> search(UserSearchRequest request, Pageable pageable) {
-        String query = request.query() != null ? request.query().strip() : "";
+        String normalizedQuery = request.query() != null ? request.query().strip().toLowerCase(Locale.ROOT) : "";
+        Specification<User> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
 
-        Page<User> users = repository.search(query, request.status(), request.homeBranchId(), pageable);
+        if (!normalizedQuery.isBlank()) {
+            String pattern = "%" + normalizedQuery + "%";
+            specification = specification.and((root, query, criteriaBuilder) -> criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("phone")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("firstName")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("lastName")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(
+                            criteriaBuilder.coalesce(root.get("middleName"), "")), pattern)
+            ));
+        }
+        if (request.status() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), request.status()));
+        if (request.homeBranchId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("branch").get("id"), request.homeBranchId()));
+
+        Page<User> users = repository.findAll(specification, pageable);
 
         Page<UserAdminResponse> responses = users.map(this::toAdminResponse);
 
