@@ -15,7 +15,10 @@ import me.ifmo.backend.repositories.AuditLogRepository;
 import me.ifmo.backend.repositories.UserRepository;
 import me.ifmo.backend.services.AuditLogService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,8 +80,32 @@ public class AuditLogServiceImpl implements AuditLogService {
     public PageResponse<AuditLogResponse> search(AuditLogSearchRequest request, Pageable pageable) {
         validate(request);
 
-        Page<AuditLog> auditLogs = repository.search(request.actorUserId(), request.type(), request.entityId(),
-                request.action(), request.createdFrom(), request.createdTo(), pageable);
+        Specification<AuditLog> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+
+        if (request.actorUserId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("user").get("id"), request.actorUserId()));
+        if (request.type() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("type"), request.type()));
+        if (request.entityId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("entityId"), request.entityId()));
+        if (request.action() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("action"), request.action()));
+        if (request.createdFrom() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), request.createdFrom()));
+        if (request.createdTo() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), request.createdTo()));
+
+        Pageable effectivePageable = pageable.getSort().isSorted()
+                ? pageable
+                : PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<AuditLog> auditLogs = repository.findAll(specification, effectivePageable);
 
         Page<AuditLogResponse> responses = auditLogs.map(auditLogMapper::toResponse);
 
