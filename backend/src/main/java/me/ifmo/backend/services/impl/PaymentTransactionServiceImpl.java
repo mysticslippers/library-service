@@ -21,6 +21,7 @@ import me.ifmo.backend.repositories.UserRoleRepository;
 import me.ifmo.backend.services.PaymentTransactionService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -196,8 +197,27 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         if (isStaff(actorUserId))
             userId = actorUserId;
 
-        Page<PaymentTransaction> transactions = repository.search(request.fineId(), userId, request.status(),
-                request.createdFrom(), request.createdTo(), pageable);
+        Long filterUserId = userId;
+        Specification<PaymentTransaction> specification =
+                (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+
+        if (request.fineId() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("fine").get("id"), request.fineId()));
+        if (filterUserId != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("fine").get("user").get("id"), filterUserId));
+        if (request.status() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("status"), request.status()));
+        if (request.createdFrom() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), request.createdFrom()));
+        if (request.createdTo() != null)
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), request.createdTo()));
+
+        Page<PaymentTransaction> transactions = repository.findAll(specification, pageable);
 
         Page<PaymentTransactionResponse> responses = transactions.map(paymentTransactionMapper::toResponse);
 
