@@ -45,4 +45,17 @@ public class PaymentTransaction {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Override
+    public String toString() {
+        return "PaymentTransaction{" +
+                "id=" + id +
+                ", fineId=" + (fine != null ? fine.getId() : null) +
+                ", externalPayment='" + externalPayment + '\'' +
+                ", amount=" + amount +
+                ", status=" + status +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
+    }
 }
