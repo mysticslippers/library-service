@@ -1,15 +1,15 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
 import me.ifmo.backend.dto.notification.request.NotificationSearchRequest;
 import me.ifmo.backend.dto.notification.request.UpdateNotificationStatusRequest;
 import me.ifmo.backend.dto.notification.response.NotificationResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.*;
-import me.ifmo.backend.exceptions.domain.BusinessRuleException;
-import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
+import me.ifmo.backend.shared.error.BusinessRuleException;
+import me.ifmo.backend.shared.error.ResourceNotFoundException;
 import me.ifmo.backend.mappers.NotificationMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.AuditLogService;

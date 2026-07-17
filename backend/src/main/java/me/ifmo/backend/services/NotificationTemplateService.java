@@ -1,6 +1,6 @@
 package me.ifmo.backend.services;
 
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.notification.request.CreateNotificationTemplateRequest;
 import me.ifmo.backend.dto.notification.request.UpdateNotificationTemplateRequest;
 import me.ifmo.backend.dto.notification.response.NotificationTemplateResponse;

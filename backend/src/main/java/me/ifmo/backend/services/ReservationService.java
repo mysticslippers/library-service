@@ -4,7 +4,7 @@ import me.ifmo.backend.dto.circulation.request.CancelReservationRequest;
 import me.ifmo.backend.dto.circulation.request.CreateReservationRequest;
 import me.ifmo.backend.dto.circulation.request.ReservationSearchRequest;
 import me.ifmo.backend.dto.circulation.response.ReservationResponse;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import org.springframework.data.domain.Pageable;
 
 public interface ReservationService {

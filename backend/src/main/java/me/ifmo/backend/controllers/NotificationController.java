@@ -2,7 +2,7 @@ package me.ifmo.backend.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
 import me.ifmo.backend.dto.notification.request.NotificationSearchRequest;
 import me.ifmo.backend.dto.notification.request.UpdateNotificationStatusRequest;

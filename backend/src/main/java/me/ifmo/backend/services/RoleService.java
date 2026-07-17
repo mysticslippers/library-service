@@ -1,6 +1,6 @@
 package me.ifmo.backend.services;
 
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.user.response.RoleResponse;
 import me.ifmo.backend.entities.enums.RoleCode;
 import org.springframework.data.domain.Pageable;

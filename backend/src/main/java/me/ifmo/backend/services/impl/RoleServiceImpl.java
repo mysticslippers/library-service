@@ -1,11 +1,11 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.user.response.RoleResponse;
 import me.ifmo.backend.entities.Role;
 import me.ifmo.backend.entities.enums.RoleCode;
-import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
+import me.ifmo.backend.shared.error.ResourceNotFoundException;
 import me.ifmo.backend.mappers.RoleMapper;
 import me.ifmo.backend.repositories.RoleRepository;
 import me.ifmo.backend.services.RoleService;

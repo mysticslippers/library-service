@@ -6,7 +6,7 @@ import me.ifmo.backend.dto.catalog.request.ChangeMaterialCopyStatusRequest;
 import me.ifmo.backend.dto.catalog.request.CreateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.entities.enums.CopyStatus;
 import me.ifmo.backend.services.MaterialCopyService;
 import org.springframework.data.domain.Pageable;

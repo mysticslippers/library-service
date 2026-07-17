@@ -1,6 +1,6 @@
 package me.ifmo.backend.services;
 
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.fine.request.ChangeFineTariffStatusRequest;
 import me.ifmo.backend.dto.fine.request.CreateFineTariffRequest;
 import me.ifmo.backend.dto.fine.request.UpdateFineTariffRequest;

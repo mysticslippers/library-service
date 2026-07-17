@@ -2,7 +2,7 @@ package me.ifmo.backend.dto.circulation.response;
 
 import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
 import me.ifmo.backend.dto.catalog.response.MaterialShortResponse;
-import me.ifmo.backend.dto.library.response.BranchShortResponse;
+import me.ifmo.backend.library.internal.web.response.BranchShortResponse;
 import me.ifmo.backend.dto.user.response.UserShortResponse;
 import me.ifmo.backend.entities.enums.ReservationStatus;
 

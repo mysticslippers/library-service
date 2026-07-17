@@ -1,7 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.fine.request.CreatePaymentTransactionRequest;
 import me.ifmo.backend.dto.fine.request.PaymentTransactionSearchRequest;
 import me.ifmo.backend.dto.fine.request.UpdatePaymentStatusRequest;
@@ -11,9 +11,9 @@ import me.ifmo.backend.entities.PaymentTransaction;
 import me.ifmo.backend.entities.enums.FineStatus;
 import me.ifmo.backend.entities.enums.PaymentStatus;
 import me.ifmo.backend.entities.enums.RoleCode;
-import me.ifmo.backend.exceptions.domain.BusinessRuleException;
-import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
-import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
+import me.ifmo.backend.shared.error.BusinessRuleException;
+import me.ifmo.backend.shared.error.DuplicateResourceException;
+import me.ifmo.backend.shared.error.ResourceNotFoundException;
 import me.ifmo.backend.mappers.PaymentTransactionMapper;
 import me.ifmo.backend.repositories.FineRepository;
 import me.ifmo.backend.repositories.PaymentTransactionRepository;

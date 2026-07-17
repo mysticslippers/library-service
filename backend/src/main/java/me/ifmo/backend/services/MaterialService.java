@@ -5,7 +5,7 @@ import me.ifmo.backend.dto.catalog.request.CreateMaterialRequest;
 import me.ifmo.backend.dto.catalog.request.MaterialSearchRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialResponse;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import org.springframework.data.domain.Pageable;
 
 public interface MaterialService {

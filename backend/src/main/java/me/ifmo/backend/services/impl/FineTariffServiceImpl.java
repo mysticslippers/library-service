@@ -1,7 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.fine.request.ChangeFineTariffStatusRequest;
 import me.ifmo.backend.dto.fine.request.CreateFineTariffRequest;
 import me.ifmo.backend.dto.fine.request.UpdateFineTariffRequest;
@@ -9,8 +9,8 @@ import me.ifmo.backend.dto.fine.response.FineTariffResponse;
 import me.ifmo.backend.entities.FineTariff;
 import me.ifmo.backend.entities.enums.FineTariffStatus;
 import me.ifmo.backend.entities.enums.ViolationType;
-import me.ifmo.backend.exceptions.domain.BusinessRuleException;
-import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
+import me.ifmo.backend.shared.error.BusinessRuleException;
+import me.ifmo.backend.shared.error.ResourceNotFoundException;
 import me.ifmo.backend.mappers.FineTariffMapper;
 import me.ifmo.backend.repositories.FineTariffRepository;
 import me.ifmo.backend.services.FineTariffService;

@@ -6,7 +6,7 @@ import me.ifmo.backend.dto.catalog.request.AuthorSearchRequest;
 import me.ifmo.backend.dto.catalog.request.CreateAuthorRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateAuthorRequest;
 import me.ifmo.backend.dto.catalog.response.AuthorResponse;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.services.AuthorService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;

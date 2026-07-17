@@ -2,7 +2,7 @@ package me.ifmo.backend.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.user.request.CancelUserBlockRequest;
 import me.ifmo.backend.dto.user.request.CreateUserBlockRequest;
 import me.ifmo.backend.dto.user.response.UserBlockResponse;

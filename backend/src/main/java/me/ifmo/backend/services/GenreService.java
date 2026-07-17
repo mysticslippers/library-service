@@ -3,7 +3,7 @@ package me.ifmo.backend.services;
 import me.ifmo.backend.dto.catalog.request.CreateGenreRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateGenreRequest;
 import me.ifmo.backend.dto.catalog.response.GenreResponse;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import org.springframework.data.domain.Pageable;
 
 public interface GenreService {

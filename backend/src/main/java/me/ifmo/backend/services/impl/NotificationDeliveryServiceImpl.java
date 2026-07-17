@@ -7,7 +7,7 @@ import me.ifmo.backend.entities.Notification;
 import me.ifmo.backend.entities.enums.AuditAction;
 import me.ifmo.backend.entities.enums.AuditEntityType;
 import me.ifmo.backend.entities.enums.NotificationStatus;
-import me.ifmo.backend.exceptions.domain.BusinessRuleException;
+import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.repositories.NotificationRepository;
 import me.ifmo.backend.services.AuditLogService;
 import me.ifmo.backend.services.NotificationDeliveryClient;

@@ -5,7 +5,7 @@ import me.ifmo.backend.dto.circulation.request.LoanSearchRequest;
 import me.ifmo.backend.dto.circulation.request.RenewLoanRequest;
 import me.ifmo.backend.dto.circulation.request.ReturnLoanRequest;
 import me.ifmo.backend.dto.circulation.response.LoanResponse;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import org.springframework.data.domain.Pageable;
 
 public interface LoanService {

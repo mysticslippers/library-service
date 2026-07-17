@@ -1,16 +1,16 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.fine.request.CancelFineRequest;
 import me.ifmo.backend.dto.fine.request.CreateFineRequest;
 import me.ifmo.backend.dto.fine.request.FineSearchRequest;
 import me.ifmo.backend.dto.fine.response.FineResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.*;
-import me.ifmo.backend.exceptions.domain.BusinessRuleException;
-import me.ifmo.backend.exceptions.domain.DuplicateResourceException;
-import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
+import me.ifmo.backend.shared.error.BusinessRuleException;
+import me.ifmo.backend.shared.error.DuplicateResourceException;
+import me.ifmo.backend.shared.error.ResourceNotFoundException;
 import me.ifmo.backend.mappers.FineMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.services.FineService;

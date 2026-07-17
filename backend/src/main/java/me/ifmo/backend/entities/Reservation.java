@@ -1,5 +1,7 @@
 package me.ifmo.backend.entities;
 
+import me.ifmo.backend.library.internal.domain.Branch;
+
 import jakarta.persistence.*;
 import lombok.*;
 import me.ifmo.backend.entities.enums.ReservationStatus;

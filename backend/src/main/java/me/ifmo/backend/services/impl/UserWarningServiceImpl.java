@@ -1,7 +1,7 @@
 package me.ifmo.backend.services.impl;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.common.response.PageResponse;
+import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
 import me.ifmo.backend.dto.user.request.CancelUserWarningRequest;
 import me.ifmo.backend.dto.user.request.CreateUserWarningRequest;
@@ -15,8 +15,8 @@ import me.ifmo.backend.entities.enums.NotificationType;
 import me.ifmo.backend.entities.enums.RoleCode;
 import me.ifmo.backend.entities.enums.UserStatus;
 import me.ifmo.backend.entities.enums.UserWarningStatus;
-import me.ifmo.backend.exceptions.domain.BusinessRuleException;
-import me.ifmo.backend.exceptions.domain.ResourceNotFoundException;
+import me.ifmo.backend.shared.error.BusinessRuleException;
+import me.ifmo.backend.shared.error.ResourceNotFoundException;
 import me.ifmo.backend.mappers.UserWarningMapper;
 import me.ifmo.backend.repositories.UserRepository;
 import me.ifmo.backend.repositories.UserRoleRepository;
