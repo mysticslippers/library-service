@@ -1,4 +1,4 @@
-package me.ifmo.backend.entities.enums;
+package me.ifmo.backend.audit.domain.enums;
 
 public enum AuditAction {
     CREATE,

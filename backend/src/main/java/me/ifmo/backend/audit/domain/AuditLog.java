@@ -1,10 +1,10 @@
-package me.ifmo.backend.entities;
+package me.ifmo.backend.audit.domain;
 
 import me.ifmo.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
-import me.ifmo.backend.entities.enums.AuditAction;
-import me.ifmo.backend.entities.enums.AuditEntityType;
+import me.ifmo.backend.audit.domain.enums.AuditAction;
+import me.ifmo.backend.audit.domain.enums.AuditEntityType;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;

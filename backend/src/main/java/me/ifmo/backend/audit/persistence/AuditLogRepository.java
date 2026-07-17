@@ -1,6 +1,6 @@
-package me.ifmo.backend.repositories;
+package me.ifmo.backend.audit.persistence;
 
-import me.ifmo.backend.entities.AuditLog;
+import me.ifmo.backend.audit.domain.AuditLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,5 +1,8 @@
 package me.ifmo.backend.services.impl;
 
+import me.ifmo.backend.audit.domain.enums.AuditAction;
+import me.ifmo.backend.audit.domain.enums.AuditEntityType;
+
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.notification.request.CreateNotificationTemplateRequest;
@@ -12,7 +15,7 @@ import me.ifmo.backend.shared.error.DuplicateResourceException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
 import me.ifmo.backend.mappers.NotificationTemplateMapper;
 import me.ifmo.backend.repositories.NotificationTemplateRepository;
-import me.ifmo.backend.services.AuditLogService;
+import me.ifmo.backend.audit.application.AuditLogService;
 import me.ifmo.backend.services.NotificationTemplateService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

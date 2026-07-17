@@ -1,8 +1,8 @@
-package me.ifmo.backend.dto.audit.request;
+package me.ifmo.backend.audit.web.request;
 
 import jakarta.validation.constraints.Positive;
-import me.ifmo.backend.entities.enums.AuditAction;
-import me.ifmo.backend.entities.enums.AuditEntityType;
+import me.ifmo.backend.audit.domain.enums.AuditAction;
+import me.ifmo.backend.audit.domain.enums.AuditEntityType;
 
 import java.time.LocalDateTime;
 

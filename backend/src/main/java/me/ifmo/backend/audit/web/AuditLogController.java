@@ -1,11 +1,11 @@
-package me.ifmo.backend.controllers;
+package me.ifmo.backend.audit.web;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.audit.request.AuditLogSearchRequest;
-import me.ifmo.backend.dto.audit.response.AuditLogResponse;
+import me.ifmo.backend.audit.web.request.AuditLogSearchRequest;
+import me.ifmo.backend.audit.web.response.AuditLogResponse;
 import me.ifmo.backend.shared.web.response.PageResponse;
-import me.ifmo.backend.services.AuditLogService;
+import me.ifmo.backend.audit.application.AuditLogService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;

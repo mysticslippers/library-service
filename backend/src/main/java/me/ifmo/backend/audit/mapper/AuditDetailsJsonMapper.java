@@ -1,4 +1,4 @@
-package me.ifmo.backend.mappers;
+package me.ifmo.backend.audit.mapper;
 
 import org.springframework.stereotype.Component;
 

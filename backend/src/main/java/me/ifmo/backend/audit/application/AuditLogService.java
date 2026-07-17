@@ -1,10 +1,10 @@
-package me.ifmo.backend.services;
+package me.ifmo.backend.audit.application;
 
-import me.ifmo.backend.dto.audit.request.AuditLogSearchRequest;
-import me.ifmo.backend.dto.audit.response.AuditLogResponse;
+import me.ifmo.backend.audit.web.request.AuditLogSearchRequest;
+import me.ifmo.backend.audit.web.response.AuditLogResponse;
 import me.ifmo.backend.shared.web.response.PageResponse;
-import me.ifmo.backend.entities.enums.AuditAction;
-import me.ifmo.backend.entities.enums.AuditEntityType;
+import me.ifmo.backend.audit.domain.enums.AuditAction;
+import me.ifmo.backend.audit.domain.enums.AuditEntityType;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Map;

@@ -1,11 +1,11 @@
-package me.ifmo.backend.mappers;
+package me.ifmo.backend.audit.mapper;
 
-import me.ifmo.backend.dto.audit.response.AuditLogResponse;
-import me.ifmo.backend.entities.AuditLog;
+import me.ifmo.backend.audit.web.response.AuditLogResponse;
+import me.ifmo.backend.audit.domain.AuditLog;
 import me.ifmo.backend.user.domain.User;
 import me.ifmo.backend.user.mapper.UserMapper;
-import me.ifmo.backend.entities.enums.AuditAction;
-import me.ifmo.backend.entities.enums.AuditEntityType;
+import me.ifmo.backend.audit.domain.enums.AuditAction;
+import me.ifmo.backend.audit.domain.enums.AuditEntityType;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

@@ -1,5 +1,8 @@
 package me.ifmo.backend.services.impl;
 
+import me.ifmo.backend.audit.domain.enums.AuditAction;
+import me.ifmo.backend.audit.domain.enums.AuditEntityType;
+
 import me.ifmo.backend.fine.domain.Fine;
 import me.ifmo.backend.fine.persistence.FineRepository;
 
@@ -26,7 +29,7 @@ import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
 import me.ifmo.backend.mappers.NotificationMapper;
 import me.ifmo.backend.repositories.*;
-import me.ifmo.backend.services.AuditLogService;
+import me.ifmo.backend.audit.application.AuditLogService;
 import me.ifmo.backend.services.NotificationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;

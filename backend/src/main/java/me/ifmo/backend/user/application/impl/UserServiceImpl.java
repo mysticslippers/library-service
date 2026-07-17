@@ -1,5 +1,8 @@
 package me.ifmo.backend.user.application.impl;
 
+import me.ifmo.backend.audit.domain.enums.AuditAction;
+import me.ifmo.backend.audit.domain.enums.AuditEntityType;
+
 import me.ifmo.backend.fine.domain.enums.FineStatus;
 import me.ifmo.backend.fine.mapper.FineMapper;
 import me.ifmo.backend.fine.persistence.FineRepository;
@@ -55,7 +58,7 @@ import me.ifmo.backend.shared.error.ResourceNotFoundException;
 import me.ifmo.backend.mappers.*;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.library.persistence.BranchRepository;
-import me.ifmo.backend.services.AuditLogService;
+import me.ifmo.backend.audit.application.AuditLogService;
 import me.ifmo.backend.services.NotificationService;
 import me.ifmo.backend.user.application.UserService;
 import org.springframework.data.domain.Page;
