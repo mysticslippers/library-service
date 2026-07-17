@@ -16,7 +16,6 @@ import me.ifmo.backend.entities.enums.BranchStatus;
 import me.ifmo.backend.entities.enums.CopyStatus;
 import me.ifmo.backend.entities.enums.FineStatus;
 import me.ifmo.backend.entities.enums.LibraryRuleStatus;
-import me.ifmo.backend.entities.enums.LoanStatus;
 import me.ifmo.backend.entities.enums.MaterialStatus;
 import me.ifmo.backend.entities.enums.ReservationStatus;
 import me.ifmo.backend.entities.enums.RoleCode;
@@ -106,9 +105,60 @@ class ReservationServiceImplTest {
     @InjectMocks
     private ReservationServiceImpl service;
 
+    private void grantStaff() {
+        when(userRoleRepository.findRoleCodesByUser_Id(ReservationServiceImplTest.STAFF_ID)).thenReturn(List.of(RoleCode.LIBRARIAN));
+    }
+
+    private void allowReservations(User user) {
+        when(userBlockRepository.existsByUser_IdAndStatus(user.getId(), UserBlockStatus.ACTIVE)).thenReturn(false);
+        when(fineRepository.countByUser_IdAndStatus(user.getId(), FineStatus.ACTIVE)).thenReturn(0L);
+        when(loanRepository.countByUser_IdAndStatusIn(eq(user.getId()), anyCollection())).thenReturn(0L);
+    }
+
+    private void stubResponse(Reservation reservation, ReservationResponse response) {
+        MaterialShortResponse shortResponse = org.mockito.Mockito.mock(MaterialShortResponse.class);
+        when(materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(reservation.getMaterial().getId()))
+                .thenReturn(List.of());
+        when(materialGenreRepository.findByMaterial_Id(reservation.getMaterial().getId())).thenReturn(List.of());
+        when(materialMapper.toShortResponse(eq(reservation.getMaterial()), anyList(), anyList()))
+                .thenReturn(shortResponse);
+        when(reservationMapper.toResponse(reservation, shortResponse)).thenReturn(response);
+    }
+
+    private User activeUser() {
+        return User.builder().id(ReservationServiceImplTest.USER_ID).status(UserStatus.ACTIVE).build();
+    }
+
+    private Material activeMaterial() {
+        return Material.builder().id(MATERIAL_ID).status(MaterialStatus.ACTIVE).build();
+    }
+
+    private Branch activeBranch() {
+        return Branch.builder().id(BRANCH_ID).status(BranchStatus.ACTIVE).build();
+    }
+
+    private MaterialCopy availableCopy(Material material, Branch branch) {
+        return MaterialCopy.builder()
+                .id(COPY_ID)
+                .material(material)
+                .branch(branch)
+                .status(CopyStatus.AVAILABLE)
+                .build();
+    }
+
+    private LibraryRule libraryRule() {
+        return LibraryRule.builder()
+                .branch(activeBranch())
+                .maxActiveReservations(5)
+                .reservationTtlDays(3)
+                .reservationAllowed(true)
+                .status(LibraryRuleStatus.ACTIVE)
+                .build();
+    }
+
     @Test
     void createReservesAvailableCopyAndCreatesActiveReservation() {
-        User user = activeUser(USER_ID);
+        User user = activeUser();
         Material material = activeMaterial();
         Branch branch = activeBranch();
         MaterialCopy copy = availableCopy(material, branch);
@@ -169,7 +219,7 @@ class ReservationServiceImplTest {
 
     @Test
     void createRejectsUserWithUnpaidFine() {
-        User user = activeUser(USER_ID);
+        User user = activeUser();
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(userBlockRepository.existsByUser_IdAndStatus(USER_ID, UserBlockStatus.ACTIVE)).thenReturn(false);
         when(fineRepository.countByUser_IdAndStatus(USER_ID, FineStatus.ACTIVE)).thenReturn(1L);
@@ -187,7 +237,7 @@ class ReservationServiceImplTest {
 
     @Test
     void createRejectsUnavailableExplicitCopy() {
-        User user = activeUser(USER_ID);
+        User user = activeUser();
         Material material = activeMaterial();
         Branch branch = activeBranch();
         MaterialCopy copy = availableCopy(material, branch);
@@ -217,7 +267,7 @@ class ReservationServiceImplTest {
 
     @Test
     void cancelByUserTrimsReasonAndReleasesReservedCopy() {
-        User user = activeUser(USER_ID);
+        User user = activeUser();
         Material material = activeMaterial();
         MaterialCopy copy = availableCopy(material, activeBranch());
         copy.setStatus(CopyStatus.RESERVED);
@@ -250,7 +300,7 @@ class ReservationServiceImplTest {
     void cancelByUserRejectsDifferentOwner() {
         Reservation reservation = Reservation.builder()
                 .id(10L)
-                .user(activeUser(USER_ID))
+                .user(activeUser())
                 .status(ReservationStatus.ACTIVE)
                 .build();
         when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
@@ -271,7 +321,7 @@ class ReservationServiceImplTest {
                 .expiresAt(LocalDateTime.now().plusHours(1))
                 .build();
 
-        grantStaff(STAFF_ID);
+        grantStaff();
         when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
 
         assertThatThrownBy(() -> service.expire(STAFF_ID, 10L))
@@ -283,7 +333,7 @@ class ReservationServiceImplTest {
 
     @Test
     void markReadyForPickupSetsStatusAndTimestamp() {
-        User user = activeUser(USER_ID);
+        User user = activeUser();
         Material material = activeMaterial();
         MaterialCopy copy = availableCopy(material, activeBranch());
         copy.setStatus(CopyStatus.RESERVED);
@@ -297,7 +347,7 @@ class ReservationServiceImplTest {
                 .build();
         ReservationResponse response = org.mockito.Mockito.mock(ReservationResponse.class);
 
-        grantStaff(STAFF_ID);
+        grantStaff();
         when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
         when(reservationRepository.save(reservation)).thenReturn(reservation);
         stubResponse(reservation, response);
@@ -312,7 +362,7 @@ class ReservationServiceImplTest {
 
     @Test
     void getReservationByIdAllowsOwner() {
-        User user = activeUser(USER_ID);
+        User user = activeUser();
         Material material = activeMaterial();
         Reservation reservation = Reservation.builder()
                 .id(10L)
@@ -335,14 +385,14 @@ class ReservationServiceImplTest {
         copy.setStatus(CopyStatus.RESERVED);
         Reservation reservation = Reservation.builder()
                 .id(10L)
-                .user(activeUser(USER_ID))
+                .user(activeUser())
                 .material(material)
                 .copy(copy)
                 .status(ReservationStatus.READY_FOR_PICKUP)
                 .build();
         ReservationResponse response = org.mockito.Mockito.mock(ReservationResponse.class);
 
-        grantStaff(STAFF_ID);
+        grantStaff();
         when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
         when(reservationRepository.save(reservation)).thenReturn(reservation);
         stubResponse(reservation, response);
@@ -363,7 +413,7 @@ class ReservationServiceImplTest {
         copy.setStatus(CopyStatus.RESERVED);
         Reservation reservation = Reservation.builder()
                 .id(10L)
-                .user(activeUser(USER_ID))
+                .user(activeUser())
                 .material(material)
                 .copy(copy)
                 .status(ReservationStatus.ACTIVE)
@@ -371,7 +421,7 @@ class ReservationServiceImplTest {
                 .build();
         ReservationResponse response = org.mockito.Mockito.mock(ReservationResponse.class);
 
-        grantStaff(STAFF_ID);
+        grantStaff();
         when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
         when(reservationRepository.save(reservation)).thenReturn(reservation);
         stubResponse(reservation, response);
@@ -388,7 +438,7 @@ class ReservationServiceImplTest {
         copy.setStatus(CopyStatus.RESERVED);
         Reservation reservation = Reservation.builder()
                 .id(10L)
-                .user(activeUser(USER_ID))
+                .user(activeUser())
                 .material(material)
                 .copy(copy)
                 .status(ReservationStatus.READY_FOR_PICKUP)
@@ -396,7 +446,7 @@ class ReservationServiceImplTest {
                 .build();
         ReservationResponse response = org.mockito.Mockito.mock(ReservationResponse.class);
 
-        grantStaff(STAFF_ID);
+        grantStaff();
         when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
         when(reservationRepository.save(reservation)).thenReturn(reservation);
         stubResponse(reservation, response);
@@ -407,7 +457,7 @@ class ReservationServiceImplTest {
 
     @Test
     void searchRestrictsReaderToOwnReservationsAndMapsPage() {
-        User user = activeUser(USER_ID);
+        User user = activeUser();
         Material material = activeMaterial();
         Reservation reservation = Reservation.builder()
                 .id(10L)
@@ -433,56 +483,5 @@ class ReservationServiceImplTest {
 
         assertThat(result.content()).containsExactly(response);
         assertThat(result.totalElements()).isEqualTo(1);
-    }
-
-    private void grantStaff(long userId) {
-        when(userRoleRepository.findRoleCodesByUser_Id(userId)).thenReturn(List.of(RoleCode.LIBRARIAN));
-    }
-
-    private void allowReservations(User user) {
-        when(userBlockRepository.existsByUser_IdAndStatus(user.getId(), UserBlockStatus.ACTIVE)).thenReturn(false);
-        when(fineRepository.countByUser_IdAndStatus(user.getId(), FineStatus.ACTIVE)).thenReturn(0L);
-        when(loanRepository.countByUser_IdAndStatusIn(eq(user.getId()), anyCollection())).thenReturn(0L);
-    }
-
-    private void stubResponse(Reservation reservation, ReservationResponse response) {
-        MaterialShortResponse shortResponse = org.mockito.Mockito.mock(MaterialShortResponse.class);
-        when(materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(reservation.getMaterial().getId()))
-                .thenReturn(List.of());
-        when(materialGenreRepository.findByMaterial_Id(reservation.getMaterial().getId())).thenReturn(List.of());
-        when(materialMapper.toShortResponse(eq(reservation.getMaterial()), anyList(), anyList()))
-                .thenReturn(shortResponse);
-        when(reservationMapper.toResponse(reservation, shortResponse)).thenReturn(response);
-    }
-
-    private User activeUser(long id) {
-        return User.builder().id(id).status(UserStatus.ACTIVE).build();
-    }
-
-    private Material activeMaterial() {
-        return Material.builder().id(MATERIAL_ID).status(MaterialStatus.ACTIVE).build();
-    }
-
-    private Branch activeBranch() {
-        return Branch.builder().id(BRANCH_ID).status(BranchStatus.ACTIVE).build();
-    }
-
-    private MaterialCopy availableCopy(Material material, Branch branch) {
-        return MaterialCopy.builder()
-                .id(COPY_ID)
-                .material(material)
-                .branch(branch)
-                .status(CopyStatus.AVAILABLE)
-                .build();
-    }
-
-    private LibraryRule libraryRule() {
-        return LibraryRule.builder()
-                .branch(activeBranch())
-                .maxActiveReservations(5)
-                .reservationTtlDays(3)
-                .reservationAllowed(true)
-                .status(LibraryRuleStatus.ACTIVE)
-                .build();
     }
 }
