@@ -71,6 +71,25 @@ public class User {
     private Branch branch;
 
     @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", email='" + email + '\'' +
+                ", phone='" + phone + '\'' +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", middleName='" + middleName + '\'' +
+                ", status=" + status +
+                ", registeredAt=" + registeredAt +
+                ", activatedAt=" + activatedAt +
+                ", lastLoginAt=" + lastLoginAt +
+                ", failedLoginAttempts=" + failedLoginAttempts +
+                ", lockedUntil=" + lockedUntil +
+                ", branchId=" + (branch != null ? branch.getId() : null) +
+                '}';
+    }
+
+    @Override
     public boolean equals(Object object){
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
