@@ -39,7 +39,7 @@ public class NotificationTemplate {
     @Column(name = "channel", nullable = false, columnDefinition = "notification_channel")
     private NotificationChannel channel;
 
-    @Column(name = "subject_template", length = 255)
+    @Column(name = "subject_template")
     private String subjectTemplate;
 
     @Column(name = "body_template", nullable = false, columnDefinition = "text")
