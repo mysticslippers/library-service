@@ -134,3 +134,23 @@ library-service/
 ├── README.md
 └── LICENSE
 ```
+
+## Email delivery
+
+Pending email notifications are delivered through an SMTP server using Spring Mail.
+Configure the connection with environment variables:
+
+```dotenv
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USERNAME=library@example.com
+MAIL_PASSWORD=application-password
+MAIL_FROM=library@example.com
+MAIL_SMTP_AUTH=true
+MAIL_SMTP_STARTTLS_ENABLE=true
+MAIL_SMTP_SSL_ENABLE=false
+```
+
+For a local SMTP catcher, the defaults are `localhost:1025` with authentication and
+STARTTLS disabled. Pending notifications are processed through
+`POST /api/notifications/process-pending`.

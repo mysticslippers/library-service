@@ -38,6 +38,20 @@ spring:
     locations: classpath:database/migration
     baseline-on-migrate: true
 
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      "[mail.smtp.auth]": ${MAIL_SMTP_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${MAIL_SMTP_STARTTLS_ENABLE:true}
+      "[mail.smtp.starttls.required]": true
+      "[mail.smtp.ssl.enable]": ${MAIL_SMTP_SSL_ENABLE:false}
+      "[mail.smtp.connectiontimeout]": ${MAIL_CONNECTION_TIMEOUT_MS:5000}
+      "[mail.smtp.timeout]": ${MAIL_TIMEOUT_MS:5000}
+      "[mail.smtp.writetimeout]": ${MAIL_WRITE_TIMEOUT_MS:5000}
+
 server:
   port: ${SERVER_PORT}
 
@@ -78,3 +92,5 @@ security:
 notification:
   delivery:
     max-attempts: ${NOTIFICATION_DELIVERY_MAX_ATTEMPTS:3}
+    email:
+      from: ${MAIL_FROM}
