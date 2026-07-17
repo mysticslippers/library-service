@@ -1,5 +1,8 @@
 package me.ifmo.backend.catalog.application.impl;
 
+import me.ifmo.backend.circulation.persistence.LoanRepository;
+import me.ifmo.backend.circulation.persistence.ReservationRepository;
+
 import me.ifmo.backend.catalog.domain.Author;
 import me.ifmo.backend.catalog.domain.Genre;
 import me.ifmo.backend.catalog.domain.Material;
@@ -24,10 +27,10 @@ import me.ifmo.backend.entities.*;
 import me.ifmo.backend.catalog.domain.enums.CopyStatus;
 import me.ifmo.backend.catalog.domain.enums.AuthorStatus;
 import me.ifmo.backend.catalog.domain.enums.GenreStatus;
-import me.ifmo.backend.entities.enums.LoanStatus;
+import me.ifmo.backend.circulation.domain.enums.LoanStatus;
 import me.ifmo.backend.catalog.domain.enums.MaterialStatus;
 import me.ifmo.backend.catalog.domain.enums.MaterialType;
-import me.ifmo.backend.entities.enums.ReservationStatus;
+import me.ifmo.backend.circulation.domain.enums.ReservationStatus;
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.catalog.domain.id.MaterialAuthorId;
 import me.ifmo.backend.catalog.domain.id.MaterialGenreId;

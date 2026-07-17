@@ -1,19 +1,18 @@
-package me.ifmo.backend.entities;
+package me.ifmo.backend.circulation.domain;
 
-import me.ifmo.backend.circulation.domain.Loan;
-
+import me.ifmo.backend.catalog.domain.Material;
 import me.ifmo.backend.catalog.domain.MaterialCopy;
 
 import me.ifmo.backend.user.domain.User;
+import me.ifmo.backend.library.domain.Branch;
+
 import jakarta.persistence.*;
 import lombok.*;
-import me.ifmo.backend.entities.enums.FineStatus;
-import me.ifmo.backend.entities.enums.ViolationType;
+import me.ifmo.backend.circulation.domain.enums.ReservationStatus;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -23,8 +22,8 @@ import java.util.Objects;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "fines")
-public class Fine {
+@Table(name = "reservations")
+public class Reservation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,38 +33,33 @@ public class Fine {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "loan_id")
-    private Loan loan;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "material_id", nullable = false)
+    private Material material;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "copy_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "copy_id", nullable = false)
     private MaterialCopy copy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tariff_id")
-    private FineTariff tariff;
-
-    @Enumerated(EnumType.STRING)
-    @JdbcType(PostgreSQLEnumJdbcType.class)
-    @Column(name = "reason", nullable = false, columnDefinition = "violation_type")
-    private ViolationType reason;
-
-    @Column(name = "amount", nullable = false, precision = 10, scale = 2)
-    private BigDecimal amount;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "branch_id", nullable = false)
+    private Branch branch;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
-    @Column(name = "status", nullable = false, columnDefinition = "fine_status")
-    private FineStatus status = FineStatus.ACTIVE;
+    @Column(name = "status", nullable = false, columnDefinition = "reservation_status")
+    private ReservationStatus status = ReservationStatus.ACTIVE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "paid_at")
-    private LocalDateTime paidAt;
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
+
+    @Column(name = "ready_at")
+    private LocalDateTime readyAt;
 
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
@@ -75,32 +69,31 @@ public class Fine {
 
     @Override
     public String toString() {
-        return "Fine{" +
+        return "Reservation{" +
                 "id=" + id +
                 ", userId=" + (user != null ? user.getId() : null) +
-                ", loanId=" + (loan != null ? loan.getId() : null) +
+                ", materialId=" + (material != null ? material.getId() : null) +
                 ", copyId=" + (copy != null ? copy.getId() : null) +
-                ", tariffId=" + (tariff != null ? tariff.getId() : null) +
-                ", reason=" + reason +
-                ", amount=" + amount +
+                ", branchId=" + (branch != null ? branch.getId() : null) +
                 ", status=" + status +
                 ", createdAt=" + createdAt +
-                ", paidAt=" + paidAt +
+                ", expiresAt=" + expiresAt +
+                ", readyAt=" + readyAt +
                 ", cancelledAt=" + cancelledAt +
                 ", cancellationReason='" + cancellationReason + '\'' +
                 '}';
     }
 
     @Override
-    public boolean equals(Object object){
+    public boolean equals(Object object) {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
-        Fine fine = (Fine) object;
-        return id != null && Objects.equals(id, fine.id);
+        Reservation that = (Reservation) object;
+        return id != null && Objects.equals(id, that.id);
     }
 
     @Override
-    public int hashCode(){
+    public int hashCode() {
         return getClass().hashCode();
     }
 }

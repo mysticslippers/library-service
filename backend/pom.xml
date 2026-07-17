@@ -218,8 +218,8 @@
                                     <element>CLASS</element>
                                     <includes>
                                         <include>me.ifmo.backend.authentication.application.impl.AuthServiceImpl</include>
-                                        <include>me.ifmo.backend.services.impl.LoanServiceImpl</include>
-                                        <include>me.ifmo.backend.services.impl.ReservationServiceImpl</include>
+                                        <include>me.ifmo.backend.circulation.application.impl.LoanServiceImpl</include>
+                                        <include>me.ifmo.backend.circulation.application.impl.ReservationServiceImpl</include>
                                         <include>me.ifmo.backend.services.impl.FineServiceImpl</include>
                                     </includes>
                                     <limits>

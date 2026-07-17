@@ -1,5 +1,8 @@
 package me.ifmo.backend.services.impl;
 
+import me.ifmo.backend.circulation.domain.Loan;
+import me.ifmo.backend.circulation.persistence.LoanRepository;
+
 import me.ifmo.backend.catalog.domain.Material;
 import me.ifmo.backend.catalog.domain.MaterialCopy;
 import me.ifmo.backend.catalog.persistence.MaterialCopyRepository;

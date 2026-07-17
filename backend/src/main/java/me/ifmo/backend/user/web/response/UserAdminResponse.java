@@ -1,7 +1,7 @@
 package me.ifmo.backend.user.web.response;
 
-import me.ifmo.backend.dto.circulation.response.LoanResponse;
-import me.ifmo.backend.dto.circulation.response.ReservationResponse;
+import me.ifmo.backend.circulation.web.response.LoanResponse;
+import me.ifmo.backend.circulation.web.response.ReservationResponse;
 import me.ifmo.backend.dto.fine.response.FineResponse;
 import me.ifmo.backend.user.domain.enums.UserStatus;
 

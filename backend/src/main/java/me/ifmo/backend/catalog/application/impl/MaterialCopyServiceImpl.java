@@ -1,5 +1,10 @@
 package me.ifmo.backend.catalog.application.impl;
 
+import me.ifmo.backend.circulation.domain.enums.LoanStatus;
+import me.ifmo.backend.circulation.domain.enums.ReservationStatus;
+import me.ifmo.backend.circulation.persistence.LoanRepository;
+import me.ifmo.backend.circulation.persistence.ReservationRepository;
+
 import me.ifmo.backend.catalog.domain.enums.CopyStatus;
 import me.ifmo.backend.catalog.domain.enums.MaterialStatus;
 import me.ifmo.backend.catalog.persistence.MaterialCopyRepository;

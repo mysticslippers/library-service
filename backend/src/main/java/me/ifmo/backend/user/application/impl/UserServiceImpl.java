@@ -1,5 +1,13 @@
 package me.ifmo.backend.user.application.impl;
 
+import me.ifmo.backend.circulation.domain.enums.LoanStatus;
+import me.ifmo.backend.circulation.domain.enums.ReservationStatus;
+import me.ifmo.backend.circulation.domain.Reservation;
+import me.ifmo.backend.circulation.mapper.LoanMapper;
+import me.ifmo.backend.circulation.mapper.ReservationMapper;
+import me.ifmo.backend.circulation.persistence.LoanRepository;
+import me.ifmo.backend.circulation.persistence.ReservationRepository;
+
 import me.ifmo.backend.catalog.domain.Material;
 import me.ifmo.backend.catalog.domain.MaterialAuthor;
 import me.ifmo.backend.catalog.domain.MaterialGenre;
@@ -25,7 +33,7 @@ import me.ifmo.backend.user.persistence.UserWarningRepository;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.catalog.web.response.MaterialShortResponse;
-import me.ifmo.backend.dto.circulation.response.ReservationResponse;
+import me.ifmo.backend.circulation.web.response.ReservationResponse;
 import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
 import me.ifmo.backend.user.web.request.*;

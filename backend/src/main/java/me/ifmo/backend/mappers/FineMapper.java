@@ -1,5 +1,7 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.circulation.domain.Loan;
+
 import me.ifmo.backend.catalog.domain.MaterialCopy;
 import me.ifmo.backend.catalog.mapper.MaterialCopyMapper;
 

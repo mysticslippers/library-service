@@ -1,5 +1,10 @@
 package me.ifmo.backend.services.impl;
 
+import me.ifmo.backend.circulation.domain.Loan;
+import me.ifmo.backend.circulation.domain.Reservation;
+import me.ifmo.backend.circulation.persistence.LoanRepository;
+import me.ifmo.backend.circulation.persistence.ReservationRepository;
+
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserStatus;
 import me.ifmo.backend.user.domain.User;
