@@ -1,5 +1,7 @@
 package me.ifmo.backend.entities;
 
+import me.ifmo.backend.catalog.domain.MaterialCopy;
+
 import me.ifmo.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;

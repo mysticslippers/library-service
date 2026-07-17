@@ -1,5 +1,12 @@
 package me.ifmo.backend.user.application.impl;
 
+import me.ifmo.backend.catalog.domain.Material;
+import me.ifmo.backend.catalog.domain.MaterialAuthor;
+import me.ifmo.backend.catalog.domain.MaterialGenre;
+import me.ifmo.backend.catalog.mapper.MaterialMapper;
+import me.ifmo.backend.catalog.persistence.MaterialAuthorRepository;
+import me.ifmo.backend.catalog.persistence.MaterialGenreRepository;
+
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserBlockStatus;
 import me.ifmo.backend.user.domain.enums.UserStatus;
@@ -17,7 +24,7 @@ import me.ifmo.backend.user.persistence.UserRoleRepository;
 import me.ifmo.backend.user.persistence.UserWarningRepository;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.catalog.response.MaterialShortResponse;
+import me.ifmo.backend.catalog.web.response.MaterialShortResponse;
 import me.ifmo.backend.dto.circulation.response.ReservationResponse;
 import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;

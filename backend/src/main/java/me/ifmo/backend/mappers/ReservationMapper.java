@@ -1,11 +1,15 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.catalog.domain.Material;
+import me.ifmo.backend.catalog.domain.MaterialCopy;
+import me.ifmo.backend.catalog.mapper.MaterialCopyMapper;
+
 import me.ifmo.backend.user.domain.User;
 import me.ifmo.backend.user.mapper.UserMapper;
 
 import me.ifmo.backend.library.mapper.BranchMapper;
 
-import me.ifmo.backend.dto.catalog.response.MaterialShortResponse;
+import me.ifmo.backend.catalog.web.response.MaterialShortResponse;
 import me.ifmo.backend.dto.circulation.response.ReservationResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.library.domain.Branch;

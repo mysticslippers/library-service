@@ -1,7 +1,7 @@
 package me.ifmo.backend.dto.circulation.request;
 
 import jakarta.validation.constraints.Size;
-import me.ifmo.backend.entities.enums.CopyStatus;
+import me.ifmo.backend.catalog.domain.enums.CopyStatus;
 
 public record ReturnLoanRequest(
         CopyStatus resultingCopyStatus,

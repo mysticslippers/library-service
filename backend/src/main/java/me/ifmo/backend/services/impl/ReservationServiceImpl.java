@@ -1,5 +1,16 @@
 package me.ifmo.backend.services.impl;
 
+import me.ifmo.backend.catalog.domain.enums.CopyStatus;
+import me.ifmo.backend.catalog.domain.enums.MaterialStatus;
+import me.ifmo.backend.catalog.domain.Material;
+import me.ifmo.backend.catalog.domain.MaterialAuthor;
+import me.ifmo.backend.catalog.domain.MaterialCopy;
+import me.ifmo.backend.catalog.domain.MaterialGenre;
+import me.ifmo.backend.catalog.persistence.MaterialAuthorRepository;
+import me.ifmo.backend.catalog.persistence.MaterialCopyRepository;
+import me.ifmo.backend.catalog.persistence.MaterialGenreRepository;
+import me.ifmo.backend.catalog.persistence.MaterialRepository;
+
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserBlockStatus;
 import me.ifmo.backend.user.domain.enums.UserStatus;
@@ -10,7 +21,7 @@ import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.catalog.response.MaterialShortResponse;
+import me.ifmo.backend.catalog.web.response.MaterialShortResponse;
 import me.ifmo.backend.dto.circulation.request.CancelReservationRequest;
 import me.ifmo.backend.dto.circulation.request.CreateReservationRequest;
 import me.ifmo.backend.dto.circulation.request.ReservationSearchRequest;
@@ -25,7 +36,7 @@ import me.ifmo.backend.library.domain.enums.LibraryRuleStatus;
 import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.ResourceInUseException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
-import me.ifmo.backend.mappers.MaterialMapper;
+import me.ifmo.backend.catalog.mapper.MaterialMapper;
 import me.ifmo.backend.mappers.ReservationMapper;
 import me.ifmo.backend.repositories.*;
 import me.ifmo.backend.library.persistence.BranchRepository;

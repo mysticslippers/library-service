@@ -1,5 +1,9 @@
 package me.ifmo.backend.services.impl;
 
+import me.ifmo.backend.catalog.domain.Material;
+import me.ifmo.backend.catalog.domain.MaterialCopy;
+import me.ifmo.backend.catalog.persistence.MaterialCopyRepository;
+
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.Role;
 import me.ifmo.backend.user.domain.User;

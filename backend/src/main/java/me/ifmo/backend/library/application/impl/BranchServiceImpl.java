@@ -1,5 +1,8 @@
 package me.ifmo.backend.library.application.impl;
 
+import me.ifmo.backend.catalog.domain.enums.CopyStatus;
+import me.ifmo.backend.catalog.persistence.MaterialCopyRepository;
+
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.library.web.request.BranchAddressRequest;

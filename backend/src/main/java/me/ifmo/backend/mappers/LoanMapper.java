@@ -1,5 +1,8 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.catalog.domain.MaterialCopy;
+import me.ifmo.backend.catalog.mapper.MaterialCopyMapper;
+
 import me.ifmo.backend.user.domain.User;
 import me.ifmo.backend.user.mapper.UserMapper;
 

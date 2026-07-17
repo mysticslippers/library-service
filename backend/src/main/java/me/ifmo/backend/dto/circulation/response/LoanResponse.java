@@ -1,6 +1,6 @@
 package me.ifmo.backend.dto.circulation.response;
 
-import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
+import me.ifmo.backend.catalog.web.response.MaterialCopyResponse;
 import me.ifmo.backend.library.web.response.BranchShortResponse;
 import me.ifmo.backend.user.web.response.UserShortResponse;
 import me.ifmo.backend.entities.enums.LoanStatus;
