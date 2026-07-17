@@ -58,6 +58,20 @@ public class NotificationPreference {
     private LocalDateTime updatedAt;
 
     @Override
+    public String toString() {
+        return "NotificationPreference{" +
+                "id=" + id +
+                ", userId=" + (user != null ? user.getId() : null) +
+                ", type=" + type +
+                ", channel=" + channel +
+                ", enabled=" + enabled +
+                ", preferred=" + preferred +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
+    }
+
+    @Override
     public boolean equals(Object object) {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
