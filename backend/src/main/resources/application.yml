@@ -92,5 +92,13 @@ security:
 notification:
   delivery:
     max-attempts: ${NOTIFICATION_DELIVERY_MAX_ATTEMPTS:3}
+    enabled-channels: ${NOTIFICATION_DELIVERY_ENABLED_CHANNELS:EMAIL}
     email:
       from: ${MAIL_FROM}
+    sms:
+      api-url: ${SMS_RU_API_URL:https://sms.ru/sms/send}
+      api-id: ${SMS_RU_API_ID:}
+      sender: ${SMS_RU_SENDER:}
+      test-mode: ${SMS_RU_TEST_MODE:true}
+      connect-timeout: ${SMS_RU_CONNECT_TIMEOUT:5s}
+      read-timeout: ${SMS_RU_READ_TIMEOUT:5s}
