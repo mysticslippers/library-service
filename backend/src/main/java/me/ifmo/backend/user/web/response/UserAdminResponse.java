@@ -2,7 +2,7 @@ package me.ifmo.backend.user.web.response;
 
 import me.ifmo.backend.circulation.web.response.LoanResponse;
 import me.ifmo.backend.circulation.web.response.ReservationResponse;
-import me.ifmo.backend.dto.fine.response.FineResponse;
+import me.ifmo.backend.fine.web.response.FineResponse;
 import me.ifmo.backend.user.domain.enums.UserStatus;
 
 import java.time.LocalDateTime;

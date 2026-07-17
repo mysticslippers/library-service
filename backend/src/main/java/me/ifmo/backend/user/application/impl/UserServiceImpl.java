@@ -1,5 +1,9 @@
 package me.ifmo.backend.user.application.impl;
 
+import me.ifmo.backend.fine.domain.enums.FineStatus;
+import me.ifmo.backend.fine.mapper.FineMapper;
+import me.ifmo.backend.fine.persistence.FineRepository;
+
 import me.ifmo.backend.circulation.domain.enums.LoanStatus;
 import me.ifmo.backend.circulation.domain.enums.ReservationStatus;
 import me.ifmo.backend.circulation.domain.Reservation;

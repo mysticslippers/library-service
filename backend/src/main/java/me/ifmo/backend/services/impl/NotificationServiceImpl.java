@@ -1,5 +1,8 @@
 package me.ifmo.backend.services.impl;
 
+import me.ifmo.backend.fine.domain.Fine;
+import me.ifmo.backend.fine.persistence.FineRepository;
+
 import me.ifmo.backend.circulation.domain.Loan;
 import me.ifmo.backend.circulation.domain.Reservation;
 import me.ifmo.backend.circulation.persistence.LoanRepository;

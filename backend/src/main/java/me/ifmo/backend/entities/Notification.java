@@ -1,5 +1,7 @@
 package me.ifmo.backend.entities;
 
+import me.ifmo.backend.fine.domain.Fine;
+
 import me.ifmo.backend.circulation.domain.Loan;
 import me.ifmo.backend.circulation.domain.Reservation;
 
