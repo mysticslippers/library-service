@@ -12,7 +12,6 @@ import me.ifmo.backend.user.mapper.UserMapper;
 import me.ifmo.backend.library.mapper.BranchMapper;
 
 import me.ifmo.backend.circulation.web.response.LoanResponse;
-import me.ifmo.backend.entities.*;
 import me.ifmo.backend.library.domain.Branch;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;

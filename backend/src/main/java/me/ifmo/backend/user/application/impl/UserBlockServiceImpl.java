@@ -1,7 +1,7 @@
 package me.ifmo.backend.user.application.impl;
 
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
+import me.ifmo.backend.notification.web.request.CreateNotificationRequest;
 import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.user.web.request.CancelUserBlockRequest;
 import me.ifmo.backend.user.web.request.CreateUserBlockRequest;
@@ -10,8 +10,8 @@ import me.ifmo.backend.user.domain.User;
 import me.ifmo.backend.user.domain.UserBlock;
 import me.ifmo.backend.audit.domain.enums.AuditAction;
 import me.ifmo.backend.audit.domain.enums.AuditEntityType;
-import me.ifmo.backend.entities.enums.NotificationChannel;
-import me.ifmo.backend.entities.enums.NotificationType;
+import me.ifmo.backend.notification.domain.enums.NotificationChannel;
+import me.ifmo.backend.notification.domain.enums.NotificationType;
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserBlockStatus;
 import me.ifmo.backend.user.domain.enums.UserStatus;
@@ -23,7 +23,7 @@ import me.ifmo.backend.user.persistence.UserBlockRepository;
 import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
 import me.ifmo.backend.audit.application.AuditLogService;
-import me.ifmo.backend.services.NotificationService;
+import me.ifmo.backend.notification.application.NotificationService;
 import me.ifmo.backend.user.application.UserBlockService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

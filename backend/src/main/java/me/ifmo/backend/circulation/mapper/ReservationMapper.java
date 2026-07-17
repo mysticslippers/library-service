@@ -13,7 +13,6 @@ import me.ifmo.backend.library.mapper.BranchMapper;
 
 import me.ifmo.backend.catalog.web.response.MaterialShortResponse;
 import me.ifmo.backend.circulation.web.response.ReservationResponse;
-import me.ifmo.backend.entities.*;
 import me.ifmo.backend.library.domain.Branch;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;

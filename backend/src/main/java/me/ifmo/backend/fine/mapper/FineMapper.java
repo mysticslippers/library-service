@@ -12,7 +12,6 @@ import me.ifmo.backend.user.domain.User;
 import me.ifmo.backend.user.mapper.UserMapper;
 
 import me.ifmo.backend.fine.web.response.FineResponse;
-import me.ifmo.backend.entities.*;
 import me.ifmo.backend.fine.domain.enums.ViolationType;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
