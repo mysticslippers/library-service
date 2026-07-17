@@ -44,6 +44,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
     private final UserRepository userRepository;
     private final NotificationPreferenceMapper notificationPreferenceMapper;
     private final AuditLogService auditLogService;
+    private final NotificationChannelPolicy channelPolicy;
 
     static boolean isMandatory(NotificationType type) {
         return MANDATORY_TYPES.contains(type);
@@ -59,7 +60,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
                         .put(preference.getChannel(), preference));
 
         return EnumSet.allOf(NotificationType.class).stream()
-                .flatMap(type -> EnumSet.allOf(NotificationChannel.class).stream()
+                .flatMap(type -> channelPolicy.enabledChannels().stream()
                         .map(channel -> {
                             NotificationPreference preference = existing.getOrDefault(type, Map.of()).get(channel);
                             if (preference != null)
@@ -74,6 +75,8 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
     @Override
     @Transactional
     public NotificationPreferenceResponse update(Long actorUserId, UpdateNotificationPreferenceRequest request) {
+        channelPolicy.requireEnabled(request.channel());
+
         if (isMandatory(request.type()) && Boolean.FALSE.equals(request.enabled()))
             throw new BusinessRuleException("Mandatory notification type cannot be disabled");
 
@@ -121,14 +124,17 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
     }
 
     public NotificationChannel resolveChannel(Long userId, NotificationType type, NotificationChannel requestedChannel) {
-        if (requestedChannel != null)
+        if (requestedChannel != null) {
+            channelPolicy.requireEnabled(requestedChannel);
             return requestedChannel;
+        }
 
         return repository.findByUser_Id(userId).stream()
                 .filter(preference -> preference.getType() == type)
                 .filter(preference -> Boolean.TRUE.equals(preference.getPreferred()))
+                .filter(preference -> channelPolicy.isEnabled(preference.getChannel()))
                 .map(NotificationPreference::getChannel)
                 .findFirst()
-                .orElse(NotificationChannel.EMAIL);
+                .orElseGet(channelPolicy::defaultChannel);
     }
 }

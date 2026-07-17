@@ -14,6 +14,7 @@ import me.ifmo.backend.user.domain.Role;
 import me.ifmo.backend.user.domain.User;
 import me.ifmo.backend.user.domain.UserRole;
 import me.ifmo.backend.authentication.domain.enums.AuthTokenType;
+import me.ifmo.backend.notification.domain.enums.NotificationChannel;
 import me.ifmo.backend.notification.domain.enums.NotificationType;
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserStatus;
@@ -139,6 +140,7 @@ class AuthServiceImplTest {
         verify(notificationService).create(notification.capture());
         assertThat(notification.getValue().userId()).isEqualTo(USER_ID);
         assertThat(notification.getValue().type()).isEqualTo(NotificationType.ACCOUNT_ACTIVATION);
+        assertThat(notification.getValue().channel()).isEqualTo(NotificationChannel.EMAIL);
         assertThat(notification.getValue().body()).contains("activation code");
     }
 
@@ -324,6 +326,7 @@ class AuthServiceImplTest {
         ArgumentCaptor<CreateNotificationRequest> notification = ArgumentCaptor.forClass(CreateNotificationRequest.class);
         verify(notificationService).create(notification.capture());
         assertThat(notification.getValue().type()).isEqualTo(NotificationType.ACCOUNT_ACTIVATION);
+        assertThat(notification.getValue().channel()).isEqualTo(NotificationChannel.EMAIL);
     }
 
     @Test
@@ -339,6 +342,7 @@ class AuthServiceImplTest {
         ArgumentCaptor<CreateNotificationRequest> notification = ArgumentCaptor.forClass(CreateNotificationRequest.class);
         verify(notificationService).create(notification.capture());
         assertThat(notification.getValue().type()).isEqualTo(NotificationType.PASSWORD_RECOVERY);
+        assertThat(notification.getValue().channel()).isEqualTo(NotificationChannel.EMAIL);
     }
 
     @Test

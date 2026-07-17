@@ -154,3 +154,25 @@ MAIL_SMTP_SSL_ENABLE=false
 For a local SMTP catcher, the defaults are `localhost:1025` with authentication and
 STARTTLS disabled. Pending notifications are processed through
 `POST /api/notifications/process-pending`.
+
+## SMS delivery
+
+SMS delivery code is retained for future use but is disabled by default. The backend
+exposes only email preferences and rejects explicit SMS notification requests while
+the enabled channel list contains only `EMAIL`:
+
+```dotenv
+NOTIFICATION_DELIVERY_ENABLED_CHANNELS=EMAIL
+```
+
+To enable SMS in the future, configure a private SMS.RU API key and explicitly add
+the channel:
+
+```dotenv
+NOTIFICATION_DELIVERY_ENABLED_CHANNELS=EMAIL,SMS
+SMS_RU_API_ID=your-private-api-id
+SMS_RU_TEST_MODE=true
+```
+
+Optional settings include `SMS_RU_SENDER`, `SMS_RU_CONNECT_TIMEOUT`, and
+`SMS_RU_READ_TIMEOUT`. The sender name must be approved by SMS.RU before use.

@@ -224,7 +224,8 @@ public class UserServiceImpl implements UserService {
 
     private void notifyUser(User user, String subject, String body) {
         notificationService.create(new CreateNotificationRequest(
-                user.getId(), null, null, null, NotificationType.ACCOUNT_STATUS_CHANGED, NotificationChannel.EMAIL, subject, body));
+                user.getId(), null, null, null, NotificationType.ACCOUNT_STATUS_CHANGED,
+                NotificationChannel.EMAIL, subject, body));
     }
 
     private void assignRoleIfAbsent(User user, RoleCode roleCode) {

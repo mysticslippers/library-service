@@ -3,7 +3,7 @@ package me.ifmo.backend.notification.application.impl;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
-import me.ifmo.backend.notification.application.NotificationDeliveryClient;
+import me.ifmo.backend.notification.application.NotificationChannelSender;
 import me.ifmo.backend.notification.application.NotificationDeliveryResult;
 import me.ifmo.backend.notification.domain.Notification;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 
 @Component
 @RequiredArgsConstructor
-public class SpringMailNotificationDeliveryClient implements NotificationDeliveryClient {
+public class SpringMailNotificationDeliveryClient implements NotificationChannelSender {
 
     private final JavaMailSender mailSender;
 
@@ -26,6 +26,11 @@ public class SpringMailNotificationDeliveryClient implements NotificationDeliver
 
     private NotificationDeliveryResult failure(String errorMessage) {
         return new NotificationDeliveryResult(false, null, errorMessage);
+    }
+
+    @Override
+    public NotificationChannel channel() {
+        return NotificationChannel.EMAIL;
     }
 
     @Override
