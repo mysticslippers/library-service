@@ -24,14 +24,16 @@ public class SpringMailNotificationDeliveryClient implements NotificationDeliver
     @Value("${notification.delivery.email.from}")
     private String from;
 
+    private NotificationDeliveryResult failure(String errorMessage) {
+        return new NotificationDeliveryResult(false, null, errorMessage);
+    }
+
     @Override
     public NotificationDeliveryResult send(Notification notification) {
         if (notification.getChannel() != NotificationChannel.EMAIL)
             return failure("Notification channel '%s' is not configured".formatted(notification.getChannel()));
 
-        if (notification.getUser() == null
-                || notification.getUser().getEmail() == null
-                || notification.getUser().getEmail().isBlank())
+        if (notification.getUser() == null || notification.getUser().getEmail() == null || notification.getUser().getEmail().isBlank())
             return failure("Notification recipient email must not be blank");
 
         try {
@@ -49,13 +51,7 @@ public class SpringMailNotificationDeliveryClient implements NotificationDeliver
             return new NotificationDeliveryResult(true, messageId, null);
         } catch (MailException | MessagingException exception) {
             String errorMessage = exception.getMessage();
-            return failure(errorMessage != null && !errorMessage.isBlank()
-                    ? errorMessage
-                    : exception.getClass().getSimpleName());
+            return failure(errorMessage != null && !errorMessage.isBlank() ? errorMessage : exception.getClass().getSimpleName());
         }
-    }
-
-    private NotificationDeliveryResult failure(String errorMessage) {
-        return new NotificationDeliveryResult(false, null, errorMessage);
     }
 }
