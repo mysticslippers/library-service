@@ -1,5 +1,8 @@
 package me.ifmo.backend.services.impl;
 
+import me.ifmo.backend.user.domain.Role;
+import me.ifmo.backend.user.persistence.UserRoleRepository;
+
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.dto.catalog.request.*;
 import me.ifmo.backend.dto.catalog.response.MaterialResponse;
@@ -12,7 +15,7 @@ import me.ifmo.backend.entities.enums.LoanStatus;
 import me.ifmo.backend.entities.enums.MaterialStatus;
 import me.ifmo.backend.entities.enums.MaterialType;
 import me.ifmo.backend.entities.enums.ReservationStatus;
-import me.ifmo.backend.entities.enums.RoleCode;
+import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.entities.id.MaterialAuthorId;
 import me.ifmo.backend.entities.id.MaterialGenreId;
 import me.ifmo.backend.shared.error.BusinessRuleException;

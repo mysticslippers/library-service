@@ -1,11 +1,14 @@
 package me.ifmo.backend.mappers;
 
-import me.ifmo.backend.library.internal.mapper.BranchMapper;
+import me.ifmo.backend.user.domain.User;
+import me.ifmo.backend.user.mapper.UserMapper;
+
+import me.ifmo.backend.library.mapper.BranchMapper;
 
 import me.ifmo.backend.dto.catalog.response.MaterialShortResponse;
 import me.ifmo.backend.dto.circulation.response.ReservationResponse;
 import me.ifmo.backend.entities.*;
-import me.ifmo.backend.library.internal.domain.Branch;
+import me.ifmo.backend.library.domain.Branch;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

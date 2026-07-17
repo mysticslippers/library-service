@@ -1,5 +1,11 @@
 package me.ifmo.backend.services.impl;
 
+import me.ifmo.backend.user.domain.enums.RoleCode;
+import me.ifmo.backend.user.domain.enums.UserStatus;
+import me.ifmo.backend.user.domain.User;
+import me.ifmo.backend.user.persistence.UserRepository;
+import me.ifmo.backend.user.persistence.UserRoleRepository;
+
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;

@@ -1,11 +1,11 @@
 package me.ifmo.backend.mappers;
 
-import me.ifmo.backend.library.internal.mapper.BranchMapper;
+import me.ifmo.backend.library.mapper.BranchMapper;
 
 import me.ifmo.backend.dto.catalog.request.CreateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.request.UpdateMaterialCopyRequest;
 import me.ifmo.backend.dto.catalog.response.MaterialCopyResponse;
-import me.ifmo.backend.library.internal.domain.Branch;
+import me.ifmo.backend.library.domain.Branch;
 import me.ifmo.backend.entities.Material;
 import me.ifmo.backend.entities.MaterialCopy;
 import org.mapstruct.*;

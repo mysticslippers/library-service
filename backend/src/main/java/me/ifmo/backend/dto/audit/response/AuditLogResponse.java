@@ -1,6 +1,6 @@
 package me.ifmo.backend.dto.audit.response;
 
-import me.ifmo.backend.dto.user.response.UserShortResponse;
+import me.ifmo.backend.user.web.response.UserShortResponse;
 import me.ifmo.backend.entities.enums.AuditAction;
 import me.ifmo.backend.entities.enums.AuditEntityType;
 

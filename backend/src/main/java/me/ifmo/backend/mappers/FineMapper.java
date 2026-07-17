@@ -1,5 +1,8 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.user.domain.User;
+import me.ifmo.backend.user.mapper.UserMapper;
+
 import me.ifmo.backend.dto.fine.response.FineResponse;
 import me.ifmo.backend.entities.*;
 import me.ifmo.backend.entities.enums.ViolationType;

@@ -1,6 +1,6 @@
 package me.ifmo.backend.dto.catalog.response;
 
-import me.ifmo.backend.library.internal.web.response.BranchShortResponse;
+import me.ifmo.backend.library.web.response.BranchShortResponse;
 import me.ifmo.backend.entities.enums.CopyStatus;
 
 public record MaterialCopyResponse(

@@ -1,5 +1,8 @@
 package me.ifmo.backend.mappers;
 
+import me.ifmo.backend.user.domain.User;
+import me.ifmo.backend.user.mapper.UserMapper;
+
 import me.ifmo.backend.dto.notification.request.CreateNotificationRequest;
 import me.ifmo.backend.dto.notification.request.UpdateNotificationStatusRequest;
 import me.ifmo.backend.dto.notification.response.NotificationResponse;

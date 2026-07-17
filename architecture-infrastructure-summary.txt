@@ -1,0 +1,413 @@
+Итоговое резюме по инфраструктурному плану library-service
+
+Главная стратегия
+-----------------
+Не распиливать проект сразу на микросервисы. Сначала лучше сделать модульный монолит
+с четкими границами:
+
+- auth
+- catalog
+- library/branch
+- circulation
+- fine/payment
+- notification
+- audit
+- search
+- batch
+
+Инфраструктуру стоит внедрять так, чтобы потом эти модули можно было вынести
+в отдельные сервисы без переписывания всего проекта.
+
+
+1. Swagger / OpenAPI
+--------------------
+Назначение:
+- документация REST API;
+- контракт между frontend и backend;
+- описание DTO, ошибок, pagination, auth flow;
+- JWT Authorize в Swagger UI;
+- будущая агрегация документации через API Gateway.
+
+Оптимальное внедрение:
+- добавить OpenAPI config;
+- описать JWT Bearer security scheme;
+- разметить controllers через @Tag и @Operation;
+- не генерировать отдельные клиенты, пока нет реальной нужды.
+
+Уровень сложности: низкий.
+Приоритет: высокий.
+
+
+2. Redis
+--------
+Назначение:
+- кэширование каталога;
+- кэширование справочников: genres, authors, roles, library rules;
+- временное auth-состояние;
+- rate limiting;
+- JWT blacklist позже;
+- потенциальные distributed locks, если появится реальная проблема гонок.
+
+Оптимальное внедрение:
+- начать с material by id/isbn;
+- кэшировать справочники;
+- задать TTL 5-60 минут в зависимости от типа данных;
+- делать cache evict при create/update/status change.
+
+Не делать сразу:
+- не тащить Redis во все методы;
+- не хранить бизнес-данные только в Redis;
+- не делать сложные distributed locks без нагрузки и подтвержденной проблемы.
+
+Уровень сложности: средний.
+Приоритет: высокий.
+
+
+3. Усиление аутентификации и авторизации
+----------------------------------------
+Текущий уровень подходит для MVP, но для production-like архитектуры нужно усиление.
+
+Назначение:
+- access + refresh tokens;
+- refresh token rotation;
+- logout/revoke sessions;
+- Redis JWT blacklist;
+- rate limiting login/password-reset;
+- permission-based authorization;
+- branch-level access для librarians;
+- security audit events.
+
+Оптимальное внедрение:
+- короткий access token;
+- refresh sessions хранить в PostgreSQL;
+- rate limit делать через Redis;
+- permissions проверять через @PreAuthorize;
+- для библиотекарей добавить доступ в рамках конкретного филиала.
+
+Уровень сложности: средний/высокий.
+Приоритет: высокий.
+
+
+4. MinIO / S3
+-------------
+Назначение:
+- обложки книг;
+- фото авторов и филиалов;
+- импортные CSV/XLSX;
+- экспортные отчеты PDF/CSV;
+- вложения уведомлений.
+
+Оптимальное внедрение:
+- локально поднять MinIO;
+- создать bucket library-media;
+- добавить endpoint POST /materials/{id}/cover;
+- PostgreSQL хранит objectKey и metadata;
+- файл хранится в MinIO/S3.
+
+Важно:
+- не хранить картинки в PostgreSQL bytea;
+- для обложек можно использовать public read;
+- для приватных файлов лучше private bucket + pre-signed URLs.
+
+Уровень сложности: средний.
+Приоритет: высокий/средний.
+
+
+5. Prometheus + Grafana
+-----------------------
+Назначение:
+- Prometheus собирает метрики;
+- Grafana показывает dashboard-ы;
+- вместе формируют observability-слой.
+
+Что мониторить:
+- HTTP latency/error rate;
+- JVM memory/GC;
+- DB connection pool;
+- Redis hit/miss;
+- Kafka consumer lag;
+- Batch job failures;
+- business metrics: loans, reservations, fines, notifications.
+
+Оптимальное внедрение:
+- добавить micrometer-registry-prometheus;
+- включить /actuator/prometheus;
+- поднять Prometheus;
+- поднять Grafana;
+- импортировать готовый Spring Boot dashboard;
+- Alertmanager оставить на следующий этап.
+
+Уровень сложности: средний.
+Приоритет: средний/высокий.
+
+
+6. Kafka
+--------
+Назначение:
+- асинхронная коммуникация между будущими сервисами;
+- доменные события;
+- интеграция notification/audit/search;
+- подготовка к микросервисной архитектуре.
+
+Примеры событий:
+- RESERVATION_CREATED;
+- RESERVATION_CANCELLED;
+- LOAN_CREATED;
+- LOAN_RETURNED;
+- FINE_CREATED;
+- MATERIAL_UPDATED;
+- MATERIAL_COVER_UPDATED.
+
+Оптимальное внедрение:
+- начать с одного топика library.domain-events;
+- ввести единый DomainEvent envelope;
+- публиковать 5-7 ключевых событий;
+- consumer для notification/audit сначала можно держать внутри монолита;
+- позже добавить outbox pattern и dead-letter topic.
+
+Не делать сразу:
+- не дробить на десятки топиков;
+- не использовать Kafka как замену REST для синхронных проверок;
+- не делать Kafka источником истины.
+
+Уровень сложности: высокий.
+Приоритет: средний.
+
+
+7. Spring Batch
+---------------
+Назначение:
+- регулярная массовая обработка данных;
+- надежные scheduled jobs;
+- retry/skip/restart;
+- история запусков.
+
+Основные jobs:
+- reservation-expiration-job;
+- loan-overdue-job;
+- loan-reminder-job;
+- notification-retry-job;
+- outbox-publish-job;
+- catalog-reindex-job;
+- cache-warmup-job;
+- report-generation-job;
+- cleanup/retention jobs.
+
+Оптимальное внедрение:
+- начать с reservation-expiration-job;
+- затем loan-overdue-job;
+- затем outbox-publish-job;
+- простые задачи можно временно делать через @Scheduled.
+
+Уровень сложности: средний/высокий.
+Приоритет: средний.
+
+
+8. Elasticsearch
+----------------
+Назначение:
+- полнотекстовый поиск по каталогу;
+- поиск по названию, автору, ISBN;
+- fuzzy search;
+- autocomplete;
+- filters/facets;
+- highlighting;
+- поиск доступных книг в конкретном филиале.
+
+Оптимальное внедрение:
+- индекс library-materials;
+- документ = material + authors + genres + availability summary;
+- PostgreSQL остается source of truth;
+- Elasticsearch является search read-model;
+- синхронизация через Kafka events;
+- полная переиндексация через Spring Batch.
+
+Не делать сразу:
+- не использовать Elasticsearch как основную БД;
+- не хранить там критичные бизнес-данные как единственный источник;
+- не завязывать create/update операции на доступность Elasticsearch.
+
+Уровень сложности: высокий.
+Приоритет: средний/низкий на первом этапе, высокий для развитого поиска.
+
+
+9. AOP
+------
+Назначение:
+- audit;
+- metrics;
+- structured logging;
+- cache invalidation;
+- idempotency;
+- технические security checks.
+
+Оптимальное внедрение:
+- использовать точечные аннотации:
+  - @Auditable
+  - @Measured
+  - @LoggableOperation
+  - @InvalidateCache
+  - @Idempotent
+
+Важно:
+- не прятать бизнес-логику в AOP;
+- бизнес-правила должны оставаться видимыми в service/domain layer.
+
+Уровень сложности: средний.
+Приоритет: средний.
+
+
+10. API Gateway
+---------------
+Назначение:
+- routing;
+- JWT validation;
+- rate limiting;
+- CORS;
+- request logging;
+- Swagger/OpenAPI aggregation;
+- единая входная точка в систему.
+
+Оптимальное внедрение:
+- пока можно жить без gateway;
+- добавить его перед реальным разделением на микросервисы;
+- gateway не должен быть единственным местом проверки доступа;
+- сервисы тоже должны проверять permissions.
+
+Уровень сложности: средний/высокий.
+Приоритет: средний, ближе к этапу микросервисов.
+
+
+11. CDN
+-------
+Назначение:
+- быстрая раздача публичных файлов;
+- кэширование обложек книг;
+- снижение нагрузки на backend и MinIO/S3;
+- ускорение загрузки изображений для пользователей;
+- раздача frontend static assets, если появится отдельный frontend.
+
+Оптимальное внедрение:
+- использовать CDN поверх S3-compatible storage;
+- origin = S3 bucket / object storage endpoint;
+- для обложек сделать стабильные public URLs;
+- настроить Cache-Control для обложек и thumbnail-ов;
+- при обновлении обложки использовать новый objectKey или cache invalidation.
+
+Хороший сценарий для проекта:
+- Material cover хранится в MinIO/S3;
+- PostgreSQL хранит coverObjectKey;
+- backend возвращает coverUrl;
+- frontend загружает обложку напрямую через CDN;
+- backend не проксирует картинки через себя.
+
+Не делать сразу:
+- не тащить CDN для локальной разработки;
+- не кэшировать приватные документы публично;
+- не кэшировать динамический API без понятной стратегии invalidation;
+- не усложнять signed URLs для обычных публичных обложек.
+
+Уровень сложности: средний.
+Приоритет: низкий/средний на MVP, высокий для production-раздачи медиа.
+
+
+12. Load Balancer
+-----------------
+Назначение:
+- распределение входящего трафика между несколькими экземплярами сервиса;
+- health checks;
+- отказоустойчивость;
+- rolling deployments без простоя;
+- TLS termination;
+- единая точка входа перед API Gateway или backend.
+
+Как это смотрится в архитектуре:
+- Client -> Load Balancer -> API Gateway -> Services;
+- на раннем этапе: Client -> Load Balancer -> Backend;
+- при микросервисах: Load Balancer обычно стоит перед несколькими экземплярами API Gateway.
+
+Оптимальное внедрение:
+- в локальной разработке можно не внедрять;
+- на production/staging использовать cloud load balancer или Nginx/Traefik;
+- проверять /actuator/health;
+- держать backend stateless, чтобы любой instance мог обработать запрос;
+- state хранить во внешних системах: PostgreSQL, Redis, Kafka, S3.
+
+Важно:
+- JWT хорошо подходит для stateless backend;
+- refresh sessions, rate limits и blacklist должны быть общими через PostgreSQL/Redis;
+- sticky sessions лучше избегать, если нет жесткой необходимости.
+
+Не делать сразу:
+- не поднимать сложный балансировщик для одного экземпляра backend;
+- не завязываться на in-memory session state;
+- не использовать Load Balancer как замену API Gateway;
+- не смешивать routing/business auth/gateway logic в одном месте без необходимости.
+
+Уровень сложности: средний.
+Приоритет: низкий на MVP, высокий при нескольких instance-ах и production-деплое.
+
+
+Микросервисы: кандидаты на вынос
+--------------------------------
+Рекомендуемый порядок:
+
+1. Notification Service
+2. Search Service
+3. Catalog Service
+4. Auth Service
+5. Fine/Payment Service
+6. Audit Service
+7. Circulation Service
+
+Circulation Service лучше выносить последним, потому что там самые чувствительные
+транзакции: бронирования, выдачи, статусы экземпляров.
+
+
+Нереляционные БД
+----------------
+Дополнительную MongoDB/Cassandra сейчас внедрять не нужно.
+
+Текущая storage-картина:
+- PostgreSQL: source of truth;
+- Redis: cache/temp state;
+- Elasticsearch: search read-model;
+- MinIO/S3: files;
+- Kafka: events.
+
+Для гибких полей можно использовать PostgreSQL jsonb.
+
+
+Итоговая архитектурная формула
+------------------------------
+PostgreSQL хранит бизнес-истину.
+Redis ускоряет чтение и хранит временное состояние.
+Kafka связывает домены событиями.
+Spring Batch выполняет регулярные массовые процессы.
+Elasticsearch дает умный поиск.
+MinIO/S3 хранит файлы и обложки.
+CDN быстро раздает публичные обложки и статические файлы.
+Prometheus/Grafana наблюдают за системой.
+OpenAPI описывает внешний REST-контракт.
+AOP закрывает технические сквозные задачи.
+API Gateway появляется перед микросервисным разделением.
+Load Balancer распределяет внешний трафик между экземплярами API Gateway/backend.
+
+
+Рекомендуемый порядок внедрения без оверинжиниринга
+---------------------------------------------------
+1. Swagger / OpenAPI
+2. Redis для кэширования каталога и справочников
+3. Усиление auth: refresh tokens, rate limit, permissions
+4. MinIO/S3 для обложек книг
+5. CDN для production-раздачи публичных обложек и статики
+6. Prometheus + Grafana для наблюдаемости
+7. Kafka для ключевых доменных событий
+8. Spring Batch для expiration/overdue/outbox jobs
+9. Elasticsearch для развитого поиска
+10. AOP для audit/metrics/logging/cache invalidation
+11. API Gateway перед реальным разделением на микросервисы
+12. Load Balancer при нескольких instance-ах API Gateway/backend
+
+Главный принцип: внедрять инфраструктуру только там, где она решает конкретную боль.
+Начинать с простых и полезных вещей, а не с полного enterprise-набора сразу.

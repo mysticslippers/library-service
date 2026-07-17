@@ -1,6 +1,6 @@
 package me.ifmo.backend.entities;
 
-import me.ifmo.backend.library.internal.domain.Branch;
+import me.ifmo.backend.library.domain.Branch;
 
 import jakarta.persistence.*;
 import lombok.*;

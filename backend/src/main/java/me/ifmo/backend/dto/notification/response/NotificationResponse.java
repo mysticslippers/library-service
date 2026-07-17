@@ -1,6 +1,6 @@
 package me.ifmo.backend.dto.notification.response;
 
-import me.ifmo.backend.dto.user.response.UserShortResponse;
+import me.ifmo.backend.user.web.response.UserShortResponse;
 import me.ifmo.backend.entities.enums.NotificationChannel;
 import me.ifmo.backend.entities.enums.NotificationStatus;
 import me.ifmo.backend.entities.enums.NotificationType;
