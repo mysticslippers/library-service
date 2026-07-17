@@ -65,6 +65,21 @@ public class NotificationTemplate {
     private LocalDateTime updatedAt;
 
     @Override
+    public String toString() {
+        return "NotificationTemplate{" +
+                "id=" + id +
+                ", type=" + type +
+                ", channel=" + channel +
+                ", subjectTemplate='" + subjectTemplate + '\'' +
+                ", bodyTemplate='" + bodyTemplate + '\'' +
+                ", requiredParameters=" + requiredParameters +
+                ", status=" + status +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
+    }
+
+    @Override
     public boolean equals(Object object) {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
