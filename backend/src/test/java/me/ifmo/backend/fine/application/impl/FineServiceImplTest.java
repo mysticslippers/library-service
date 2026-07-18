@@ -25,6 +25,7 @@ import me.ifmo.backend.circulation.persistence.LoanRepository;
 import me.ifmo.backend.catalog.persistence.MaterialCopyRepository;
 import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -49,6 +50,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@DisplayName("Fine service")
 @ExtendWith(MockitoExtension.class)
 class FineServiceImplTest {
 
@@ -86,6 +88,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Creates active overdue fine using loan material copy")
     void createCreatesActiveOverdueFineUsingLoanCopy() {
         User user = activeUser();
         MaterialCopy copy = MaterialCopy.builder().id(COPY_ID).build();
@@ -115,6 +118,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects fine creation by non-staff actor")
     void createRejectsNonStaffActor() {
         when(userRoleRepository.findRoleCodesByUser_Id(USER_ID)).thenReturn(List.of(RoleCode.READER));
 
@@ -126,6 +130,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects non-positive fine amount before repository access")
     void createRejectsNonPositiveAmountBeforeRepositoryAccess() {
         grantStaff();
 
@@ -136,6 +141,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects duplicate active fine for same loan and reason")
     void createRejectsDuplicateActiveFineForSameLoanAndReason() {
         User user = activeUser();
         Loan loan = Loan.builder().id(LOAN_ID).user(user).build();
@@ -153,6 +159,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Requires material copy for damage fine")
     void createRequiresCopyForDamageFine() {
         User user = activeUser();
         grantStaff();
@@ -165,6 +172,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects archived fine tariff")
     void createRejectsArchivedTariff() {
         User user = activeUser();
         FineTariff tariff = FineTariff.builder().id(TARIFF_ID).violationType(ViolationType.OTHER).status(FineTariffStatus.ARCHIVED).build();
@@ -180,6 +188,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Cancels fine, trims reason, and sets cancelled status")
     void cancelTrimsReasonAndMarksFineCancelled() {
         Fine fine = Fine.builder().id(10L).status(FineStatus.ACTIVE).build();
         FineResponse response = org.mockito.Mockito.mock(FineResponse.class);
@@ -199,6 +208,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Marks fine paid and sets payment timestamp")
     void markPaidUpdatesStatusAndTimestamp() {
         Fine fine = Fine.builder().id(10L).status(FineStatus.ACTIVE).build();
         FineResponse response = org.mockito.Mockito.mock(FineResponse.class);
@@ -217,6 +227,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects unrelated reader requesting fine by ID")
     void getFineByIdRejectsUnrelatedReader() {
         Fine fine = Fine.builder().id(10L).user(activeUser()).status(FineStatus.ACTIVE).build();
         when(fineRepository.findById(10L)).thenReturn(Optional.of(fine));
@@ -229,6 +240,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Allows fine owner to get fine by ID")
     void getFineByIdAllowsOwner() {
         Fine fine = Fine.builder().id(10L).user(activeUser()).status(FineStatus.ACTIVE).build();
         FineResponse response = org.mockito.Mockito.mock(FineResponse.class);
@@ -240,6 +252,7 @@ class FineServiceImplTest {
     }
 
     @Test
+    @DisplayName("Restricts reader search to own fines and maps page")
     void searchRestrictsReaderToOwnFinesAndMapsPage() {
         Fine fine = Fine.builder().id(10L).user(activeUser()).status(FineStatus.ACTIVE).build();
         FineResponse response = org.mockito.Mockito.mock(FineResponse.class);
