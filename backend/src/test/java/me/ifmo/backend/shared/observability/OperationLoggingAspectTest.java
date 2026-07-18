@@ -12,6 +12,25 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ExtendWith(OutputCaptureExtension.class)
 class OperationLoggingAspectTest {
 
+    private TestService createProxy() {
+        AspectJProxyFactory proxyFactory = new AspectJProxyFactory(new TestService());
+        proxyFactory.addAspect(new OperationLoggingAspect());
+        return proxyFactory.getProxy();
+    }
+
+    static class TestService {
+
+        @LoggableOperation("test.success")
+        public String succeed() {
+            return "result";
+        }
+
+        @LoggableOperation("test.failure")
+        public void fail() {
+            throw new IllegalStateException("boom");
+        }
+    }
+
     @Test
     void logsSuccessfulOperationWithoutChangingResult(CapturedOutput output) {
         TestService service = createProxy();
@@ -38,24 +57,5 @@ class OperationLoggingAspectTest {
                 .contains("outcome=failure")
                 .contains("error_type=IllegalStateException")
                 .contains("duration_ms=");
-    }
-
-    private TestService createProxy() {
-        AspectJProxyFactory proxyFactory = new AspectJProxyFactory(new TestService());
-        proxyFactory.addAspect(new OperationLoggingAspect());
-        return proxyFactory.getProxy();
-    }
-
-    static class TestService {
-
-        @LoggableOperation("test.success")
-        public String succeed() {
-            return "result";
-        }
-
-        @LoggableOperation("test.failure")
-        public void fail() {
-            throw new IllegalStateException("boom");
-        }
     }
 }

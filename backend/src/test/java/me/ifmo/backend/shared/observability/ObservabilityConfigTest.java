@@ -13,6 +13,34 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ObservabilityConfigTest {
 
+    private Timer findTimer(SimpleMeterRegistry meterRegistry, String operation) {
+        return meterRegistry.find("library.operation").tag("domain", "test").tag("operation", operation).timer();
+    }
+
+    private record TestContext(TestService service, SimpleMeterRegistry meterRegistry) {
+    }
+
+    static class TestService {
+
+        @Observed(
+                name = "library.operation",
+                contextualName = "test.success",
+                lowCardinalityKeyValues = {"domain", "test", "operation", "test.success"}
+        )
+        public String succeed() {
+            return "result";
+        }
+
+        @Observed(
+                name = "library.operation",
+                contextualName = "test.failure",
+                lowCardinalityKeyValues = {"domain", "test", "operation", "test.failure"}
+        )
+        public void fail() {
+            throw new IllegalStateException("boom");
+        }
+    }
+
     @Test
     void observedAspectRecordsSuccessfulOperation() {
         TestContext context = createContext();
@@ -47,36 +75,5 @@ class ObservabilityConfigTest {
         proxyFactory.addAspect(new ObservabilityConfig().observedAspect(observationRegistry));
 
         return new TestContext(proxyFactory.getProxy(), meterRegistry);
-    }
-
-    private Timer findTimer(SimpleMeterRegistry meterRegistry, String operation) {
-        return meterRegistry.find("library.operation")
-                .tag("domain", "test")
-                .tag("operation", operation)
-                .timer();
-    }
-
-    private record TestContext(TestService service, SimpleMeterRegistry meterRegistry) {
-    }
-
-    static class TestService {
-
-        @Observed(
-                name = "library.operation",
-                contextualName = "test.success",
-                lowCardinalityKeyValues = {"domain", "test", "operation", "test.success"}
-        )
-        public String succeed() {
-            return "result";
-        }
-
-        @Observed(
-                name = "library.operation",
-                contextualName = "test.failure",
-                lowCardinalityKeyValues = {"domain", "test", "operation", "test.failure"}
-        )
-        public void fail() {
-            throw new IllegalStateException("boom");
-        }
     }
 }
