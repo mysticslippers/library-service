@@ -3,6 +3,7 @@ package me.ifmo.backend.authentication.security;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -12,6 +13,7 @@ import org.springframework.security.authentication.InsufficientAuthenticationExc
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@DisplayName("REST authentication entry point")
 class RestAuthenticationEntryPointTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -20,6 +22,7 @@ class RestAuthenticationEntryPointTest {
     private final RestAuthenticationEntryPoint entryPoint = new RestAuthenticationEntryPoint(objectMapper);
 
     @Test
+    @DisplayName("Returns JSON unauthorized response for unauthenticated request")
     void returnsJsonUnauthorizedResponse() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/auth/me");
         MockHttpServletResponse response = new MockHttpServletResponse();
