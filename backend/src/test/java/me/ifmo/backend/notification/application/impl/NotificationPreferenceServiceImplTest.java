@@ -9,6 +9,7 @@ import me.ifmo.backend.notification.web.request.UpdateNotificationPreferenceRequ
 import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.user.persistence.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@DisplayName("Notification preference service")
 @ExtendWith(MockitoExtension.class)
 class NotificationPreferenceServiceImplTest {
 
@@ -48,6 +50,7 @@ class NotificationPreferenceServiceImplTest {
     }
 
     @Test
+    @DisplayName("Exposes only email preferences when SMS is disabled")
     void exposesOnlyEmailPreferencesWhenSmsIsDisabled() {
         when(repository.findByUser_Id(1L)).thenReturn(List.of());
 
@@ -58,6 +61,7 @@ class NotificationPreferenceServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects SMS preference update before persistence")
     void rejectsSmsPreferenceUpdateBeforePersistence() {
         var request = new UpdateNotificationPreferenceRequest(
                 NotificationType.SYSTEM_MESSAGE,
@@ -73,6 +77,7 @@ class NotificationPreferenceServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects explicit resolution of disabled SMS channel")
     void rejectsExplicitSmsChannelResolution() {
         assertThatThrownBy(() ->
                 service.resolveChannel(1L, NotificationType.SYSTEM_MESSAGE, NotificationChannel.SMS))
