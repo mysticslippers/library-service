@@ -12,14 +12,12 @@ import me.ifmo.backend.circulation.persistence.ReservationRepository;
 
 import me.ifmo.backend.catalog.domain.enums.CopyStatus;
 import me.ifmo.backend.catalog.domain.enums.MaterialStatus;
-import me.ifmo.backend.catalog.domain.Material;
 import me.ifmo.backend.catalog.domain.MaterialCopy;
 import me.ifmo.backend.catalog.persistence.MaterialCopyRepository;
 
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserBlockStatus;
 import me.ifmo.backend.user.domain.enums.UserStatus;
-import me.ifmo.backend.user.domain.Role;
 import me.ifmo.backend.user.domain.User;
 import me.ifmo.backend.user.persistence.UserBlockRepository;
 import me.ifmo.backend.user.persistence.UserRepository;
@@ -40,6 +38,7 @@ import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.DuplicateResourceException;
 import me.ifmo.backend.shared.error.ResourceInUseException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.observability.LoggableOperation;
 import me.ifmo.backend.circulation.mapper.LoanMapper;
 import me.ifmo.backend.library.persistence.BranchRepository;
 import me.ifmo.backend.library.persistence.LibraryRuleRepository;
@@ -127,6 +126,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
+    @LoggableOperation("loan.create")
     public LoanResponse create(Long actorUserId, CreateLoanRequest request) {
         validateStaff(actorUserId);
 
@@ -226,6 +226,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
+    @LoggableOperation("loan.return")
     public LoanResponse returnLoan(Long actorUserId, Long id, ReturnLoanRequest request) {
         validateStaff(actorUserId);
 
@@ -247,6 +248,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
+    @LoggableOperation("loan.renew")
     public LoanResponse renew(Long actorUserId, Long id, RenewLoanRequest request) {
         Loan loan = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
@@ -281,6 +283,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
+    @LoggableOperation("loan.mark-overdue")
     public LoanResponse markOverdue(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
@@ -301,6 +304,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
+    @LoggableOperation("loan.mark-lost")
     public LoanResponse markLost(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
