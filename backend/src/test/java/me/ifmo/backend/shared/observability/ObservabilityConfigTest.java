@@ -5,12 +5,14 @@ import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.annotation.Observed;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@DisplayName("Micrometer observability configuration")
 class ObservabilityConfigTest {
 
     private Timer findTimer(SimpleMeterRegistry meterRegistry, String operation) {
@@ -42,6 +44,7 @@ class ObservabilityConfigTest {
     }
 
     @Test
+    @DisplayName("Records timer for successful observed operation")
     void observedAspectRecordsSuccessfulOperation() {
         TestContext context = createContext();
 
@@ -53,6 +56,7 @@ class ObservabilityConfigTest {
     }
 
     @Test
+    @DisplayName("Records timer for failed operation and rethrows the exception")
     void observedAspectRecordsFailedOperationAndRethrowsException() {
         TestContext context = createContext();
 
