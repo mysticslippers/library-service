@@ -34,6 +34,7 @@ import me.ifmo.backend.circulation.persistence.ReservationRepository;
 import me.ifmo.backend.user.persistence.UserBlockRepository;
 import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -59,6 +60,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@DisplayName("Loan service")
 @ExtendWith(MockitoExtension.class)
 class LoanServiceImplTest {
 
@@ -109,6 +111,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Creates active loan and marks material copy as loaned")
     void createCreatesActiveLoanAndMarksCopyAsLoaned() {
         User reader = activeUser(READER_ID);
         User staff = activeUser(STAFF_ID);
@@ -151,6 +154,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects loan creation by non-staff actor before reading domain data")
     void createRejectsNonStaffActorBeforeReadingDomainData() {
         when(userRoleRepository.findRoleCodesByUser_Id(READER_ID)).thenReturn(List.of(RoleCode.READER));
 
@@ -162,6 +166,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects loan creation for blocked reader")
     void createRejectsBlockedReader() {
         User reader = activeUser(READER_ID);
         User staff = activeUser(STAFF_ID);
@@ -179,6 +184,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Converts ready reservation into active loan")
     void createConvertsReadyReservationToLoan() {
         User reader = activeUser(READER_ID);
         User staff = activeUser(STAFF_ID);
@@ -213,6 +219,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Returns loan and makes material copy available by default")
     void returnLoanMarksLoanReturnedAndMakesCopyAvailableByDefault() {
         MaterialCopy copy = MaterialCopy.builder().id(COPY_ID).status(CopyStatus.LOANED).build();
         Loan loan = Loan.builder().id(10L).status(LoanStatus.ACTIVE).copy(copy).build();
@@ -233,6 +240,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects reserved status for returned material copy")
     void returnLoanRejectsReservedResultingCopyStatus() {
         MaterialCopy copy = MaterialCopy.builder().id(COPY_ID).status(CopyStatus.LOANED).build();
         Loan loan = Loan.builder().id(10L).status(LoanStatus.ACTIVE).copy(copy).build();
@@ -247,6 +255,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Renews loan using default period and increments renewal count")
     void renewUsesDefaultPeriodAndIncrementsRenewalCount() {
         User reader = activeUser(READER_ID);
         Branch branch = activeBranch();
@@ -271,6 +280,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects renewal when loan due date has passed")
     void renewRejectsLoanWhoseDueDateHasPassed() {
         User reader = activeUser(READER_ID);
         Loan loan = Loan.builder().id(10L).user(reader).status(LoanStatus.ACTIVE).dueAt(LocalDateTime.now().minusMinutes(1)).build();
@@ -284,6 +294,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Marks both loan and material copy as lost")
     void markLostUpdatesBothLoanAndCopy() {
         MaterialCopy copy = MaterialCopy.builder().id(COPY_ID).status(CopyStatus.LOANED).build();
         Loan loan = Loan.builder().id(10L).status(LoanStatus.OVERDUE).copy(copy).build();
@@ -302,6 +313,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Marks active past-due loan as overdue")
     void markOverdueChangesActivePastDueLoan() {
         Loan loan = Loan.builder().id(10L).status(LoanStatus.ACTIVE).dueAt(LocalDateTime.now().minusMinutes(1)).build();
         LoanResponse response = org.mockito.Mockito.mock(LoanResponse.class);
@@ -318,6 +330,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Allows loan owner to get loan by ID")
     void getLoanByIdAllowsOwner() {
         User reader = activeUser(READER_ID);
         Loan loan = Loan.builder().id(10L).user(reader).status(LoanStatus.ACTIVE).build();
@@ -330,6 +343,7 @@ class LoanServiceImplTest {
     }
 
     @Test
+    @DisplayName("Restricts reader search to own loans and maps page")
     void searchRestrictsReaderToOwnLoansAndMapsPage() {
         User reader = activeUser(READER_ID);
         Loan loan = Loan.builder().id(10L).user(reader).status(LoanStatus.ACTIVE).build();
