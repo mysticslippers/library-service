@@ -37,6 +37,7 @@ import me.ifmo.backend.circulation.persistence.ReservationRepository;
 import me.ifmo.backend.user.persistence.UserBlockRepository;
 import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -63,6 +64,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@DisplayName("Reservation service")
 @ExtendWith(MockitoExtension.class)
 class ReservationServiceImplTest {
 
@@ -157,6 +159,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Reserves available copy and creates active reservation")
     void createReservesAvailableCopyAndCreatesActiveReservation() {
         User user = activeUser();
         Material material = activeMaterial();
@@ -203,6 +206,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects reservation actor who is neither owner nor staff")
     void createRejectsActorWhoIsNeitherOwnerNorStaff() {
         when(userRoleRepository.findRoleCodesByUser_Id(OTHER_USER_ID)).thenReturn(List.of(RoleCode.READER));
 
@@ -218,6 +222,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects reservation for user with unpaid fine")
     void createRejectsUserWithUnpaidFine() {
         User user = activeUser();
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
@@ -236,6 +241,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects explicitly selected unavailable material copy")
     void createRejectsUnavailableExplicitCopy() {
         User user = activeUser();
         Material material = activeMaterial();
@@ -266,6 +272,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Cancels user reservation, trims reason, and releases copy")
     void cancelByUserTrimsReasonAndReleasesReservedCopy() {
         User user = activeUser();
         Material material = activeMaterial();
@@ -297,6 +304,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects user cancellation by a different owner")
     void cancelByUserRejectsDifferentOwner() {
         Reservation reservation = Reservation.builder()
                 .id(10L)
@@ -314,6 +322,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects expiration before reservation expiration time")
     void expireRejectsReservationWhoseExpirationTimeHasNotPassed() {
         Reservation reservation = Reservation.builder()
                 .id(10L)
@@ -332,6 +341,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Marks reservation ready for pickup and sets timestamp")
     void markReadyForPickupSetsStatusAndTimestamp() {
         User user = activeUser();
         Material material = activeMaterial();
@@ -361,6 +371,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Allows reservation owner to get reservation by ID")
     void getReservationByIdAllowsOwner() {
         User user = activeUser();
         Material material = activeMaterial();
@@ -379,6 +390,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Allows librarian to cancel reservation and release copy")
     void cancelByLibrarianCancelsAndReleasesCopy() {
         Material material = activeMaterial();
         MaterialCopy copy = availableCopy(material, activeBranch());
@@ -407,6 +419,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Expires past reservation and releases material copy")
     void expireMarksPastReservationExpiredAndReleasesCopy() {
         Material material = activeMaterial();
         MaterialCopy copy = availableCopy(material, activeBranch());
@@ -432,6 +445,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Converts ready reservation to used status")
     void markUsedConvertsReadyReservation() {
         Material material = activeMaterial();
         MaterialCopy copy = availableCopy(material, activeBranch());
@@ -456,6 +470,7 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    @DisplayName("Restricts reader search to own reservations and maps page")
     void searchRestrictsReaderToOwnReservationsAndMapsPage() {
         User user = activeUser();
         Material material = activeMaterial();
