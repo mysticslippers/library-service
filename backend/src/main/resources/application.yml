@@ -71,6 +71,10 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui
+    operations-sorter: method
+    tags-sorter: alpha
+    persist-authorization: true
+    display-request-duration: true
 
 management:
   endpoints:
