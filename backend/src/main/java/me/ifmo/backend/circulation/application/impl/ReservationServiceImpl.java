@@ -23,7 +23,6 @@ import me.ifmo.backend.catalog.persistence.MaterialRepository;
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserBlockStatus;
 import me.ifmo.backend.user.domain.enums.UserStatus;
-import me.ifmo.backend.user.domain.Role;
 import me.ifmo.backend.user.domain.User;
 import me.ifmo.backend.user.persistence.UserBlockRepository;
 import me.ifmo.backend.user.persistence.UserRepository;
@@ -43,6 +42,7 @@ import me.ifmo.backend.library.domain.enums.LibraryRuleStatus;
 import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.ResourceInUseException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.observability.LoggableOperation;
 import me.ifmo.backend.catalog.mapper.MaterialMapper;
 import me.ifmo.backend.circulation.mapper.ReservationMapper;
 import me.ifmo.backend.library.persistence.BranchRepository;
@@ -167,6 +167,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
+    @LoggableOperation("reservation.create")
     public ReservationResponse create(Long actorUserId, CreateReservationRequest request) {
         if (!request.userId().equals(actorUserId) && !isStaff(actorUserId))
             throw new AccessDeniedException("Access is denied");
@@ -228,6 +229,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
+    @LoggableOperation("reservation.cancel-by-user")
     public ReservationResponse cancelByUser(Long actorUserId, Long id, CancelReservationRequest request) {
         Reservation reservation = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
@@ -248,6 +250,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
+    @LoggableOperation("reservation.cancel-by-librarian")
     public ReservationResponse cancelByLibrarian(Long actorUserId, Long id, CancelReservationRequest request) {
         validateStaff(actorUserId);
 
@@ -269,6 +272,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
+    @LoggableOperation("reservation.expire")
     public ReservationResponse expire(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
@@ -291,6 +295,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
+    @LoggableOperation("reservation.mark-ready-for-pickup")
     public ReservationResponse markReadyForPickup(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
@@ -315,6 +320,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
+    @LoggableOperation("reservation.mark-used")
     public ReservationResponse markUsed(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
