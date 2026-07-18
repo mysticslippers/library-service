@@ -6,6 +6,7 @@ import me.ifmo.backend.notification.domain.Notification;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
 import me.ifmo.backend.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@DisplayName("Spring Mail notification delivery client")
 @ExtendWith(MockitoExtension.class)
 class SpringMailNotificationDeliveryClientTest {
 
@@ -37,6 +39,7 @@ class SpringMailNotificationDeliveryClientTest {
     }
 
     @Test
+    @DisplayName("Sends email notification")
     void sendsEmailNotification() throws Exception {
         MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
         Notification notification = notification(NotificationChannel.EMAIL, "reader@example.com");
@@ -55,6 +58,7 @@ class SpringMailNotificationDeliveryClientTest {
     }
 
     @Test
+    @DisplayName("Returns failure when mail sender throws exception")
     void returnsFailureWhenMailSenderThrowsException() {
         MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
         Notification notification = notification(NotificationChannel.EMAIL, "reader@example.com");
@@ -69,6 +73,7 @@ class SpringMailNotificationDeliveryClientTest {
     }
 
     @Test
+    @DisplayName("Rejects unsupported SMS channel")
     void rejectsUnsupportedSmsChannel() {
         Notification notification = notification(NotificationChannel.SMS, "reader@example.com");
 
@@ -80,6 +85,7 @@ class SpringMailNotificationDeliveryClientTest {
     }
 
     @Test
+    @DisplayName("Rejects blank recipient email")
     void rejectsBlankRecipientEmail() {
         Notification notification = notification(NotificationChannel.EMAIL, " ");
 

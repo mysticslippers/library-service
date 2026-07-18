@@ -4,6 +4,7 @@ import me.ifmo.backend.notification.domain.Notification;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
 import me.ifmo.backend.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -21,6 +22,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+@DisplayName("SMS.RU notification sender")
 class SmsRuNotificationSenderTest {
 
     private static final String API_URL = "https://sms.ru/sms/send";
@@ -42,6 +44,7 @@ class SmsRuNotificationSenderTest {
     }
 
     @Test
+    @DisplayName("Sends test SMS and returns provider message ID")
     void sendsSmsInTestModeAndReturnsProviderMessageId() {
         server.expect(requestTo(API_URL))
                 .andExpect(method(HttpMethod.POST))
@@ -76,6 +79,7 @@ class SmsRuNotificationSenderTest {
     }
 
     @Test
+    @DisplayName("Normalizes phone number starting with eight")
     void normalizesPhoneStartingWithEight() {
         server.expect(requestTo(API_URL))
                 .andExpect(content().string(containsString("to=79991234567")))
@@ -99,6 +103,7 @@ class SmsRuNotificationSenderTest {
     }
 
     @Test
+    @DisplayName("Returns provider message error")
     void returnsProviderMessageError() {
         server.expect(requestTo(API_URL))
                 .andRespond(withSuccess("""
@@ -124,6 +129,7 @@ class SmsRuNotificationSenderTest {
     }
 
     @Test
+    @DisplayName("Returns failure for HTTP error")
     void returnsFailureForHttpError() {
         server.expect(requestTo(API_URL)).andRespond(withServerError());
 
@@ -135,6 +141,7 @@ class SmsRuNotificationSenderTest {
     }
 
     @Test
+    @DisplayName("Rejects invalid phone without calling provider")
     void rejectsInvalidPhoneWithoutCallingProvider() {
         var result = sender.send(notification("12345"));
 
@@ -144,6 +151,7 @@ class SmsRuNotificationSenderTest {
     }
 
     @Test
+    @DisplayName("Rejects missing API ID without calling provider")
     void rejectsMissingApiIdWithoutCallingProvider() {
         properties.setApiId(" ");
 

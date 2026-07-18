@@ -4,6 +4,7 @@ import me.ifmo.backend.notification.application.NotificationChannelSender;
 import me.ifmo.backend.notification.application.NotificationDeliveryResult;
 import me.ifmo.backend.notification.domain.Notification;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -14,9 +15,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@DisplayName("Routing notification delivery client")
 class RoutingNotificationDeliveryClientTest {
 
     @Test
+    @DisplayName("Routes notification to configured channel sender")
     void routesNotificationToConfiguredChannelSender() {
         NotificationChannelSender emailSender = sender(NotificationChannel.EMAIL);
         NotificationChannelSender smsSender = sender(NotificationChannel.SMS);
@@ -32,6 +35,7 @@ class RoutingNotificationDeliveryClientTest {
     }
 
     @Test
+    @DisplayName("Rejects notification without delivery channel")
     void rejectsNotificationWithoutChannel() {
         var client = new RoutingNotificationDeliveryClient(List.of());
 
@@ -42,6 +46,7 @@ class RoutingNotificationDeliveryClientTest {
     }
 
     @Test
+    @DisplayName("Rejects duplicate channel senders")
     void rejectsDuplicateChannelSenders() {
         NotificationChannelSender first = sender(NotificationChannel.EMAIL);
         NotificationChannelSender second = sender(NotificationChannel.EMAIL);
