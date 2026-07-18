@@ -1,5 +1,6 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import io.micrometer.observation.annotation.Observed;
 import me.ifmo.backend.fine.domain.enums.FineStatus;
 import me.ifmo.backend.fine.persistence.FineRepository;
 
@@ -168,6 +169,11 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional
     @LoggableOperation("reservation.create")
+    @Observed(
+            name = "library.operation",
+            contextualName = "reservation.create",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "reservation.create"}
+    )
     public ReservationResponse create(Long actorUserId, CreateReservationRequest request) {
         if (!request.userId().equals(actorUserId) && !isStaff(actorUserId))
             throw new AccessDeniedException("Access is denied");
@@ -230,6 +236,11 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional
     @LoggableOperation("reservation.cancel-by-user")
+    @Observed(
+            name = "library.operation",
+            contextualName = "reservation.cancel-by-user",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "reservation.cancel-by-user"}
+    )
     public ReservationResponse cancelByUser(Long actorUserId, Long id, CancelReservationRequest request) {
         Reservation reservation = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
@@ -251,6 +262,11 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional
     @LoggableOperation("reservation.cancel-by-librarian")
+    @Observed(
+            name = "library.operation",
+            contextualName = "reservation.cancel-by-librarian",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "reservation.cancel-by-librarian"}
+    )
     public ReservationResponse cancelByLibrarian(Long actorUserId, Long id, CancelReservationRequest request) {
         validateStaff(actorUserId);
 
@@ -273,6 +289,11 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional
     @LoggableOperation("reservation.expire")
+    @Observed(
+            name = "library.operation",
+            contextualName = "reservation.expire",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "reservation.expire"}
+    )
     public ReservationResponse expire(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
@@ -296,6 +317,11 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional
     @LoggableOperation("reservation.mark-ready-for-pickup")
+    @Observed(
+            name = "library.operation",
+            contextualName = "reservation.mark-ready-for-pickup",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "reservation.mark-ready-for-pickup"}
+    )
     public ReservationResponse markReadyForPickup(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
@@ -321,6 +347,11 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional
     @LoggableOperation("reservation.mark-used")
+    @Observed(
+            name = "library.operation",
+            contextualName = "reservation.mark-used",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "reservation.mark-used"}
+    )
     public ReservationResponse markUsed(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
