@@ -27,6 +27,7 @@ import me.ifmo.backend.user.persistence.UserRoleRepository;
 import me.ifmo.backend.authentication.security.JwtService;
 import me.ifmo.backend.notification.application.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -51,6 +52,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@DisplayName("Authentication service")
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
 
@@ -92,6 +94,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Registers normalized user, assigns reader role, and sends activation notification")
     void registerNormalizesDataAssignsReaderRoleAndSendsActivationNotification() {
         RegisterRequest request = new RegisterRequest(
                 "  READER@Example.COM  ",
@@ -145,6 +148,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects registration when password confirmation does not match")
     void registerRejectsMismatchedPasswordConfirmationBeforeRepositoryAccess() {
         RegisterRequest request = new RegisterRequest(
                 "reader@example.com",
@@ -163,6 +167,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Logs in active user, returns JWT, and resets failed attempts")
     void loginReturnsJwtAndResetsFailedAttempts() {
         User user = activeUser();
         user.setFailedLoginAttempts((short) 2);
@@ -190,6 +195,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Locks user after fifth invalid password attempt")
     void loginLocksUserOnFifthInvalidPasswordAttempt() {
         User user = activeUser();
         user.setFailedLoginAttempts((short) 4);
@@ -208,6 +214,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects login while user is temporarily locked")
     void loginRejectsTemporarilyLockedUserBeforePasswordCheck() {
         User user = activeUser();
         user.setLockedUntil(LocalDateTime.now().plusMinutes(5));
@@ -221,6 +228,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Activates pending user and consumes activation token")
     void activateChangesPendingUserAndConsumesToken() {
         User user = User.builder()
                 .id(USER_ID)
@@ -254,6 +262,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects expired activation token")
     void activateRejectsExpiredToken() {
         AuthToken token = AuthToken.builder()
                 .token("expired-token")
@@ -272,6 +281,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Resets password, unlocks user, and consumes reset token")
     void resetPasswordEncodesPasswordUnlocksUserAndConsumesToken() {
         User user = activeUser();
         user.setFailedLoginAttempts((short) 5);
@@ -300,6 +310,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Invalidates previous activation token and sends new notification")
     void resendActivationInvalidatesPreviousTokenAndSendsNewNotification() {
         User user = User.builder()
                 .id(USER_ID)
@@ -330,6 +341,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Creates password recovery token and sends notification")
     void requestPasswordRecoveryCreatesTokenAndSendsNotification() {
         User user = activeUser();
         when(userRepository.findByEmail("reader@example.com")).thenReturn(Optional.of(user));
@@ -346,6 +358,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects password reset when confirmation does not match")
     void resetPasswordRejectsMismatchedConfirmationBeforeTokenLookup() {
         assertThatThrownBy(() -> service.resetPassword(new PasswordResetRequest("reset-token", "new-password1", "different-password1")))
                 .isInstanceOf(BusinessRuleException.class).hasMessage("Password confirmation does not match");
@@ -354,6 +367,7 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Returns current user profile with assigned roles")
     void meMapsUserAndAssignedRoles() {
         User user = activeUser();
         UserProfileResponse profile = org.mockito.Mockito.mock(UserProfileResponse.class);
