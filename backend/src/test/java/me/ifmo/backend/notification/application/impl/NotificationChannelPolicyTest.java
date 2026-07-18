@@ -2,14 +2,17 @@ package me.ifmo.backend.notification.application.impl;
 
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
 import me.ifmo.backend.shared.error.BusinessRuleException;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@DisplayName("Notification channel policy")
 class NotificationChannelPolicyTest {
 
     @Test
+    @DisplayName("Enables only configured email channel")
     void enablesOnlyConfiguredEmailChannel() {
         var policy = new NotificationChannelPolicy("EMAIL");
 
@@ -19,6 +22,7 @@ class NotificationChannelPolicyTest {
     }
 
     @Test
+    @DisplayName("Rejects disabled SMS channel")
     void rejectsDisabledSmsChannel() {
         var policy = new NotificationChannelPolicy("EMAIL");
 
@@ -29,6 +33,7 @@ class NotificationChannelPolicyTest {
     }
 
     @Test
+    @DisplayName("Parses multiple configured notification channels")
     void parsesMultipleChannelsForFutureEnablement() {
         var policy = new NotificationChannelPolicy("email, sms");
 
