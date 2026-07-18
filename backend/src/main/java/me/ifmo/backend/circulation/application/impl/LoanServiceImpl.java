@@ -1,5 +1,6 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import io.micrometer.observation.annotation.Observed;
 import me.ifmo.backend.fine.domain.enums.FineStatus;
 import me.ifmo.backend.fine.persistence.FineRepository;
 
@@ -127,6 +128,11 @@ public class LoanServiceImpl implements LoanService {
     @Override
     @Transactional
     @LoggableOperation("loan.create")
+    @Observed(
+            name = "library.operation",
+            contextualName = "loan.create",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "loan.create"}
+    )
     public LoanResponse create(Long actorUserId, CreateLoanRequest request) {
         validateStaff(actorUserId);
 
@@ -227,6 +233,11 @@ public class LoanServiceImpl implements LoanService {
     @Override
     @Transactional
     @LoggableOperation("loan.return")
+    @Observed(
+            name = "library.operation",
+            contextualName = "loan.return",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "loan.return"}
+    )
     public LoanResponse returnLoan(Long actorUserId, Long id, ReturnLoanRequest request) {
         validateStaff(actorUserId);
 
@@ -249,6 +260,11 @@ public class LoanServiceImpl implements LoanService {
     @Override
     @Transactional
     @LoggableOperation("loan.renew")
+    @Observed(
+            name = "library.operation",
+            contextualName = "loan.renew",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "loan.renew"}
+    )
     public LoanResponse renew(Long actorUserId, Long id, RenewLoanRequest request) {
         Loan loan = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
@@ -284,6 +300,11 @@ public class LoanServiceImpl implements LoanService {
     @Override
     @Transactional
     @LoggableOperation("loan.mark-overdue")
+    @Observed(
+            name = "library.operation",
+            contextualName = "loan.mark-overdue",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "loan.mark-overdue"}
+    )
     public LoanResponse markOverdue(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
@@ -305,6 +326,11 @@ public class LoanServiceImpl implements LoanService {
     @Override
     @Transactional
     @LoggableOperation("loan.mark-lost")
+    @Observed(
+            name = "library.operation",
+            contextualName = "loan.mark-lost",
+            lowCardinalityKeyValues = {"domain", "circulation", "operation", "loan.mark-lost"}
+    )
     public LoanResponse markLost(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
