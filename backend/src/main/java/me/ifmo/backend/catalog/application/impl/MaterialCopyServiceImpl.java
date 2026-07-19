@@ -24,6 +24,7 @@ import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.DuplicateResourceException;
 import me.ifmo.backend.shared.error.ResourceInUseException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.cache.InvalidateCatalogSearch;
 import me.ifmo.backend.catalog.mapper.MaterialCopyMapper;
 import me.ifmo.backend.library.persistence.BranchRepository;
 import me.ifmo.backend.catalog.application.MaterialCopyService;
@@ -106,6 +107,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public MaterialCopyResponse create(CreateMaterialCopyRequest request) {
         Material material = materialRepository.findById(request.materialId()).orElseThrow(
                 () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(request.materialId())));
@@ -151,6 +153,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public MaterialCopyResponse update(Long id, UpdateMaterialCopyRequest request) {
         MaterialCopy copy = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(id)));
@@ -187,6 +190,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public MaterialCopyResponse changeStatus(Long id, ChangeMaterialCopyStatusRequest request) {
         MaterialCopy copy = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(id)));
