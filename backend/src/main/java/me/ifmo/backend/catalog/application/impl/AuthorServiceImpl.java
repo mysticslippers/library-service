@@ -11,6 +11,7 @@ import me.ifmo.backend.catalog.domain.enums.AuthorStatus;
 import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.DuplicateResourceException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.cache.InvalidateCatalogSearch;
 import me.ifmo.backend.catalog.mapper.AuthorMapper;
 import me.ifmo.backend.catalog.persistence.AuthorRepository;
 import me.ifmo.backend.catalog.application.AuthorService;
@@ -47,6 +48,7 @@ public class AuthorServiceImpl implements AuthorService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public AuthorResponse create(CreateAuthorRequest request) {
         String firstName = normalize(request.firstName(), "First name");
         String lastName = normalize(request.lastName(), "Last name");
@@ -73,6 +75,7 @@ public class AuthorServiceImpl implements AuthorService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public AuthorResponse update(Long id, UpdateAuthorRequest request) {
         Author author = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Author with id '%s' not found".formatted(id)));
@@ -112,6 +115,7 @@ public class AuthorServiceImpl implements AuthorService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public void delete(Long id) {
         Author existing = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Author with id '%s' not found".formatted(id)));
