@@ -25,11 +25,11 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      connect-timeout: ${REDIS_CONNECT_TIMEOUT:1s}
-      timeout: ${REDIS_COMMAND_TIMEOUT:1s}
-      client-name: library-service-cache
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT}
+      timeout: ${REDIS_COMMAND_TIMEOUT}
+      client-name: ${REDIS_CLIENT_NAME:library-service-cache}
     web:
       pageable:
         default-page-size: 20
