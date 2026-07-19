@@ -30,6 +30,8 @@ spring:
       connect-timeout: ${REDIS_CONNECT_TIMEOUT}
       timeout: ${REDIS_COMMAND_TIMEOUT}
       client-name: ${REDIS_CLIENT_NAME:library-service-cache}
+      repositories:
+        enabled: false
     web:
       pageable:
         default-page-size: 20
