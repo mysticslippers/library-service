@@ -10,6 +10,7 @@ import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Getter
@@ -49,6 +50,12 @@ public class Material {
     @Builder.Default
     @Column(name = "language", nullable = false, length = 50)
     private String language = "ru";
+
+    @Column(name = "cover_object_key", length = 512)
+    private String coverObjectKey;
+
+    @Column(name = "cover_version")
+    private UUID coverVersion;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

@@ -15,6 +15,7 @@ public record MaterialResponse(
         MaterialType materialType,
         String language,
         MaterialStatus status,
+        String coverUrl,
         List<MaterialAuthorResponse> authors,
         List<GenreResponse> genres,
         long totalCopies,

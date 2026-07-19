@@ -112,6 +112,7 @@ class CachedMaterialSearchServiceTest {
                 MaterialType.BOOK,
                 "EN",
                 MaterialStatus.ACTIVE,
+                null,
                 List.of(),
                 List.of(),
                 1,

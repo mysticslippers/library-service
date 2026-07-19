@@ -14,6 +14,7 @@ public record MaterialShortResponse(
         MaterialType materialType,
         String language,
         MaterialStatus status,
+        String coverUrl,
         List<AuthorResponse> authors,
         List<GenreResponse> genres
 ) {

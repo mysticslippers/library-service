@@ -30,6 +30,7 @@ class RedisCatalogValueSerializationTest {
                 MaterialType.BOOK,
                 "EN",
                 MaterialStatus.ACTIVE,
+                "/api/materials/1/cover?v=56d53217-b3ca-4ad5-966c-34e2146ac20f",
                 new ArrayList<>(),
                 new ArrayList<>(),
                 1,

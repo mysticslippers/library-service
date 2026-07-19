@@ -336,6 +336,8 @@ CREATE TABLE materials (
     publication_year    INT,
     material_type       material_type NOT NULL DEFAULT 'BOOK',
     language            VARCHAR(50) NOT NULL DEFAULT 'ru',
+    cover_object_key    VARCHAR(512),
+    cover_version       UUID,
     status              material_status NOT NULL DEFAULT 'ACTIVE',
     created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP,
@@ -344,7 +346,10 @@ CREATE TABLE materials (
         CHECK (publication_year IS NULL OR publication_year BETWEEN 1000 AND EXTRACT(YEAR FROM CURRENT_DATE)::INT + 1),
 
     CONSTRAINT chk_materials_isbn_format
-        CHECK (isbn IS NULL OR isbn ~ '^[0-9]{10}([0-9]{3})?$')
+        CHECK (isbn IS NULL OR isbn ~ '^[0-9]{10}([0-9]{3})?$'),
+
+    CONSTRAINT chk_materials_cover_reference
+        CHECK ((cover_object_key IS NULL) = (cover_version IS NULL))
 );
 
 CREATE INDEX idx_materials_title
@@ -358,6 +363,10 @@ CREATE INDEX idx_materials_publication_year
 
 CREATE INDEX idx_materials_type_status
     ON materials USING btree (material_type, status);
+
+CREATE UNIQUE INDEX uq_materials_cover_object_key
+    ON materials (cover_object_key)
+    WHERE cover_object_key IS NOT NULL;
 
 CREATE INDEX idx_materials_search_vector
     ON materials

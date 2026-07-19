@@ -4,6 +4,8 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)
 ![Redis](https://img.shields.io/badge/Redis-cache-red)
+![S3](https://img.shields.io/badge/S3-object%20storage-569A31)
+![MinIO](https://img.shields.io/badge/MinIO-local%20S3-C72E49)
 ![Prometheus](https://img.shields.io/badge/Prometheus-metrics-E6522C)
 ![Grafana](https://img.shields.io/badge/Grafana-dashboards-F46800)
 ![Kafka](https://img.shields.io/badge/Apache%20Kafka-event--streaming-black)
@@ -47,6 +49,7 @@ The main goal of the project is to automate common library workflows and provide
 * Spring Data JPA / Hibernate
 * PostgreSQL
 * Redis
+* AWS S3 SDK / MinIO
 * Apache Kafka
 * Maven
 
@@ -184,6 +187,53 @@ CACHE_KEY_PREFIX=library-service-backend:local:
 Only the first ten result pages with at most 100 elements are cached. Catalog,
 branch, loan, and reservation mutations that change material search results clear
 the cached pages after a successful transaction.
+
+## S3-compatible book cover storage
+
+Cover image bytes are stored in a private S3-compatible bucket. PostgreSQL keeps
+only a versioned object key, while catalog responses expose a cache-safe URL such
+as `/api/materials/42/cover?v=<version>`. The local S3 implementation is MinIO;
+the backend itself uses AWS SDK for Java 2.x and can be pointed at AWS S3 or
+another compatible provider without changing the catalog API.
+
+Start MinIO:
+
+```shell
+docker compose up -d minio
+```
+
+Open the local MinIO console at `http://localhost:9001`. The local defaults are
+`minioadmin` / `minioadmin`; override them in `.env`:
+
+```dotenv
+S3_ENDPOINT=http://localhost:9000
+S3_REGION=us-east-1
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=choose-a-local-secret
+S3_COVERS_BUCKET=library-covers
+S3_PATH_STYLE_ACCESS=true
+S3_CREATE_BUCKET=true
+S3_API_CALL_TIMEOUT=10s
+COVER_MAX_FILE_SIZE=5MB
+COVER_MAX_REQUEST_SIZE=6MB
+MINIO_API_PORT=9000
+MINIO_CONSOLE_PORT=9001
+```
+
+Cover endpoints:
+
+* `PUT /api/materials/{id}/cover` — multipart field `file`, librarian/admin only
+* `GET /api/materials/{id}/cover` — public for active catalog materials
+* `DELETE /api/materials/{id}/cover` — librarian/admin only
+
+Uploads are limited to JPEG, PNG and WebP. The backend validates the actual file
+signature, creates the private bucket on demand in the local environment, and
+removes replaced objects only after the PostgreSQL transaction commits.
+
+The bundled single-node MinIO container is intended for local development. For
+production, use a managed or replicated S3-compatible store, separate
+least-privilege credentials, and set `S3_CREATE_BUCKET=false` after provisioning
+the bucket outside the application.
 
 ## Prometheus and Grafana
 

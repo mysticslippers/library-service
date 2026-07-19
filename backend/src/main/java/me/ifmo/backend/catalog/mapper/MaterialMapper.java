@@ -13,12 +13,15 @@ import org.mapstruct.*;
 import java.util.Collection;
 import java.util.List;
 
-@Mapper(uses = {MaterialAuthorMapper.class, MaterialGenreMapper.class, MaterialCopyMapper.class})
+@Mapper(uses = {MaterialAuthorMapper.class, MaterialGenreMapper.class, MaterialCopyMapper.class,
+        MaterialCoverUrlFactory.class})
 public interface MaterialMapper {
 
     @BeanMapping(nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "status", ignore = true)
+    @Mapping(target = "coverObjectKey", ignore = true)
+    @Mapping(target = "coverVersion", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Material toEntity(CreateMaterialRequest request);
@@ -26,6 +29,8 @@ public interface MaterialMapper {
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "status", ignore = true)
+    @Mapping(target = "coverObjectKey", ignore = true)
+    @Mapping(target = "coverVersion", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntity(UpdateMaterialRequest request, @MappingTarget Material material);
@@ -35,6 +40,7 @@ public interface MaterialMapper {
     @Mapping(target = "copies", source = "materialCopies")
     @Mapping(target = "totalCopies", source = "totalCopies")
     @Mapping(target = "availableCopies", source = "availableCopies")
+    @Mapping(target = "coverUrl", source = "material", qualifiedByName = "materialCoverUrl")
     MaterialResponse toResponse(Material material, Collection<MaterialAuthor> materialAuthors,
                                 Collection<MaterialGenre> materialGenres,
                                 Collection<MaterialCopy> materialCopies,
@@ -48,6 +54,7 @@ public interface MaterialMapper {
 
     @Mapping(target = "authors", source = "materialAuthors")
     @Mapping(target = "genres", source = "materialGenres")
+    @Mapping(target = "coverUrl", source = "material", qualifiedByName = "materialCoverUrl")
     MaterialShortResponse toShortResponse(Material material, Collection<MaterialAuthor> materialAuthors,
                                           Collection<MaterialGenre> materialGenres);
 }
