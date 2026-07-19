@@ -46,7 +46,8 @@ public class SecurityConfig {
                                 mvc.pattern("/auth/resend-activation"),
                                 mvc.pattern("/swagger-ui/**"),
                                 mvc.pattern("/v3/api-docs/**"),
-                                mvc.pattern("/actuator/health")
+                                mvc.pattern("/actuator/health"),
+                                mvc.pattern("/actuator/prometheus")
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
