@@ -39,6 +39,7 @@ import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.DuplicateResourceException;
 import me.ifmo.backend.shared.error.ResourceInUseException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.cache.InvalidateCatalogSearch;
 import me.ifmo.backend.shared.observability.LoggableOperation;
 import me.ifmo.backend.circulation.mapper.LoanMapper;
 import me.ifmo.backend.library.persistence.BranchRepository;
@@ -127,6 +128,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     @LoggableOperation("loan.create")
     @Observed(
             name = "library.operation",
@@ -232,6 +234,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     @LoggableOperation("loan.return")
     @Observed(
             name = "library.operation",
@@ -325,6 +328,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     @LoggableOperation("loan.mark-lost")
     @Observed(
             name = "library.operation",
