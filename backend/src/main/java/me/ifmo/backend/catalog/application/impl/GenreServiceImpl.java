@@ -10,6 +10,7 @@ import me.ifmo.backend.catalog.domain.enums.GenreStatus;
 import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.DuplicateResourceException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.cache.InvalidateCatalogSearch;
 import me.ifmo.backend.catalog.mapper.GenreMapper;
 import me.ifmo.backend.catalog.persistence.GenreRepository;
 import me.ifmo.backend.catalog.application.GenreService;
@@ -36,6 +37,7 @@ public class GenreServiceImpl implements GenreService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public GenreResponse create(CreateGenreRequest request) {
         String normalizedName = normalize(request.name(), "Genre name");
         String normalizedCode = normalize(request.code(), "Genre code").toUpperCase(Locale.ROOT);
@@ -76,6 +78,7 @@ public class GenreServiceImpl implements GenreService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public GenreResponse update(Long id, UpdateGenreRequest request){
         Genre genre = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No genre with id '%s' found".formatted(id)));
@@ -104,6 +107,7 @@ public class GenreServiceImpl implements GenreService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public void delete(Long id){
         Genre existing = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No genre with id '%s' found".formatted(id)));
