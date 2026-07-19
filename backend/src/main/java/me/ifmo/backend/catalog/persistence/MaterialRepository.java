@@ -1,9 +1,5 @@
 package me.ifmo.backend.catalog.persistence;
 
-import me.ifmo.backend.catalog.domain.MaterialAuthor;
-import me.ifmo.backend.catalog.domain.MaterialCopy;
-import me.ifmo.backend.catalog.domain.MaterialGenre;
-
 import me.ifmo.backend.catalog.domain.Material;
 import me.ifmo.backend.catalog.domain.enums.CopyStatus;
 import me.ifmo.backend.catalog.domain.enums.MaterialStatus;
@@ -77,8 +73,8 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
                            WHERE copy.material = material
                                AND copy.inventoryNumber = :query
                    ))
-                   AND (:type IS NULL OR material.materialType = :type)
-                   AND (:status IS NULL OR material.status = :status)
+                   AND material.materialType = coalesce(:type, material.materialType)
+                   AND material.status = coalesce(:status, material.status)
                    AND (:publicationYear IS NULL OR material.publicationYear = :publicationYear)
                    AND (:authorId IS NULL OR EXISTS (
                        SELECT materialAuthor FROM MaterialAuthor materialAuthor
