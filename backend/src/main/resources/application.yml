@@ -23,6 +23,21 @@ spring:
     password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:1s}
+      timeout: ${REDIS_COMMAND_TIMEOUT:1s}
+      client-name: library-service-cache
+    web:
+      pageable:
+        default-page-size: 20
+        max-page-size: 100
+
+  cache:
+    type: redis
+
   jpa:
     open-in-view: false
     hibernate:
@@ -106,3 +121,8 @@ notification:
       test-mode: ${SMS_RU_TEST_MODE:true}
       connect-timeout: ${SMS_RU_CONNECT_TIMEOUT:5s}
       read-timeout: ${SMS_RU_READ_TIMEOUT:5s}
+
+cache:
+  catalog-search:
+    ttl: ${CATALOG_SEARCH_CACHE_TTL:90s}
+    key-prefix: ${CACHE_KEY_PREFIX:library-service-backend:local:}

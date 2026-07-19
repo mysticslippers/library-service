@@ -155,6 +155,33 @@ For a local SMTP catcher, the defaults are `localhost:1025` with authentication 
 STARTTLS disabled. Pending notifications are processed through
 `POST /api/notifications/process-pending`.
 
+## Redis catalog cache
+
+Redis is used as a non-critical cache-aside layer for catalog material search.
+PostgreSQL remains the source of truth, and search falls back to the database when
+Redis is unavailable.
+
+Start the local Redis instance together with the database:
+
+```shell
+docker compose up -d library-db library-redis
+```
+
+Optional settings:
+
+```dotenv
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_CONNECT_TIMEOUT=1s
+REDIS_COMMAND_TIMEOUT=1s
+CATALOG_SEARCH_CACHE_TTL=90s
+CACHE_KEY_PREFIX=library-service-backend:local:
+```
+
+Only the first ten result pages with at most 100 elements are cached. Catalog,
+branch, loan, and reservation mutations that change material search results clear
+the cached pages after a successful transaction.
+
 ## SMS delivery
 
 SMS delivery code is retained for future use but is disabled by default. The backend
