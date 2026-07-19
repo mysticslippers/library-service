@@ -4,6 +4,8 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)
 ![Redis](https://img.shields.io/badge/Redis-cache-red)
+![Prometheus](https://img.shields.io/badge/Prometheus-metrics-E6522C)
+![Grafana](https://img.shields.io/badge/Grafana-dashboards-F46800)
 ![Kafka](https://img.shields.io/badge/Apache%20Kafka-event--streaming-black)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
@@ -53,7 +55,7 @@ The main goal of the project is to automate common library workflows and provide
 * Docker Compose
 * REST API
 * JSON
-* Logging and monitoring infrastructure
+* Micrometer, Prometheus and Grafana
 * External payment service integration
 * External email/SMS notification service integration
 
@@ -128,6 +130,7 @@ The project includes BPMN diagrams for the main library workflows.
 library-service/
 ├── backend/              # Spring Boot backend application
 ├── docs/                 # Requirements, use cases, architecture and reports
+├── observability/        # Prometheus and Grafana configuration
 ├── postman/              # Postman API collection
 ├── scripts/              # Database initialization scripts
 ├── docker-compose.yml    # Local infrastructure
@@ -181,6 +184,49 @@ CACHE_KEY_PREFIX=library-service-backend:local:
 Only the first ten result pages with at most 100 elements are cached. Catalog,
 branch, loan, and reservation mutations that change material search results clear
 the cached pages after a successful transaction.
+
+## Prometheus and Grafana
+
+The backend exports Micrometer metrics through
+`GET /api/actuator/prometheus`. Prometheus scrapes this endpoint every five
+seconds, and Grafana automatically provisions both the Prometheus datasource and
+the `Library Service Overview` dashboard.
+
+Start the monitoring stack after the backend is running on port `1234`:
+
+```shell
+docker compose up -d prometheus grafana
+```
+
+Open:
+
+* Prometheus: `http://localhost:9090/targets`
+* Grafana: `http://localhost:3000`
+* Provisioned dashboard:
+  `http://localhost:3000/d/library-service-overview/library-service-overview`
+
+The local Grafana credentials default to `admin` / `admin`. Override them in
+`.env` before the first Grafana startup:
+
+```dotenv
+PROMETHEUS_PORT=9090
+PROMETHEUS_RETENTION=7d
+GRAFANA_PORT=3000
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=choose-a-local-password
+```
+
+The Prometheus scrape target is `host.docker.internal:1234`. If the backend
+`SERVER_PORT` changes, update the target in
+`observability/prometheus/prometheus.yml`.
+
+For production, keep `/api/actuator/prometheus` on an internal management
+network or protect it at the gateway; it is public in the local security
+configuration so the Dockerized Prometheus instance can scrape it.
+
+The dashboard includes backend availability, HTTP throughput, 5xx rate and p95
+latency, JVM heap and CPU, HikariCP connections, observed business-operation
+metrics, and catalog-cache hit/miss behavior.
 
 ## SMS delivery
 
