@@ -7,8 +7,11 @@ import me.ifmo.backend.catalog.domain.Author;
 import me.ifmo.backend.catalog.domain.Genre;
 import me.ifmo.backend.catalog.domain.Material;
 import me.ifmo.backend.catalog.domain.MaterialAuthor;
-import me.ifmo.backend.catalog.domain.MaterialCopy;
 import me.ifmo.backend.catalog.domain.MaterialGenre;
+import me.ifmo.backend.catalog.application.search.CachedMaterialSearchService;
+import me.ifmo.backend.catalog.application.search.CatalogVisibility;
+import me.ifmo.backend.catalog.application.search.MaterialResponseAssembler;
+import me.ifmo.backend.catalog.application.search.MaterialSearchCriteria;
 import me.ifmo.backend.catalog.persistence.AuthorRepository;
 import me.ifmo.backend.catalog.persistence.GenreRepository;
 import me.ifmo.backend.catalog.persistence.MaterialAuthorRepository;
@@ -16,7 +19,6 @@ import me.ifmo.backend.catalog.persistence.MaterialCopyRepository;
 import me.ifmo.backend.catalog.persistence.MaterialGenreRepository;
 import me.ifmo.backend.catalog.persistence.MaterialRepository;
 
-import me.ifmo.backend.user.domain.Role;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -37,9 +39,9 @@ import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.DuplicateResourceException;
 import me.ifmo.backend.shared.error.ResourceInUseException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.cache.InvalidateCatalogSearch;
 import me.ifmo.backend.catalog.mapper.MaterialMapper;
 import me.ifmo.backend.catalog.application.MaterialService;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -85,6 +87,8 @@ public class MaterialServiceImpl implements MaterialService {
     private final ReservationRepository reservationRepository;
     private final UserRoleRepository userRoleRepository;
     private final MaterialMapper materialMapper;
+    private final MaterialResponseAssembler responseAssembler;
+    private final CachedMaterialSearchService cachedMaterialSearchService;
 
     private String normalize(String value, String fieldName) {
         if (value == null || value.strip().isBlank())
@@ -277,24 +281,9 @@ public class MaterialServiceImpl implements MaterialService {
         };
     }
 
-    private MaterialResponse toResponse(Material material, boolean includeRemovedCopies) {
-        List<MaterialAuthor> authors = materialAuthorRepository.findByMaterial_IdOrderByAuthorOrderAsc(material.getId());
-
-        List<MaterialGenre> genres = materialGenreRepository.findByMaterial_Id(material.getId());
-
-        List<MaterialCopy> copies = materialCopyRepository.findByMaterial_Id(material.getId()).stream()
-                .filter(copy -> includeRemovedCopies || copy.getStatus() != CopyStatus.REMOVED)
-                .toList();
-
-        long availableCopies = copies.stream()
-                .filter(copy -> copy.getStatus() == CopyStatus.AVAILABLE)
-                .count();
-
-        return materialMapper.toResponse(material, authors, genres, copies, copies.size(), availableCopies);
-    }
-
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public MaterialResponse create(CreateMaterialRequest request) {
         String normalizedIsbn = normalizeOptional(request.isbn());
         String normalizedTitle = normalize(request.title(), "Title");
@@ -323,7 +312,7 @@ public class MaterialServiceImpl implements MaterialService {
         saveAuthors(saved, request.authors());
         saveGenres(saved, request.genreIds());
 
-        return toResponse(saved, true);
+        return responseAssembler.toResponse(saved, true);
     }
 
     @Override
@@ -334,7 +323,7 @@ public class MaterialServiceImpl implements MaterialService {
                 () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(id)));
         validateVisible(material, staff);
 
-        return toResponse(material, staff);
+        return responseAssembler.toResponse(material, staff);
     }
 
     @Override
@@ -347,11 +336,12 @@ public class MaterialServiceImpl implements MaterialService {
                 () -> new ResourceNotFoundException("Material with isbn '%s' not found".formatted(normalizedIsbn)));
         validateVisible(material, staff);
 
-        return toResponse(material, staff);
+        return responseAssembler.toResponse(material, staff);
     }
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public MaterialResponse update(Long id, UpdateMaterialRequest request) {
         Material material = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(id)));
@@ -404,11 +394,12 @@ public class MaterialServiceImpl implements MaterialService {
             saveGenres(saved, request.genreIds());
         }
 
-        return toResponse(saved, true);
+        return responseAssembler.toResponse(saved, true);
     }
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public MaterialResponse changeStatus(Long id, ChangeMaterialStatusRequest request) {
         Material material = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(id)));
@@ -416,7 +407,7 @@ public class MaterialServiceImpl implements MaterialService {
         MaterialStatus status = request.status();
 
         if (material.getStatus() == status)
-            return toResponse(material, true);
+            return responseAssembler.toResponse(material, true);
 
         if (!isTransitionAllowed(material.getStatus(), status))
             throw new BusinessRuleException(
@@ -434,7 +425,7 @@ public class MaterialServiceImpl implements MaterialService {
         material.setStatus(status);
 
         Material saved = repository.save(material);
-        return toResponse(saved, true);
+        return responseAssembler.toResponse(saved, true);
     }
 
     @Override
@@ -450,11 +441,19 @@ public class MaterialServiceImpl implements MaterialService {
             status = MaterialStatus.ACTIVE;
         }
 
-        Page<Material> materials = repository.search(query, request.materialType(), status, request.publicationYear(),
-                request.authorId(), request.genreId(), request.branchId(), CopyStatus.REMOVED, pageable);
+        var visibility = staff ? CatalogVisibility.STAFF : CatalogVisibility.PUBLIC;
+        var criteria = new MaterialSearchCriteria(
+                visibility,
+                query,
+                request.materialType(),
+                status,
+                request.publicationYear(),
+                request.authorId(),
+                request.genreId(),
+                request.branchId(),
+                pageable
+        );
 
-        Page<MaterialResponse> responses = materials.map(material -> toResponse(material, staff));
-
-        return PageResponse.from(responses);
+        return cachedMaterialSearchService.search(criteria);
     }
 }
