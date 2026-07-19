@@ -23,6 +23,7 @@ import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.DuplicateResourceException;
 import me.ifmo.backend.shared.error.ResourceInUseException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.cache.InvalidateCatalogSearch;
 import me.ifmo.backend.library.mapper.BranchMapper;
 import me.ifmo.backend.library.persistence.BranchRepository;
 import me.ifmo.backend.library.persistence.LibraryRepository;
@@ -90,6 +91,7 @@ public class BranchServiceImpl implements BranchService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public BranchResponse create(CreateBranchRequest request){
         Library library = libraryRepository.findById(request.libraryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Library with id '%s' not found"
@@ -122,6 +124,7 @@ public class BranchServiceImpl implements BranchService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public BranchResponse update(Long id, UpdateBranchRequest request) {
         Branch branch = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(id)));
@@ -145,6 +148,7 @@ public class BranchServiceImpl implements BranchService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     public BranchResponse changeStatus(Long id, ChangeBranchStatusRequest request) {
         Branch branch = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Branch with id '%s' not found".formatted(id)));
