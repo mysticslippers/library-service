@@ -43,6 +43,7 @@ import me.ifmo.backend.library.domain.enums.LibraryRuleStatus;
 import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.ResourceInUseException;
 import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.cache.InvalidateCatalogSearch;
 import me.ifmo.backend.shared.observability.LoggableOperation;
 import me.ifmo.backend.catalog.mapper.MaterialMapper;
 import me.ifmo.backend.circulation.mapper.ReservationMapper;
@@ -168,6 +169,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     @LoggableOperation("reservation.create")
     @Observed(
             name = "library.operation",
@@ -235,6 +237,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     @LoggableOperation("reservation.cancel-by-user")
     @Observed(
             name = "library.operation",
@@ -261,6 +264,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     @LoggableOperation("reservation.cancel-by-librarian")
     @Observed(
             name = "library.operation",
@@ -288,6 +292,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
+    @InvalidateCatalogSearch
     @LoggableOperation("reservation.expire")
     @Observed(
             name = "library.operation",
