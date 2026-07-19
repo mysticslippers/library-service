@@ -69,6 +69,11 @@ spring:
       "[mail.smtp.timeout]": ${MAIL_TIMEOUT_MS:5000}
       "[mail.smtp.writetimeout]": ${MAIL_WRITE_TIMEOUT_MS:5000}
 
+  servlet:
+    multipart:
+      max-file-size: ${COVER_MAX_FILE_SIZE:5MB}
+      max-request-size: ${COVER_MAX_REQUEST_SIZE:6MB}
+
 server:
   port: ${SERVER_PORT}
 
@@ -135,3 +140,15 @@ cache:
   catalog-search:
     ttl: ${CATALOG_SEARCH_CACHE_TTL:90s}
     key-prefix: ${CACHE_KEY_PREFIX:library-service-backend:local:}
+
+storage:
+  covers:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    region: ${S3_REGION:us-east-1}
+    access-key: ${S3_ACCESS_KEY:minioadmin}
+    secret-key: ${S3_SECRET_KEY:minioadmin}
+    bucket: ${S3_COVERS_BUCKET:library-covers}
+    path-style-access: ${S3_PATH_STYLE_ACCESS:true}
+    create-bucket: ${S3_CREATE_BUCKET:true}
+    api-call-timeout: ${S3_API_CALL_TIMEOUT:10s}
+    max-file-size: ${COVER_MAX_FILE_SIZE:5MB}
