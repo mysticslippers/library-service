@@ -69,6 +69,31 @@ spring:
       "[mail.smtp.timeout]": ${MAIL_TIMEOUT_MS:5000}
       "[mail.smtp.writetimeout]": ${MAIL_WRITE_TIMEOUT_MS:5000}
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    client-id: ${KAFKA_CLIENT_ID:library-service-backend}
+    admin:
+      fail-fast: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        "[enable.idempotence]": true
+        "[delivery.timeout.ms]": ${KAFKA_DELIVERY_TIMEOUT_MS:10000}
+        "[request.timeout.ms]": ${KAFKA_REQUEST_TIMEOUT_MS:5000}
+        "[max.block.ms]": ${KAFKA_MAX_BLOCK_MS:5000}
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      properties:
+        "[allow.auto.create.topics]": false
+    listener:
+      ack-mode: record
+      missing-topics-fatal: false
+
   servlet:
     multipart:
       max-file-size: ${COVER_MAX_FILE_SIZE:5MB}
@@ -87,6 +112,7 @@ logging:
     org.springframework.security: INFO
     org.hibernate.SQL: INFO
     org.hibernate.orm.jdbc.bind: INFO
+    org.apache.kafka: WARN
 
 springdoc:
   api-docs:
@@ -135,6 +161,24 @@ notification:
       test-mode: ${SMS_RU_TEST_MODE:true}
       connect-timeout: ${SMS_RU_CONNECT_TIMEOUT:5s}
       read-timeout: ${SMS_RU_READ_TIMEOUT:5s}
+
+messaging:
+  kafka:
+    topics:
+      circulation: ${KAFKA_CIRCULATION_TOPIC:library.circulation.events}
+    topic:
+      partitions: ${KAFKA_TOPIC_PARTITIONS:3}
+      replication-factor: ${KAFKA_TOPIC_REPLICATION_FACTOR:1}
+      retention-ms: ${KAFKA_TOPIC_RETENTION_MS:604800000}
+    notification:
+      group-id: ${KAFKA_NOTIFICATION_GROUP_ID:library-notification}
+      retry-attempts: ${KAFKA_NOTIFICATION_RETRY_ATTEMPTS:4}
+      retry-delay-ms: ${KAFKA_NOTIFICATION_RETRY_DELAY_MS:1000}
+    outbox:
+      batch-size: ${KAFKA_OUTBOX_BATCH_SIZE:50}
+      poll-interval-ms: ${KAFKA_OUTBOX_POLL_INTERVAL_MS:1000}
+      publish-timeout: ${KAFKA_OUTBOX_PUBLISH_TIMEOUT:5s}
+      retry-delay: ${KAFKA_OUTBOX_RETRY_DELAY:5s}
 
 cache:
   catalog-search:
