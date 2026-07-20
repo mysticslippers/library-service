@@ -11,14 +11,28 @@ import java.time.Duration;
 @Validated
 @ConfigurationProperties(prefix = "storage.covers")
 public record CoverStorageProperties(
-        @NotBlank String endpoint,
-        @NotBlank String region,
-        @NotBlank String accessKey,
-        @NotBlank String secretKey,
-        @NotBlank String bucket,
+        @NotBlank
+        String endpoint,
+
+        @NotBlank
+        String region,
+
+        @NotBlank
+        String accessKey,
+
+        @NotBlank
+        String secretKey,
+
+        @NotBlank
+        String bucket,
+
         boolean pathStyleAccess,
         boolean createBucket,
-        @NotNull Duration apiCallTimeout,
-        @NotNull DataSize maxFileSize
+
+        @NotNull
+        Duration apiCallTimeout,
+
+        @NotNull
+        DataSize maxFileSize
 ) {
 }
