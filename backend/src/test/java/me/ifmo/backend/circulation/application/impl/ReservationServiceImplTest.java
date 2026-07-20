@@ -25,6 +25,7 @@ import me.ifmo.backend.shared.error.BusinessRuleException;
 import me.ifmo.backend.shared.error.ResourceInUseException;
 import me.ifmo.backend.catalog.mapper.MaterialMapper;
 import me.ifmo.backend.circulation.mapper.ReservationMapper;
+import me.ifmo.backend.circulation.integration.ReservationEventPublisher;
 import me.ifmo.backend.library.persistence.BranchRepository;
 import me.ifmo.backend.fine.persistence.FineRepository;
 import me.ifmo.backend.library.persistence.LibraryRuleRepository;
@@ -103,6 +104,8 @@ class ReservationServiceImplTest {
     private ReservationMapper reservationMapper;
     @Mock
     private MaterialMapper materialMapper;
+    @Mock
+    private ReservationEventPublisher reservationEventPublisher;
 
     @InjectMocks
     private ReservationServiceImpl service;
@@ -352,6 +355,7 @@ class ReservationServiceImplTest {
                 .user(user)
                 .material(material)
                 .copy(copy)
+                .branch(copy.getBranch())
                 .status(ReservationStatus.ACTIVE)
                 .expiresAt(LocalDateTime.now().plusHours(1))
                 .build();
@@ -368,6 +372,7 @@ class ReservationServiceImplTest {
         assertThat(result).isSameAs(response);
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.READY_FOR_PICKUP);
         assertThat(reservation.getReadyAt()).isAfterOrEqualTo(before);
+        verify(reservationEventPublisher).reservationReadyForPickup(STAFF_ID, reservation);
     }
 
     @Test
