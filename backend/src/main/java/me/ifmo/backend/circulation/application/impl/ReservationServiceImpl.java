@@ -47,6 +47,7 @@ import me.ifmo.backend.shared.cache.InvalidateCatalogSearch;
 import me.ifmo.backend.shared.observability.LoggableOperation;
 import me.ifmo.backend.catalog.mapper.MaterialMapper;
 import me.ifmo.backend.circulation.mapper.ReservationMapper;
+import me.ifmo.backend.circulation.integration.ReservationEventPublisher;
 import me.ifmo.backend.library.persistence.BranchRepository;
 import me.ifmo.backend.library.persistence.LibraryRuleRepository;
 import me.ifmo.backend.circulation.application.ReservationService;
@@ -83,6 +84,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final UserRoleRepository userRoleRepository;
     private final ReservationMapper reservationMapper;
     private final MaterialMapper materialMapper;
+    private final ReservationEventPublisher reservationEventPublisher;
 
     private String normalize(String value) {
         if (value == null || value.strip().isBlank())
@@ -346,6 +348,7 @@ public class ReservationServiceImpl implements ReservationService {
         reservation.setReadyAt(LocalDateTime.now());
 
         Reservation saved = repository.save(reservation);
+        reservationEventPublisher.reservationReadyForPickup(actorUserId, saved);
         return toResponse(saved);
     }
 
