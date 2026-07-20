@@ -188,6 +188,55 @@ Only the first ten result pages with at most 100 elements are cached. Catalog,
 branch, loan, and reservation mutations that change material search results clear
 the cached pages after a successful transaction.
 
+## Kafka domain events
+
+Kafka carries asynchronous domain events while PostgreSQL remains the source of
+truth. Start the local single-node KRaft broker:
+
+```shell
+docker compose up -d kafka
+```
+
+The first implemented flow publishes `reservation.ready-for-pickup` to
+`library.circulation.events`. The reservation update and an `outbox_events` row
+are committed in the same PostgreSQL transaction. A background publisher
+delivers that row to Kafka, and the `library-notification` consumer group creates
+an idempotent `RESERVATION_READY` notification. Failed consumer records are
+retried and then moved to a dead-letter topic.
+
+Useful local checks:
+
+```shell
+docker exec library-kafka /opt/kafka/bin/kafka-topics.sh \
+  --bootstrap-server localhost:9092 --list
+
+docker exec library-kafka /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --topic library.circulation.events \
+  --from-beginning
+```
+
+Optional settings:
+
+```dotenv
+KAFKA_PORT=9092
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+KAFKA_CIRCULATION_TOPIC=library.circulation.events
+KAFKA_TOPIC_PARTITIONS=3
+KAFKA_TOPIC_REPLICATION_FACTOR=1
+KAFKA_NOTIFICATION_GROUP_ID=library-notification
+KAFKA_NOTIFICATION_RETRY_ATTEMPTS=4
+KAFKA_NOTIFICATION_RETRY_DELAY_MS=1000
+KAFKA_OUTBOX_BATCH_SIZE=50
+KAFKA_OUTBOX_POLL_INTERVAL_MS=1000
+KAFKA_OUTBOX_PUBLISH_TIMEOUT=5s
+KAFKA_OUTBOX_RETRY_DELAY=5s
+```
+
+The bundled broker uses plaintext and replication factor `1`; it is intended
+only for local development. Production requires separate security,
+replication, retention and controller/broker topology settings.
+
 ## S3-compatible book cover storage
 
 Cover image bytes are stored in a private S3-compatible bucket. PostgreSQL keeps
