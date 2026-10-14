@@ -381,7 +381,10 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         Long filterUserId = userId;
-        Specification<Notification> specification = (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+        Specification<Notification> specification = (root, query, criteriaBuilder) ->
+                criteriaBuilder.not(
+                        root.get("type").in(NotificationType.ACCOUNT_ACTIVATION, NotificationType.PASSWORD_RECOVERY)
+                );
 
         if (filterUserId != null)
             specification = specification.and((root, query, criteriaBuilder) ->
