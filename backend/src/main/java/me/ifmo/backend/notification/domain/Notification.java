@@ -100,7 +100,6 @@ public class Notification {
                 ", type=" + type +
                 ", channel=" + channel +
                 ", subject='" + subject + '\'' +
-                ", body='" + body + '\'' +
                 ", status=" + status +
                 ", createdAt=" + createdAt +
                 ", sentAt=" + sentAt +
