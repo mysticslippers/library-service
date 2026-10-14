@@ -26,5 +26,9 @@ public enum NotificationType {
     USER_UNBLOCKED,
     USER_WARNING_CREATED,
 
-    SYSTEM_MESSAGE
+    SYSTEM_MESSAGE;
+
+    public boolean containsAuthSecret(){
+        return this == ACCOUNT_ACTIVATION || this == PASSWORD_RECOVERY;
+    }
 }
