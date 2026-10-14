@@ -59,7 +59,6 @@ public class AuthToken {
         return "AuthToken{"
                 + "id=" + id
                 + ", user=" + user
-                + ", token='" + token + '\''
                 + ", type=" + type
                 + ", expiresAt=" + expiresAt
                 + ", usedAt=" + usedAt
