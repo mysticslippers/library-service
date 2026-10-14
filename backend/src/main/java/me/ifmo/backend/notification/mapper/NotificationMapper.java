@@ -42,6 +42,9 @@ public interface NotificationMapper {
     @Mapping(target = "reservationId", source = "reservation.id")
     @Mapping(target = "loanId", source = "loan.id")
     @Mapping(target = "fineId", source = "fine.id")
+    @Mapping(target = "body", expression = "java(notification.getType().containsAuthSecret()" + " ? null : notification.getBody())")
+    @Mapping(target = "subject", expression = "java(notification.getType().containsAuthSecret()" + " ? null : notification.getSubject())")
+    @Mapping(target = "errorMessage", expression = "java(notification.getType().containsAuthSecret()" + " ? null : notification.getErrorMessage())")
     NotificationResponse toResponse(Notification notification);
 
     List<NotificationResponse> toResponseList(Collection<Notification> notifications);
