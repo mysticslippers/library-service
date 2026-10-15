@@ -6,7 +6,7 @@ import me.ifmo.backend.notification.domain.enums.NotificationType;
 import me.ifmo.backend.notification.mapper.NotificationPreferenceMapper;
 import me.ifmo.backend.notification.persistence.NotificationPreferenceRepository;
 import me.ifmo.backend.notification.web.request.UpdateNotificationPreferenceRequest;
-import me.ifmo.backend.shared.error.BusinessRuleException;
+import me.ifmo.backend.shared.exceptions.BusinessRuleException;
 import me.ifmo.backend.user.persistence.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

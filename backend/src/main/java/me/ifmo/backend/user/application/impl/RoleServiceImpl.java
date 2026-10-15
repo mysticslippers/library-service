@@ -5,7 +5,7 @@ import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.user.web.response.RoleResponse;
 import me.ifmo.backend.user.domain.Role;
 import me.ifmo.backend.user.domain.enums.RoleCode;
-import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.exceptions.ResourceNotFoundException;
 import me.ifmo.backend.user.mapper.RoleMapper;
 import me.ifmo.backend.user.persistence.RoleRepository;
 import me.ifmo.backend.user.application.RoleService;

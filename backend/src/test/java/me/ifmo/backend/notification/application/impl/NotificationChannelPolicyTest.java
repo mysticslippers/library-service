@@ -1,7 +1,7 @@
 package me.ifmo.backend.notification.application.impl;
 
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
-import me.ifmo.backend.shared.error.BusinessRuleException;
+import me.ifmo.backend.shared.exceptions.BusinessRuleException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

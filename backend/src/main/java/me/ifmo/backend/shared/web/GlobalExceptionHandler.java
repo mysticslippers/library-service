@@ -3,7 +3,7 @@ package me.ifmo.backend.shared.web;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import me.ifmo.backend.shared.error.ApiException;
+import me.ifmo.backend.shared.exceptions.ApiException;
 import me.ifmo.backend.shared.web.response.ApiErrorResponse;
 import me.ifmo.backend.shared.web.response.FieldErrorResponse;
 import org.springframework.dao.DataIntegrityViolationException;

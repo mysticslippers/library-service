@@ -1,6 +1,5 @@
-package me.ifmo.backend.shared.error;
+package me.ifmo.backend.shared.exceptions;
 
-import me.ifmo.backend.shared.error.ApiException;
 import org.springframework.http.HttpStatus;
 
 public class DuplicateResourceException extends ApiException {

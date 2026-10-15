@@ -2,7 +2,7 @@ package me.ifmo.backend.catalog.storage;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import me.ifmo.backend.shared.error.ObjectStorageException;
+import me.ifmo.backend.shared.exceptions.ObjectStorageException;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;

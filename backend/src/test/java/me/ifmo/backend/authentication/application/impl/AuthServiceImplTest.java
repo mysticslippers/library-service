@@ -18,7 +18,7 @@ import me.ifmo.backend.notification.domain.enums.NotificationChannel;
 import me.ifmo.backend.notification.domain.enums.NotificationType;
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserStatus;
-import me.ifmo.backend.shared.error.BusinessRuleException;
+import me.ifmo.backend.shared.exceptions.BusinessRuleException;
 import me.ifmo.backend.user.mapper.UserMapper;
 import me.ifmo.backend.authentication.persistence.AuthTokenRepository;
 import me.ifmo.backend.user.persistence.RoleRepository;

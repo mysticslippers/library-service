@@ -2,9 +2,9 @@ package me.ifmo.backend.catalog.application.cover;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.catalog.storage.CoverStorageProperties;
-import me.ifmo.backend.shared.error.BusinessRuleException;
-import me.ifmo.backend.shared.error.PayloadTooLargeException;
-import me.ifmo.backend.shared.error.UnsupportedCoverFormatException;
+import me.ifmo.backend.shared.exceptions.BusinessRuleException;
+import me.ifmo.backend.shared.exceptions.PayloadTooLargeException;
+import me.ifmo.backend.shared.exceptions.UnsupportedCoverFormatException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 

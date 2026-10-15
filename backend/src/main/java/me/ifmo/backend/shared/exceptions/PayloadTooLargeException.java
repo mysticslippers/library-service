@@ -1,4 +1,4 @@
-package me.ifmo.backend.shared.error;
+package me.ifmo.backend.shared.exceptions;
 
 import org.springframework.http.HttpStatus;
 

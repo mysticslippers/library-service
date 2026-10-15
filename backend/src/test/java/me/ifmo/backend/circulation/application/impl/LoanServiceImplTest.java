@@ -23,7 +23,7 @@ import me.ifmo.backend.circulation.domain.enums.ReservationStatus;
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserBlockStatus;
 import me.ifmo.backend.user.domain.enums.UserStatus;
-import me.ifmo.backend.shared.error.BusinessRuleException;
+import me.ifmo.backend.shared.exceptions.BusinessRuleException;
 import me.ifmo.backend.circulation.mapper.LoanMapper;
 import me.ifmo.backend.library.persistence.BranchRepository;
 import me.ifmo.backend.fine.persistence.FineRepository;
