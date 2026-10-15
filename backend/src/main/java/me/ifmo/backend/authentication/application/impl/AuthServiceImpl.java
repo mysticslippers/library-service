@@ -10,6 +10,7 @@ import me.ifmo.backend.authentication.web.request.ResendActivationRequest;
 import me.ifmo.backend.authentication.web.response.AuthMessageResponse;
 import me.ifmo.backend.authentication.web.response.AuthResponse;
 import me.ifmo.backend.notification.web.request.CreateNotificationRequest;
+import me.ifmo.backend.shared.exceptions.InvalidCredentialsException;
 import me.ifmo.backend.user.web.response.UserProfileResponse;
 import me.ifmo.backend.authentication.domain.AuthToken;
 import me.ifmo.backend.user.domain.Role;
@@ -21,9 +22,9 @@ import me.ifmo.backend.notification.domain.enums.NotificationType;
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserStatus;
 import me.ifmo.backend.user.domain.id.UserRoleId;
-import me.ifmo.backend.shared.error.BusinessRuleException;
-import me.ifmo.backend.shared.error.DuplicateResourceException;
-import me.ifmo.backend.shared.error.ResourceNotFoundException;
+import me.ifmo.backend.shared.exceptions.BusinessRuleException;
+import me.ifmo.backend.shared.exceptions.DuplicateResourceException;
+import me.ifmo.backend.shared.exceptions.ResourceNotFoundException;
 import me.ifmo.backend.user.mapper.UserMapper;
 import me.ifmo.backend.authentication.persistence.AuthTokenRepository;
 import me.ifmo.backend.user.persistence.RoleRepository;
@@ -161,7 +162,7 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
-        throw new BusinessRuleException("Invalid email or password");
+        throw new InvalidCredentialsException();
     }
 
     private void validate(User user) {
@@ -208,12 +209,12 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = InvalidCredentialsException.class)
     public AuthResponse login(LoginRequest request) {
         String email = normalize(request.email(), "Email");
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessRuleException("Invalid email or password"));
+                .orElseThrow(InvalidCredentialsException::new);
 
         validate(user);
 
