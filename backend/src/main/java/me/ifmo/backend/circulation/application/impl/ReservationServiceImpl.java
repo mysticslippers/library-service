@@ -353,35 +353,6 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    @Transactional
-    @LoggableOperation("reservation.mark-used")
-    @Observed(
-            name = "library.operation",
-            contextualName = "reservation.mark-used",
-            lowCardinalityKeyValues = {"domain", "circulation", "operation", "reservation.mark-used"}
-    )
-    public ReservationResponse markUsed(Long actorUserId, Long id) {
-        validateStaff(actorUserId);
-
-        Reservation reservation = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
-
-        if (reservation.getStatus() != ReservationStatus.READY_FOR_PICKUP)
-            throw new BusinessRuleException("Only ready for pickup reservation can be marked as used");
-
-        if (reservation.getExpiresAt().isBefore(LocalDateTime.now()))
-            throw new BusinessRuleException("Expired reservation cannot be marked as used");
-
-        if (reservation.getCopy().getStatus() != CopyStatus.RESERVED)
-            throw new BusinessRuleException("Reserved material copy has invalid status");
-
-        reservation.setStatus(ReservationStatus.USED);
-
-        Reservation saved = repository.save(reservation);
-        return toResponse(saved);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public PageResponse<ReservationResponse> search(Long actorUserId, ReservationSearchRequest request, Pageable pageable) {
         boolean staff = isStaff(actorUserId);
