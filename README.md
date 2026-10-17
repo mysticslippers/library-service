@@ -141,6 +141,26 @@ library-service/
 └── LICENSE
 ```
 
+## Reservation pickup
+
+Issue a reserved copy with `POST /api/loans`, providing `reservationId` along with
+`userId`, `copyId`, `branchId`, and `issuedByUserId`. The reservation must be
+`READY_FOR_PICKUP`. A successful transaction creates an `ACTIVE` loan, changes
+the reservation to `USED`, and changes the copy to `LOANED`. A failure rolls back
+all three changes. There is no separate command to mark a reservation as used.
+
+Run backend checks from `backend/`:
+
+```shell
+mvn verify
+```
+
+With Docker running, `ReservationLoanIntegrationTest` starts an isolated
+PostgreSQL 16 container and applies the production Flyway migrations, including
+the circulation triggers. It checks pickup, return, duplicate requests, and
+transaction rollback. These integration tests are skipped when Docker is unavailable;
+the remaining tests still run.
+
 ## Email delivery
 
 Pending email notifications are delivered through an SMTP server using Spring Mail.

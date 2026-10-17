@@ -450,31 +450,6 @@ class ReservationServiceImplTest {
     }
 
     @Test
-    @DisplayName("Converts ready reservation to used status")
-    void markUsedConvertsReadyReservation() {
-        Material material = activeMaterial();
-        MaterialCopy copy = availableCopy(material, activeBranch());
-        copy.setStatus(CopyStatus.RESERVED);
-        Reservation reservation = Reservation.builder()
-                .id(10L)
-                .user(activeUser())
-                .material(material)
-                .copy(copy)
-                .status(ReservationStatus.READY_FOR_PICKUP)
-                .expiresAt(LocalDateTime.now().plusHours(1))
-                .build();
-        ReservationResponse response = org.mockito.Mockito.mock(ReservationResponse.class);
-
-        grantStaff();
-        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
-        when(reservationRepository.save(reservation)).thenReturn(reservation);
-        stubResponse(reservation, response);
-
-        assertThat(service.markUsed(STAFF_ID, 10L)).isSameAs(response);
-        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.USED);
-    }
-
-    @Test
     @DisplayName("Restricts reader search to own reservations and maps page")
     void searchRestrictsReaderToOwnReservationsAndMapsPage() {
         User user = activeUser();

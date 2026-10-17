@@ -66,7 +66,7 @@ public class ReservationController {
         return service.markReadyForPickup(Long.valueOf(userDetails.getUsername()), id);
     }
 
-x
+
     @GetMapping
     @Operation(summary = "Search reservations")
     public PageResponse<ReservationResponse> search(@AuthenticationPrincipal UserDetails userDetails, @Valid @ModelAttribute ReservationSearchRequest request, @ParameterObject Pageable pageable) {
