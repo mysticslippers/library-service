@@ -21,7 +21,5 @@ public interface ReservationService {
 
     ReservationResponse markReadyForPickup(Long actorUserId, Long id);
 
-    ReservationResponse markUsed(Long actorUserId, Long id);
-
     PageResponse<ReservationResponse> search(Long actorUserId, ReservationSearchRequest request, Pageable pageable);
 }
