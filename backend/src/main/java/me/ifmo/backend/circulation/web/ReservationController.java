@@ -66,13 +66,7 @@ public class ReservationController {
         return service.markReadyForPickup(Long.valueOf(userDetails.getUsername()), id);
     }
 
-    @PostMapping("/{id}/mark-used")
-    @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
-    @Operation(summary = "Mark a reservation as used")
-    public ReservationResponse markUsed(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
-        return service.markUsed(Long.valueOf(userDetails.getUsername()), id);
-    }
-
+x
     @GetMapping
     @Operation(summary = "Search reservations")
     public PageResponse<ReservationResponse> search(@AuthenticationPrincipal UserDetails userDetails, @Valid @ModelAttribute ReservationSearchRequest request, @ParameterObject Pageable pageable) {
