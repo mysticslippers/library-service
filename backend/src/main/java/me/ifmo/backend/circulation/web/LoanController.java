@@ -30,7 +30,7 @@ public class LoanController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
-    @Operation(summary = "Create a loan")
+    @Operation(summary = "Create a loan", description = "To issue a reserved copy, provide reservationId of a READY_FOR_PICKUP reservation. The loan, reservation and copy statuses are updated in one transaction.")
     public LoanResponse create(@AuthenticationPrincipal UserDetails userDetails, @Valid @RequestBody CreateLoanRequest request) {
         return service.create(Long.valueOf(userDetails.getUsername()), request);
     }
