@@ -304,6 +304,7 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
         authTokenRepository.save(token);
+        userRepository.incrementTokenVersion(user.getId());
 
         return new AuthMessageResponse("Password has been changed.");
     }
