@@ -1,9 +1,11 @@
 package me.ifmo.backend.authentication.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import me.ifmo.backend.user.persistence.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import me.ifmo.backend.user.domain.User;
 import me.ifmo.backend.user.domain.enums.RoleCode;
@@ -20,10 +22,12 @@ public class JwtServiceImpl  implements JwtService {
 
     private final SecretKey key;
     private final long accessTokenExpiresIn;
+    private final UserRepository userRepository;
 
-    public JwtServiceImpl(@Value("${security.jwt.secret}") String secret, @Value("${security.jwt.access-token-expiration-ms}") long accessTokenExpiresIn) {
+    public JwtServiceImpl(@Value("${security.jwt.secret}") String secret, @Value("${security.jwt.access-token-expiration-ms}") long accessTokenExpiresIn, UserRepository userRepository) {
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
         this.accessTokenExpiresIn = accessTokenExpiresIn;
+        this.userRepository = userRepository;
     }
 
     private Claims parse(String token) {
@@ -39,6 +43,7 @@ public class JwtServiceImpl  implements JwtService {
         return Jwts.builder().subject(user.getId().toString())
                 .claim("email", user.getEmail())
                 .claim("roles", roleNames)
+                .claim("tokenVersion", user.getTokenVersion())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(accessTokenExpiresIn)))
                 .signWith(key)
@@ -53,9 +58,16 @@ public class JwtServiceImpl  implements JwtService {
     @Override
     public boolean isTokenValid(String token) {
         try {
-            parse(token);
-            return true;
-        } catch (RuntimeException exception) {
+            Claims claims = parse(token);
+            Long version = claims.get("tokenVersion", Long.class);
+
+            if(version == null)
+                return false;
+
+            Long userId = Long.valueOf(claims.getSubject());
+            return userRepository.findById(userId).map(user -> version.equals(user.getTokenVersion())).orElse(false);
+
+        } catch (JwtException | IllegalArgumentException exception) {
             return false;
         }
     }
