@@ -37,6 +37,7 @@ public interface UserMapper {
                 NullValuePropertyMappingStrategy.IGNORE)
         @Mapping(target = "id", ignore = true)
         @Mapping(target = "passwordHash", ignore = true)
+        @Mapping(target = "tokenVersion", ignore = true)
         @Mapping(target = "status", ignore = true)
         @Mapping(target = "registeredAt", ignore = true)
         @Mapping(target = "activatedAt", ignore = true)
