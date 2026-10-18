@@ -34,6 +34,10 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    @Builder.Default
+    @Column(name = "token_version", nullable = false, updatable = false)
+    private Long tokenVersion = 0L;
+
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 
