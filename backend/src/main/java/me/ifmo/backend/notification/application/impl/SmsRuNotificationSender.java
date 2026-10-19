@@ -3,7 +3,7 @@ package me.ifmo.backend.notification.application.impl;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import me.ifmo.backend.notification.application.NotificationChannelSender;
 import me.ifmo.backend.notification.application.NotificationDeliveryResult;
-import me.ifmo.backend.notification.domain.Notification;
+import me.ifmo.backend.notification.application.NotificationDeliveryTask;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -59,27 +59,24 @@ public class SmsRuNotificationSender implements NotificationChannelSender {
     }
 
     @Override
-    public NotificationDeliveryResult send(Notification notification) {
-        if (notification.getChannel() != NotificationChannel.SMS)
-            return failure("Notification channel '%s' is not supported by SMS.RU".formatted(notification.getChannel()));
+    public NotificationDeliveryResult send(NotificationDeliveryTask task) {
+        if (task.channel() != NotificationChannel.SMS)
+            return failure("Notification channel '%s' is not supported by SMS.RU".formatted(task.channel()));
 
         if (properties.getApiId() == null || properties.getApiId().isBlank())
             return failure("SMS.RU API id is not configured");
 
-        if (notification.getUser() == null)
-            return failure("SMS notification recipient must not be null");
-
-        String phone = normalizePhone(notification.getUser().getPhone());
+        String phone = normalizePhone(task.recipientPhone());
         if (phone == null)
             return failure("SMS notification recipient phone must match '+7XXXXXXXXXX' or '8XXXXXXXXXX'");
 
-        if (notification.getBody() == null || notification.getBody().isBlank())
+        if (task.body() == null || task.body().isBlank())
             return failure("SMS notification body must not be blank");
 
         MultiValueMap<String, String> request = new LinkedMultiValueMap<>();
         request.add("api_id", properties.getApiId());
         request.add("to", phone);
-        request.add("msg", notification.getBody());
+        request.add("msg", task.body());
         request.add("json", "1");
 
         if (properties.getSender() != null && !properties.getSender().isBlank())
@@ -98,7 +95,7 @@ public class SmsRuNotificationSender implements NotificationChannelSender {
             return toDeliveryResult(phone, response);
         } catch (RestClientException exception) {
             String errorMessage = exception.getMessage();
-            return failure(errorMessage != null && !errorMessage.isBlank()
+            return NotificationDeliveryResult.unknown(null, errorMessage != null && !errorMessage.isBlank()
                     ? errorMessage
                     : exception.getClass().getSimpleName());
         }
@@ -106,8 +103,10 @@ public class SmsRuNotificationSender implements NotificationChannelSender {
 
     private NotificationDeliveryResult toDeliveryResult(String phone, SmsRuSendResponse response) {
         if (response == null)
-            return failure("SMS.RU returned an empty response");
+            return NotificationDeliveryResult.unknown(null, "SMS.RU returned an empty response");
 
+        if (response.status() == null)
+            return NotificationDeliveryResult.unknown(null, "SMS.RU returned no request status");
         if (!"OK".equalsIgnoreCase(response.status()))
             return failure(providerError("SMS.RU request failed", response.statusCode(), response.statusText()));
 
@@ -116,12 +115,16 @@ public class SmsRuNotificationSender implements NotificationChannelSender {
             message = response.sms().values().iterator().next();
 
         if (message == null)
-            return failure("SMS.RU response does not contain the requested phone");
+            return NotificationDeliveryResult.unknown(null, "SMS.RU response does not contain the requested phone");
 
-        if (!"OK".equalsIgnoreCase(message.status()) || message.smsId() == null || message.smsId().isBlank())
+        if (message.status() == null)
+            return NotificationDeliveryResult.unknown(null, "SMS.RU returned no message status");
+        if (!"OK".equalsIgnoreCase(message.status()))
             return failure(providerError("SMS.RU rejected the message", message.statusCode(), message.statusText()));
+        if (message.smsId() == null || message.smsId().isBlank())
+            return NotificationDeliveryResult.unknown(null, "SMS.RU accepted the message without a message id");
 
-        return new NotificationDeliveryResult(true, message.smsId(), null);
+        return NotificationDeliveryResult.sent(message.smsId());
     }
 
     private String providerError(String prefix, Integer statusCode, String statusText) {
@@ -143,6 +146,6 @@ public class SmsRuNotificationSender implements NotificationChannelSender {
     }
 
     private NotificationDeliveryResult failure(String errorMessage) {
-        return new NotificationDeliveryResult(false, null, errorMessage);
+        return NotificationDeliveryResult.failed(errorMessage);
     }
 }
