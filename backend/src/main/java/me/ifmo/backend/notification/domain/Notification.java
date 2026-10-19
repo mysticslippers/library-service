@@ -31,6 +31,10 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -75,6 +79,9 @@ public class Notification {
 
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
+
+    @Column(name = "sending_started_at")
+    private LocalDateTime sendingStartedAt;
 
     @Column(name = "read_at")
     private LocalDateTime readAt;
