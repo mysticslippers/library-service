@@ -3,7 +3,7 @@ package me.ifmo.backend.notification.application.impl;
 import me.ifmo.backend.notification.application.NotificationChannelSender;
 import me.ifmo.backend.notification.application.NotificationDeliveryClient;
 import me.ifmo.backend.notification.application.NotificationDeliveryResult;
-import me.ifmo.backend.notification.domain.Notification;
+import me.ifmo.backend.notification.application.NotificationDeliveryTask;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
 import org.springframework.stereotype.Component;
 
@@ -27,18 +27,18 @@ public class RoutingNotificationDeliveryClient implements NotificationDeliveryCl
     }
 
     @Override
-    public NotificationDeliveryResult send(Notification notification) {
-        if (notification == null || notification.getChannel() == null)
+    public NotificationDeliveryResult send(NotificationDeliveryTask task) {
+        if (task == null || task.channel() == null)
             return failure("Notification channel must not be null");
 
-        NotificationChannelSender sender = senders.get(notification.getChannel());
+        NotificationChannelSender sender = senders.get(task.channel());
         if (sender == null)
-            return failure("Notification channel '%s' is not configured".formatted(notification.getChannel()));
+            return failure("Notification channel '%s' is not configured".formatted(task.channel()));
 
-        return sender.send(notification);
+        return sender.send(task);
     }
 
     private NotificationDeliveryResult failure(String errorMessage) {
-        return new NotificationDeliveryResult(false, null, errorMessage);
+        return NotificationDeliveryResult.failed(errorMessage);
     }
 }
