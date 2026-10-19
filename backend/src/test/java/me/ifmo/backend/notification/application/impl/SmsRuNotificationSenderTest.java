@@ -1,8 +1,8 @@
 package me.ifmo.backend.notification.application.impl;
 
-import me.ifmo.backend.notification.domain.Notification;
+import me.ifmo.backend.notification.application.NotificationDeliveryTask;
+import me.ifmo.backend.notification.application.NotificationDeliveryResult.Outcome;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
-import me.ifmo.backend.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -125,6 +125,7 @@ class SmsRuNotificationSenderTest {
         assertThat(result.success()).isFalse();
         assertThat(result.externalMessageId()).isNull();
         assertThat(result.errorMessage()).contains("207").contains("Recipient is unavailable");
+        assertThat(result.outcome()).isEqualTo(Outcome.FAILURE);
         server.verify();
     }
 
@@ -137,6 +138,7 @@ class SmsRuNotificationSenderTest {
 
         assertThat(result.success()).isFalse();
         assertThat(result.errorMessage()).isNotBlank();
+        assertThat(result.outcome()).isEqualTo(Outcome.UNKNOWN);
         server.verify();
     }
 
@@ -162,11 +164,8 @@ class SmsRuNotificationSenderTest {
         server.verify();
     }
 
-    private Notification notification(String phone) {
-        return Notification.builder()
-                .user(User.builder().id(1L).phone(phone).build())
-                .channel(NotificationChannel.SMS)
-                .body("Your reservation is ready.")
-                .build();
+    private NotificationDeliveryTask notification(String phone) {
+        return new NotificationDeliveryTask(1L, 1, NotificationChannel.SMS, null, phone, null,
+                "Your reservation is ready.");
     }
 }

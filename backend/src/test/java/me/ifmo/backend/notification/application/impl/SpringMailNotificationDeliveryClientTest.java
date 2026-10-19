@@ -2,9 +2,9 @@ package me.ifmo.backend.notification.application.impl;
 
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
-import me.ifmo.backend.notification.domain.Notification;
+import me.ifmo.backend.notification.application.NotificationDeliveryTask;
+import me.ifmo.backend.notification.application.NotificationDeliveryResult.Outcome;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
-import me.ifmo.backend.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,7 +42,7 @@ class SpringMailNotificationDeliveryClientTest {
     @DisplayName("Sends email notification")
     void sendsEmailNotification() throws Exception {
         MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
-        Notification notification = notification(NotificationChannel.EMAIL, "reader@example.com");
+        NotificationDeliveryTask notification = notification(NotificationChannel.EMAIL, "reader@example.com");
         when(mailSender.createMimeMessage()).thenReturn(message);
 
         var result = client.send(notification);
@@ -58,24 +58,25 @@ class SpringMailNotificationDeliveryClientTest {
     }
 
     @Test
-    @DisplayName("Returns failure when mail sender throws exception")
-    void returnsFailureWhenMailSenderThrowsException() {
+    @DisplayName("Preserves an uncertain outcome when SMTP fails after sending starts")
+    void returnsUnknownWhenMailSenderThrowsException() {
         MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
-        Notification notification = notification(NotificationChannel.EMAIL, "reader@example.com");
+        NotificationDeliveryTask notification = notification(NotificationChannel.EMAIL, "reader@example.com");
         when(mailSender.createMimeMessage()).thenReturn(message);
         doThrow(new MailSendException("SMTP is unavailable")).when(mailSender).send(message);
 
         var result = client.send(notification);
 
         assertThat(result.success()).isFalse();
-        assertThat(result.externalMessageId()).isNull();
+        assertThat(result.outcome()).isEqualTo(Outcome.UNKNOWN);
+        assertThat(result.externalMessageId()).isNotBlank();
         assertThat(result.errorMessage()).contains("SMTP is unavailable");
     }
 
     @Test
     @DisplayName("Rejects unsupported SMS channel")
     void rejectsUnsupportedSmsChannel() {
-        Notification notification = notification(NotificationChannel.SMS, "reader@example.com");
+        NotificationDeliveryTask notification = notification(NotificationChannel.SMS, "reader@example.com");
 
         var result = client.send(notification);
 
@@ -87,21 +88,18 @@ class SpringMailNotificationDeliveryClientTest {
     @Test
     @DisplayName("Rejects blank recipient email")
     void rejectsBlankRecipientEmail() {
-        Notification notification = notification(NotificationChannel.EMAIL, " ");
+        NotificationDeliveryTask notification = notification(NotificationChannel.EMAIL, " ");
 
         var result = client.send(notification);
 
         assertThat(result.success()).isFalse();
         assertThat(result.errorMessage()).contains("recipient email");
+        assertThat(result.outcome()).isEqualTo(Outcome.FAILURE);
         verify(mailSender, never()).createMimeMessage();
     }
 
-    private Notification notification(NotificationChannel channel, String email) {
-        return Notification.builder()
-                .user(User.builder().id(1L).email(email).build())
-                .channel(channel)
-                .subject("Reservation ready")
-                .body("Your reservation is ready.")
-                .build();
+    private NotificationDeliveryTask notification(NotificationChannel channel, String email) {
+        return new NotificationDeliveryTask(1L, 1, channel, email, null,
+                "Reservation ready", "Your reservation is ready.");
     }
 }

@@ -2,7 +2,7 @@ package me.ifmo.backend.notification.application.impl;
 
 import me.ifmo.backend.notification.application.NotificationChannelSender;
 import me.ifmo.backend.notification.application.NotificationDeliveryResult;
-import me.ifmo.backend.notification.domain.Notification;
+import me.ifmo.backend.notification.application.NotificationDeliveryTask;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,8 +23,9 @@ class RoutingNotificationDeliveryClientTest {
     void routesNotificationToConfiguredChannelSender() {
         NotificationChannelSender emailSender = sender(NotificationChannel.EMAIL);
         NotificationChannelSender smsSender = sender(NotificationChannel.SMS);
-        Notification notification = Notification.builder().channel(NotificationChannel.SMS).build();
-        NotificationDeliveryResult expected = new NotificationDeliveryResult(true, "sms-id", null);
+        NotificationDeliveryTask notification = new NotificationDeliveryTask(1L, 1, NotificationChannel.SMS,
+                null, "+79991234567", null, "Test");
+        NotificationDeliveryResult expected = NotificationDeliveryResult.sent("sms-id");
         when(smsSender.send(notification)).thenReturn(expected);
 
         var client = new RoutingNotificationDeliveryClient(List.of(emailSender, smsSender));
@@ -39,7 +40,7 @@ class RoutingNotificationDeliveryClientTest {
     void rejectsNotificationWithoutChannel() {
         var client = new RoutingNotificationDeliveryClient(List.of());
 
-        var result = client.send(Notification.builder().build());
+        var result = client.send(new NotificationDeliveryTask(1L, 1, null, null, null, null, null));
 
         assertThat(result.success()).isFalse();
         assertThat(result.errorMessage()).contains("must not be null");
