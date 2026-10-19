@@ -4,6 +4,7 @@ public record NotificationDeliveryBatchResponse(
         int processed,
         int sent,
         int failed,
-        int undelivered
+        int undelivered,
+        int unknown
 ) {
 }
