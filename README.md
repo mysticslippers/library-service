@@ -181,6 +181,27 @@ For a local SMTP catcher, the defaults are `localhost:1025` with authentication 
 STARTTLS disabled. Pending notifications are processed through
 `POST /api/notifications/process-pending`.
 
+Each notification is claimed as `SENDING` in its own committed transaction before
+contacting SMTP. Concurrent workers skip claimed rows. Delivery results are committed
+individually, so later delivery or audit failures do not roll back earlier results.
+The batch response includes an `unknown` count for attempts whose outcome could not
+be confirmed. Only definite failures can be scheduled again through `/{id}/resend`.
+
+An SMTP failure after sending starts may mean that the server already accepted the
+message. Such attempts become `UNKNOWN` and are not automatically resent. On the
+next processing run, interrupted `SENDING` attempts older than
+`NOTIFICATION_DELIVERY_SENDING_TIMEOUT_MS` (default `300000`, five minutes) also
+become `UNKNOWN`. Check the SMTP provider's logs before deciding how to resolve
+these notifications; there is no automatic retry for an uncertain outcome.
+Set this timeout above the maximum expected duration of a delivery attempt.
+
+`PATCH /api/notifications/{id}/status` accepts only `CANCELLED` for unsent
+notifications. Sending, retry counts and delivery results are managed internally.
+
+With Docker running, `NotificationDeliveryIntegrationTest` checks concurrent workers,
+per-message commits, database and audit failures, and interrupted attempts against an
+isolated PostgreSQL container. It does not contact SMTP or SMS providers.
+
 ## Redis catalog cache
 
 Redis is used as a non-critical cache-aside layer for catalog material search.
