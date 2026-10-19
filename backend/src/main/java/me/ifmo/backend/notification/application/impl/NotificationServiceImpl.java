@@ -57,8 +57,6 @@ public class NotificationServiceImpl implements NotificationService {
 
     private record NotificationContent(String subject, String body) {}
 
-    private static final Set<NotificationStatus> FINAL_STATUSES =
-            Set.of(NotificationStatus.DELIVERED, NotificationStatus.UNDELIVERED, NotificationStatus.CANCELLED);
     private static final Pattern TEMPLATE_PARAMETER_PATTERN = Pattern.compile("\\{([a-zA-Z][a-zA-Z0-9_]*)}");
 
     private final NotificationRepository repository;
@@ -185,33 +183,6 @@ public class NotificationServiceImpl implements NotificationService {
             throw new AccessDeniedException("Access is denied");
     }
 
-    private boolean isTransitionAllowed(NotificationStatus current, NotificationStatus target) {
-        if (current == target)
-            return true;
-
-        if (FINAL_STATUSES.contains(current))
-            return false;
-
-        return switch (current) {
-            case PLANNED, FAILED -> target == NotificationStatus.PENDING
-                    || target == NotificationStatus.UNDELIVERED
-                    || target == NotificationStatus.CANCELLED;
-            case PENDING -> target == NotificationStatus.SENT
-                    || target == NotificationStatus.FAILED
-                    || target == NotificationStatus.UNDELIVERED
-                    || target == NotificationStatus.CANCELLED;
-            case SENT -> target == NotificationStatus.DELIVERED
-                    || target == NotificationStatus.FAILED;
-            case DELIVERED, UNDELIVERED, CANCELLED -> false;
-        };
-    }
-
-    private boolean isDeliveryAttemptStatus(NotificationStatus status) {
-        return status == NotificationStatus.SENT
-                || status == NotificationStatus.FAILED
-                || status == NotificationStatus.UNDELIVERED;
-    }
-
     @Override
     @Transactional
     public NotificationResponse create(CreateNotificationRequest request) {
@@ -278,49 +249,16 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public NotificationResponse updateStatus(Long id, UpdateNotificationStatusRequest request) {
-        Notification notification = repository.findById(id).orElseThrow(
+        Notification notification = repository.findByIdForUpdate(id).orElseThrow(
                 () -> new ResourceNotFoundException("Notification with id '%s' not found".formatted(id)));
 
-        NotificationStatus targetStatus = request.status();
+        if (request.status() != NotificationStatus.CANCELLED)
+            throw new BusinessRuleException("Delivery statuses are managed by the delivery worker; only cancellation is allowed");
+        if (!Set.of(NotificationStatus.PLANNED, NotificationStatus.PENDING, NotificationStatus.FAILED,
+                NotificationStatus.CANCELLED).contains(notification.getStatus()))
+            throw new BusinessRuleException("Only an unsent notification can be cancelled");
 
-        if (!isTransitionAllowed(notification.getStatus(), targetStatus))
-            throw new BusinessRuleException(
-                    "Notification status transition from '%s' to '%s' is not allowed".formatted(notification.getStatus(), targetStatus));
-
-        String externalMessageId = request.externalMessageId() != null ? request.externalMessageId().strip() : null;
-        String errorMessage = request.errorMessage() != null ? request.errorMessage().strip() : null;
-
-        if ((targetStatus == NotificationStatus.FAILED || targetStatus == NotificationStatus.UNDELIVERED)
-                && (errorMessage == null || errorMessage.isBlank()))
-            throw new BusinessRuleException("Delivery error message must not be blank");
-
-        if ((targetStatus == NotificationStatus.SENT || targetStatus == NotificationStatus.DELIVERED)
-                && (externalMessageId == null || externalMessageId.isBlank())
-                && notification.getExternalMessageId() == null)
-            throw new BusinessRuleException("External message id must not be blank");
-
-        LocalDateTime sentAt = null;
-
-        if ((targetStatus == NotificationStatus.SENT || targetStatus == NotificationStatus.DELIVERED)
-                && notification.getSentAt() == null)
-            sentAt = LocalDateTime.now();
-
-        if (notification.getAttemptCount() == null)
-            notification.setAttemptCount(0);
-
-        if (isDeliveryAttemptStatus(targetStatus) && notification.getStatus() != targetStatus)
-            notification.setAttemptCount(notification.getAttemptCount() + 1);
-
-        if (targetStatus == NotificationStatus.FAILED && notification.getAttemptCount() >= maxDeliveryAttempts)
-            request = new UpdateNotificationStatusRequest(NotificationStatus.UNDELIVERED,
-                    externalMessageId, errorMessage);
-        else
-            request = new UpdateNotificationStatusRequest(targetStatus, externalMessageId, errorMessage);
-
-        notificationMapper.updateStatus(request, sentAt, notification);
-
-        if (notification.getStatus() == NotificationStatus.SENT || notification.getStatus() == NotificationStatus.DELIVERED)
-            notification.setErrorMessage(null);
+        notification.setStatus(NotificationStatus.CANCELLED);
 
         Notification saved = repository.save(notification);
         return notificationMapper.toResponse(saved);
@@ -330,7 +268,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public NotificationResponse markAsRead(Long actorUserId, Long id) {
         User actor = findActor(actorUserId);
-        Notification notification = repository.findById(id).orElseThrow(
+        Notification notification = repository.findByIdForUpdate(id).orElseThrow(
                 () -> new ResourceNotFoundException("Notification with id '%s' not found".formatted(id)));
         validateCanView(actor, notification);
 
@@ -347,7 +285,7 @@ public class NotificationServiceImpl implements NotificationService {
         User actor = findActor(actorUserId);
         validateStaff(actor);
 
-        Notification notification = repository.findById(id).orElseThrow(
+        Notification notification = repository.findByIdForUpdate(id).orElseThrow(
                 () -> new ResourceNotFoundException("Notification with id '%s' not found".formatted(id)));
 
         if (notification.getStatus() != NotificationStatus.FAILED && notification.getStatus() != NotificationStatus.UNDELIVERED)
@@ -359,6 +297,8 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setStatus(NotificationStatus.PENDING);
         notification.setErrorMessage(null);
         notification.setExternalMessageId(null);
+        notification.setSentAt(null);
+        notification.setSendingStartedAt(null);
 
         Notification saved = repository.save(notification);
         auditLogService.record(actor.getId(), AuditEntityType.NOTIFICATION, saved.getId(), AuditAction.UPDATE,
