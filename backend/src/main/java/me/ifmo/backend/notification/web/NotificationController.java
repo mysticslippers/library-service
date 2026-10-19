@@ -45,7 +45,7 @@ public class NotificationController {
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
-    @Operation(summary = "Update a notification's status")
+    @Operation(summary = "Cancel an unsent notification", description = "Only CANCELLED is accepted. Delivery statuses are managed internally.")
     public NotificationResponse updateStatus(@PathVariable Long id, @Valid @RequestBody UpdateNotificationStatusRequest request) {
         return service.updateStatus(id, request);
     }
@@ -65,7 +65,7 @@ public class NotificationController {
 
     @PostMapping("/process-pending")
     @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
-    @Operation(summary = "Process pending notification deliveries")
+    @Operation(summary = "Process pending notification deliveries", description = "Claims each notification before sending. UNKNOWN deliveries require provider verification and are not retried.")
     public NotificationDeliveryBatchResponse processPending(@AuthenticationPrincipal UserDetails userDetails, @RequestParam(defaultValue = "50") int limit) {
         return deliveryService.processPending(Long.valueOf(userDetails.getUsername()), limit);
     }
