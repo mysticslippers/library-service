@@ -5,7 +5,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.notification.application.NotificationChannelSender;
 import me.ifmo.backend.notification.application.NotificationDeliveryResult;
-import me.ifmo.backend.notification.domain.Notification;
+import me.ifmo.backend.notification.application.NotificationDeliveryTask;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
@@ -25,7 +25,7 @@ public class SpringMailNotificationDeliveryClient implements NotificationChannel
     private String from;
 
     private NotificationDeliveryResult failure(String errorMessage) {
-        return new NotificationDeliveryResult(false, null, errorMessage);
+        return NotificationDeliveryResult.failed(errorMessage);
     }
 
     @Override
@@ -34,29 +34,40 @@ public class SpringMailNotificationDeliveryClient implements NotificationChannel
     }
 
     @Override
-    public NotificationDeliveryResult send(Notification notification) {
-        if (notification.getChannel() != NotificationChannel.EMAIL)
-            return failure("Notification channel '%s' is not configured".formatted(notification.getChannel()));
+    public NotificationDeliveryResult send(NotificationDeliveryTask task) {
+        if (task.channel() != NotificationChannel.EMAIL)
+            return failure("Notification channel '%s' is not configured".formatted(task.channel()));
 
-        if (notification.getUser() == null || notification.getUser().getEmail() == null || notification.getUser().getEmail().isBlank())
+        if (task.recipientEmail() == null || task.recipientEmail().isBlank())
             return failure("Notification recipient email must not be blank");
 
+        MimeMessage message;
+        String messageId;
         try {
-            MimeMessage message = mailSender.createMimeMessage();
+            message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, StandardCharsets.UTF_8.name());
             helper.setFrom(from);
-            helper.setTo(notification.getUser().getEmail());
-            helper.setSubject(notification.getSubject());
-            helper.setText(notification.getBody(), false);
+            helper.setTo(task.recipientEmail());
+            helper.setSubject(task.subject());
+            helper.setText(task.body(), false);
 
             message.saveChanges();
-            String messageId = message.getMessageID();
-            mailSender.send(message);
-
-            return new NotificationDeliveryResult(true, messageId, null);
-        } catch (MailException | MessagingException exception) {
-            String errorMessage = exception.getMessage();
-            return failure(errorMessage != null && !errorMessage.isBlank() ? errorMessage : exception.getClass().getSimpleName());
+            messageId = message.getMessageID();
+        } catch (MailException | MessagingException | IllegalArgumentException exception) {
+            return failure(errorMessage(exception));
         }
+
+        try {
+            mailSender.send(message);
+            return NotificationDeliveryResult.sent(messageId);
+        } catch (MailException exception) {
+            // SMTP may accept the message before the connection fails or the response times out.
+            return NotificationDeliveryResult.unknown(messageId, errorMessage(exception));
+        }
+    }
+
+    private String errorMessage(Exception exception) {
+        String message = exception.getMessage();
+        return message != null && !message.isBlank() ? message : exception.getClass().getSimpleName();
     }
 }
