@@ -24,9 +24,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = """
-        UPDATE users 
-                SET token_version = token_version + 1
-                        WHERE id = :userId
+        UPDATE users SET token_version = token_version + 1 WHERE id = :userId
         """, nativeQuery = true)
     void incrementTokenVersion(@Param("userId") Long userId);
 }
