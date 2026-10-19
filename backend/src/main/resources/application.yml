@@ -151,6 +151,7 @@ security:
 notification:
   delivery:
     max-attempts: ${NOTIFICATION_DELIVERY_MAX_ATTEMPTS:3}
+    sending-timeout-ms: ${NOTIFICATION_DELIVERY_SENDING_TIMEOUT_MS:300000}
     enabled-channels: ${NOTIFICATION_DELIVERY_ENABLED_CHANNELS:EMAIL}
     email:
       from: ${MAIL_FROM}
