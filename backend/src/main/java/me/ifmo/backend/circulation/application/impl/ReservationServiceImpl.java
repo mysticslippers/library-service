@@ -182,7 +182,7 @@ public class ReservationServiceImpl implements ReservationService {
         if (!request.userId().equals(actorUserId) && !isStaff(actorUserId))
             throw new AccessDeniedException("Access is denied");
 
-        User user = userRepository.findById(request.userId()).orElseThrow(
+        User user = userRepository.findByIdForUpdate(request.userId()).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(request.userId())));
 
         if (user.getStatus() != UserStatus.ACTIVE)
