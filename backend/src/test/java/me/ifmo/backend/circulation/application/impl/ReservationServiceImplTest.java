@@ -177,7 +177,7 @@ class ReservationServiceImplTest {
                 .build();
         ReservationResponse response = org.mockito.Mockito.mock(ReservationResponse.class);
 
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
         allowReservations(user);
         when(materialRepository.findById(MATERIAL_ID)).thenReturn(Optional.of(material));
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
@@ -221,6 +221,7 @@ class ReservationServiceImplTest {
                 .hasMessage("Access is denied");
 
         verify(userRepository, never()).findById(anyLong());
+        verify(userRepository, never()).findByIdForUpdate(anyLong());
         verify(reservationRepository, never()).save(any());
     }
 
@@ -228,7 +229,7 @@ class ReservationServiceImplTest {
     @DisplayName("Rejects reservation for user with unpaid fine")
     void createRejectsUserWithUnpaidFine() {
         User user = activeUser();
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
         when(userBlockRepository.existsByUser_IdAndStatus(USER_ID, UserBlockStatus.ACTIVE)).thenReturn(false);
         when(fineRepository.countByUser_IdAndStatus(USER_ID, FineStatus.ACTIVE)).thenReturn(1L);
 
@@ -252,7 +253,7 @@ class ReservationServiceImplTest {
         MaterialCopy copy = availableCopy(material, branch);
         copy.setStatus(CopyStatus.LOANED);
 
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
         allowReservations(user);
         when(materialRepository.findById(MATERIAL_ID)).thenReturn(Optional.of(material));
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));

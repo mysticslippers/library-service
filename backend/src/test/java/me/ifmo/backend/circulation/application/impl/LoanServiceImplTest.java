@@ -121,7 +121,7 @@ class LoanServiceImplTest {
         LoanResponse response = org.mockito.Mockito.mock(LoanResponse.class);
 
         grantStaff();
-        when(userRepository.findById(READER_ID)).thenReturn(Optional.of(reader));
+        when(userRepository.findByIdForUpdate(READER_ID)).thenReturn(Optional.of(reader));
         when(userRepository.findById(STAFF_ID)).thenReturn(Optional.of(staff));
         allowBorrowing(reader);
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
@@ -162,6 +162,7 @@ class LoanServiceImplTest {
                 .isInstanceOf(AccessDeniedException.class).hasMessage("Access is denied");
 
         verify(userRepository, never()).findById(anyLong());
+        verify(userRepository, never()).findByIdForUpdate(anyLong());
         verify(loanRepository, never()).save(any());
     }
 
@@ -172,7 +173,7 @@ class LoanServiceImplTest {
         User staff = activeUser(STAFF_ID);
 
         grantStaff();
-        when(userRepository.findById(READER_ID)).thenReturn(Optional.of(reader));
+        when(userRepository.findByIdForUpdate(READER_ID)).thenReturn(Optional.of(reader));
         when(userRepository.findById(STAFF_ID)).thenReturn(Optional.of(staff));
         when(userBlockRepository.existsByUser_IdAndStatus(READER_ID, UserBlockStatus.ACTIVE)).thenReturn(true);
 
@@ -198,7 +199,7 @@ class LoanServiceImplTest {
         Loan loan = Loan.builder().user(reader).copy(copy).reservation(reservation).branch(branch).build();
 
         grantStaff();
-        when(userRepository.findById(READER_ID)).thenReturn(Optional.of(reader));
+        when(userRepository.findByIdForUpdate(READER_ID)).thenReturn(Optional.of(reader));
         when(userRepository.findById(STAFF_ID)).thenReturn(Optional.of(staff));
         allowBorrowing(reader);
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
