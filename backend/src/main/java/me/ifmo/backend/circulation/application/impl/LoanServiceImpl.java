@@ -141,7 +141,12 @@ public class LoanServiceImpl implements LoanService {
         if (!request.issuedByUserId().equals(actorUserId))
             throw new AccessDeniedException("Access is denied");
 
-        User user = findUser(request.userId(), "User");
+        User user = userRepository.findByIdForUpdate(request.userId()).orElseThrow(
+                () -> new ResourceNotFoundException("User with id '%s' not found".formatted(request.userId())));
+
+        if (user.getStatus() != UserStatus.ACTIVE)
+            throw new BusinessRuleException("User must be active");
+
         User issuedByUser = findUser(request.issuedByUserId(), "Issued by user");
         validateUserCanBorrow(user);
 
