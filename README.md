@@ -10,6 +10,7 @@
 ![Grafana](https://img.shields.io/badge/Grafana-dashboards-F46800)
 ![Kafka](https://img.shields.io/badge/Apache%20Kafka-event--streaming-black)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
+[![CodeFactor](https://www.codefactor.io/repository/github/mysticslippers/library-service/badge)](https://www.codefactor.io/repository/github/mysticslippers/library-service)
 
 Library Service is a library management system designed to automate catalog search, material reservation, book loans, returns, fine calculation and payment processing.
 
