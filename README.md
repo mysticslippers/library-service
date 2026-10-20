@@ -149,6 +149,11 @@ Issue a reserved copy with `POST /api/loans`, providing `reservationId` along wi
 the reservation to `USED`, and changes the copy to `LOANED`. A failure rolls back
 all three changes. There is no separate command to mark a reservation as used.
 
+Creating a reservation or loan locks the reader's user row until the transaction
+ends. Requests for the same reader check limits and duplicate reservations in
+sequence, including requests made by different staff or in different branches.
+Different readers can create reservations independently.
+
 Run backend checks from `backend/`:
 
 ```shell
@@ -160,6 +165,10 @@ PostgreSQL 16 container and applies the production Flyway migrations, including
 the circulation triggers. It checks pickup, return, duplicate requests, and
 transaction rollback. These integration tests are skipped when Docker is unavailable;
 the remaining tests still run.
+
+`CirculationLimitsIntegrationTest` also uses an isolated PostgreSQL container to
+check overlapping requests, reservation and loan limits, duplicate materials,
+and capacity becoming available after rollback.
 
 ## Email delivery
 
