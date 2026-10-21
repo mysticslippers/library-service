@@ -142,6 +142,20 @@ library-service/
 └── LICENSE
 ```
 
+## Authentication concurrency
+
+Login locks the user's database row before checking account status or password and
+holds the lock until commit. Failed password attempts are committed even though
+login returns an invalid-credentials error. Password reset acquires the same row
+lock before reading or changing the user, so a concurrent login cannot restore an
+old password hash or overwrite the reset's cleared attempt count. Requests for
+different accounts can proceed independently.
+
+With Docker running, `AuthConcurrencyIntegrationTest` checks concurrent logins,
+the fifth-failure lockout, both orderings of login versus password reset, account
+blocking and JWT revocation using PostgreSQL, BCrypt and signed JWTs. Notification
+delivery is stubbed; these tests do not send messages.
+
 ## Reservation pickup
 
 Issue a reserved copy with `POST /api/loans`, providing `reservationId` along with
