@@ -174,7 +174,7 @@ class AuthServiceImplTest {
         user.setLockedUntil(LocalDateTime.now().minusMinutes(1));
         UserProfileResponse profile = org.mockito.Mockito.mock(UserProfileResponse.class);
 
-        when(userRepository.findByEmail("reader@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate("reader@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("password1", "encoded-password")).thenReturn(true);
         when(userRepository.save(user)).thenReturn(user);
         when(userRoleRepository.findRoleCodesByUser_Id(USER_ID)).thenReturn(List.of(RoleCode.READER));
@@ -200,7 +200,7 @@ class AuthServiceImplTest {
         User user = activeUser();
         user.setFailedLoginAttempts((short) 4);
 
-        when(userRepository.findByEmail("reader@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate("reader@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
         when(userRepository.save(user)).thenReturn(user);
 
@@ -218,7 +218,7 @@ class AuthServiceImplTest {
     void loginRejectsTemporarilyLockedUserBeforePasswordCheck() {
         User user = activeUser();
         user.setLockedUntil(LocalDateTime.now().plusMinutes(5));
-        when(userRepository.findByEmail("reader@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate("reader@example.com")).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> service.login(new LoginRequest("reader@example.com", "password1")))
                 .isInstanceOf(BusinessRuleException.class).hasMessage("User is temporarily locked");
@@ -296,6 +296,7 @@ class AuthServiceImplTest {
                 .build();
 
         when(authTokenRepository.findByTokenAndType("reset-token", AuthTokenType.PASSWORD_RESET)).thenReturn(Optional.of(token));
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
         when(passwordEncoder.encode("new-password1")).thenReturn("new-encoded-password");
 
         var result = service.resetPassword(new PasswordResetRequest("reset-token", "new-password1", "new-password1"));
