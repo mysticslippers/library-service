@@ -213,7 +213,7 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse login(LoginRequest request) {
         String email = normalize(request.email(), "Email");
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailForUpdate(email)
                 .orElseThrow(InvalidCredentialsException::new);
 
         validate(user);
@@ -291,7 +291,9 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessRuleException("Password confirmation does not match");
 
         AuthToken token = findValidToken(request.token(), AuthTokenType.PASSWORD_RESET);
-        User user = token.getUser();
+        Long userId = token.getUser().getId();
+        User user = userRepository.findByIdForUpdate(userId).orElseThrow(
+                () -> new ResourceNotFoundException("User with id '%s' not found".formatted(userId)));
 
         if (user.getStatus() == UserStatus.ARCHIVED)
             throw new BusinessRuleException("Password reset is not available for archived accounts");
