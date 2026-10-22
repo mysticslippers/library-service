@@ -151,10 +151,18 @@ lock before reading or changing the user, so a concurrent login cannot restore a
 old password hash or overwrite the reset's cleared attempt count. Requests for
 different accounts can proceed independently.
 
+Activation, password reset and code reissue use the same user row lock. A code is
+loaded and checked for use and expiration only after acquiring that lock; the
+initial owner lookup reads only the user ID. The account change and code consumption
+commit together, and reissue revokes earlier unused codes of the same type. All
+these operations acquire the user lock before reading or updating token entities.
+
 With Docker running, `AuthConcurrencyIntegrationTest` checks concurrent logins,
 the fifth-failure lockout, both orderings of login versus password reset, account
-blocking and JWT revocation using PostgreSQL, BCrypt and signed JWTs. Notification
-delivery is stubbed; these tests do not send messages.
+blocking and JWT revocation using PostgreSQL, BCrypt and signed JWTs. It also checks
+single-use activation/reset codes, parallel reissue, both orderings of code use
+versus reissue, and rollback of consumption or reissue. Notification delivery is
+stubbed; these tests do not send messages.
 
 ## Reservation pickup
 
