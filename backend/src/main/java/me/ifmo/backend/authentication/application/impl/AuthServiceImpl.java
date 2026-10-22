@@ -102,6 +102,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private AuthToken createToken(User user, AuthTokenType type, long expirationMinutes) {
+        // The caller holds the user row lock, or has just inserted this user in the same transaction.
         LocalDateTime now = LocalDateTime.now();
         authTokenRepository.findByUser_IdAndTypeAndUsedAtIsNull(user.getId(), type)
                 .forEach(token -> token.setUsedAt(now));
@@ -116,7 +117,14 @@ public class AuthServiceImpl implements AuthService {
         return authTokenRepository.save(authToken);
     }
 
-    private AuthToken findValidToken(String tokenValue, AuthTokenType type) {
+    private LockedAuthToken findValidTokenForUpdate(String tokenValue, AuthTokenType type) {
+        // A scalar lookup avoids caching an unused token before waiting for the user row lock.
+        Long userId = authTokenRepository.findUserIdByTokenAndType(tokenValue, type).orElseThrow(
+                () -> new BusinessRuleException("Invalid or expired token"));
+        User user = userRepository.findByIdForUpdate(userId).orElseThrow(
+                () -> new BusinessRuleException("Invalid or expired token"));
+
+        // Consumption and reissue always lock the user before reading or updating tokens.
         AuthToken token = authTokenRepository.findByTokenAndType(tokenValue, type).orElseThrow(
                 () -> new BusinessRuleException("Invalid or expired token"));
 
@@ -124,8 +132,10 @@ public class AuthServiceImpl implements AuthService {
         if (token.isUsed() || token.isExpired(now))
             throw new BusinessRuleException("Invalid or expired token");
 
-        return token;
+        return new LockedAuthToken(user, token);
     }
+
+    private record LockedAuthToken(User user, AuthToken token) {}
 
     private void sendActivationEmail(User user, String token) {
         notificationService.create(new CreateNotificationRequest(
@@ -233,8 +243,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthMessageResponse activate(ActivateAccountRequest request) {
-        AuthToken token = findValidToken(request.token(), AuthTokenType.ACCOUNT_ACTIVATION);
-        User user = token.getUser();
+        LockedAuthToken locked = findValidTokenForUpdate(request.token(), AuthTokenType.ACCOUNT_ACTIVATION);
+        User user = locked.user();
+        AuthToken token = locked.token();
 
         if (user.getStatus() != UserStatus.PENDING_ACTIVATION)
             throw new BusinessRuleException("User account cannot be activated");
@@ -256,7 +267,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthMessageResponse resendActivation(ResendActivationRequest request) {
         String email = normalize(request.email(), "Email");
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailForUpdate(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User with email '%s' not found".formatted(email)));
 
         if (user.getStatus() != UserStatus.PENDING_ACTIVATION)
@@ -272,7 +283,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthMessageResponse requestPasswordRecovery(PasswordRecoveryRequest request) {
         String email = normalize(request.email(), "Email");
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailForUpdate(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User with email '%s' not found".formatted(email)));
 
         if (user.getStatus() == UserStatus.ARCHIVED)
@@ -290,10 +301,9 @@ public class AuthServiceImpl implements AuthService {
         if (!request.newPassword().equals(request.newPasswordConfirmation()))
             throw new BusinessRuleException("Password confirmation does not match");
 
-        AuthToken token = findValidToken(request.token(), AuthTokenType.PASSWORD_RESET);
-        Long userId = token.getUser().getId();
-        User user = userRepository.findByIdForUpdate(userId).orElseThrow(
-                () -> new ResourceNotFoundException("User with id '%s' not found".formatted(userId)));
+        LockedAuthToken locked = findValidTokenForUpdate(request.token(), AuthTokenType.PASSWORD_RESET);
+        User user = locked.user();
+        AuthToken token = locked.token();
 
         if (user.getStatus() == UserStatus.ARCHIVED)
             throw new BusinessRuleException("Password reset is not available for archived accounts");
