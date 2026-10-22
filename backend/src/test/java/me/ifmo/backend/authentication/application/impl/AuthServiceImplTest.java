@@ -245,6 +245,9 @@ class AuthServiceImplTest {
                 .expiresAt(LocalDateTime.now().plusHours(1))
                 .build();
 
+        when(authTokenRepository.findUserIdByTokenAndType(
+                "activation-token", AuthTokenType.ACCOUNT_ACTIVATION)).thenReturn(Optional.of(USER_ID));
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
         when(authTokenRepository.findByTokenAndType(
                 "activation-token", AuthTokenType.ACCOUNT_ACTIVATION)).thenReturn(Optional.of(token));
 
@@ -262,6 +265,16 @@ class AuthServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejects unknown activation token before locking a user")
+    void activateRejectsUnknownToken() {
+        assertThatThrownBy(() -> service.activate(new ActivateAccountRequest("unknown-token")))
+                .isInstanceOf(BusinessRuleException.class).hasMessage("Invalid or expired token");
+
+        verify(userRepository, never()).findByIdForUpdate(any());
+        verify(authTokenRepository, never()).findByTokenAndType(anyString(), any());
+    }
+
+    @Test
     @DisplayName("Rejects expired activation token")
     void activateRejectsExpiredToken() {
         AuthToken token = AuthToken.builder()
@@ -270,6 +283,9 @@ class AuthServiceImplTest {
                 .expiresAt(LocalDateTime.now().minusSeconds(1))
                 .build();
 
+        when(authTokenRepository.findUserIdByTokenAndType(
+                "expired-token", AuthTokenType.ACCOUNT_ACTIVATION)).thenReturn(Optional.of(USER_ID));
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(activeUser()));
         when(authTokenRepository.findByTokenAndType(
                 "expired-token", AuthTokenType.ACCOUNT_ACTIVATION)).thenReturn(Optional.of(token));
 
@@ -295,6 +311,7 @@ class AuthServiceImplTest {
                 .expiresAt(LocalDateTime.now().plusHours(1))
                 .build();
 
+        when(authTokenRepository.findUserIdByTokenAndType("reset-token", AuthTokenType.PASSWORD_RESET)).thenReturn(Optional.of(USER_ID));
         when(authTokenRepository.findByTokenAndType("reset-token", AuthTokenType.PASSWORD_RESET)).thenReturn(Optional.of(token));
         when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
         when(passwordEncoder.encode("new-password1")).thenReturn("new-encoded-password");
@@ -326,7 +343,7 @@ class AuthServiceImplTest {
                 .expiresAt(LocalDateTime.now().plusHours(1))
                 .build();
 
-        when(userRepository.findByEmail("reader@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate("reader@example.com")).thenReturn(Optional.of(user));
         when(authTokenRepository.findByUser_IdAndTypeAndUsedAtIsNull(USER_ID, AuthTokenType.ACCOUNT_ACTIVATION)).thenReturn(List.of(previousToken));
         when(authTokenRepository.save(any(AuthToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -345,7 +362,7 @@ class AuthServiceImplTest {
     @DisplayName("Creates password recovery token and sends notification")
     void requestPasswordRecoveryCreatesTokenAndSendsNotification() {
         User user = activeUser();
-        when(userRepository.findByEmail("reader@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate("reader@example.com")).thenReturn(Optional.of(user));
         when(authTokenRepository.findByUser_IdAndTypeAndUsedAtIsNull(USER_ID, AuthTokenType.PASSWORD_RESET)).thenReturn(List.of());
         when(authTokenRepository.save(any(AuthToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -365,6 +382,7 @@ class AuthServiceImplTest {
                 .isInstanceOf(BusinessRuleException.class).hasMessage("Password confirmation does not match");
 
         verify(authTokenRepository, never()).findByTokenAndType(anyString(), any());
+        verify(authTokenRepository, never()).findUserIdByTokenAndType(anyString(), any());
     }
 
     @Test
