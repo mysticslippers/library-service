@@ -1,18 +1,25 @@
 package me.ifmo.backend.authentication.application.impl;
 
+import jakarta.persistence.EntityManager;
 import me.ifmo.backend.authentication.application.AuthService;
+import me.ifmo.backend.authentication.domain.enums.AuthTokenType;
 import me.ifmo.backend.authentication.security.JwtService;
 import me.ifmo.backend.authentication.security.JwtServiceImpl;
+import me.ifmo.backend.authentication.web.request.ActivateAccountRequest;
 import me.ifmo.backend.authentication.web.request.LoginRequest;
+import me.ifmo.backend.authentication.web.request.PasswordRecoveryRequest;
 import me.ifmo.backend.authentication.web.request.PasswordResetRequest;
+import me.ifmo.backend.authentication.web.request.ResendActivationRequest;
 import me.ifmo.backend.authentication.web.response.AuthResponse;
 import me.ifmo.backend.notification.application.NotificationService;
+import me.ifmo.backend.notification.web.request.CreateNotificationRequest;
 import me.ifmo.backend.shared.exceptions.BusinessRuleException;
 import me.ifmo.backend.shared.exceptions.InvalidCredentialsException;
 import me.ifmo.backend.user.mapper.RoleMapperImpl;
 import me.ifmo.backend.user.mapper.UserMapperImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -51,8 +58,11 @@ import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -86,6 +96,7 @@ class AuthConcurrencyIntegrationTest {
     @Autowired private JwtService jwt;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private EntityManager entityManager;
     // Credential hashing, JWTs, repositories and transactions are real; no messages are sent.
     @MockitoBean private NotificationService notifications;
     @MockitoSpyBean private PasswordEncoder encoder;
@@ -229,6 +240,245 @@ class AuthConcurrencyIntegrationTest {
         assertThat(attempts(second)).isZero();
     }
 
+    @Test
+    void samePasswordResetCodeCannotBeConsumedByTwoOverlappingRequests() throws Exception {
+        Account account = account(0);
+        String oldJwt = login(account, OLD_PASSWORD).accessToken();
+        String code = resetCode(account);
+        Pause pause = pausePasswordEncoding();
+
+        Outcomes outcomes = overlap(() -> reset(code),
+                () -> auth.resetPassword(new PasswordResetRequest(code, WRONG_PASSWORD, WRONG_PASSWORD)),
+                pause, true);
+
+        assertThat(outcomes.first().error()).isNull();
+        assertInvalidToken(outcomes.second());
+        assertThat(codeUsed(code)).isTrue();
+        assertNewPasswordAndRevokedOldJwt(account, oldJwt);
+    }
+
+    @ParameterizedTest
+    @EnumSource(AuthTokenType.class)
+    void parallelReissuesLeaveOnlyTheLatestCodeUnused(AuthTokenType type) throws Exception {
+        Account account = account(type);
+        Pause pause = pauseFirstNotification();
+
+        Outcomes outcomes = overlap(() -> issueCode(account, type),
+                () -> issueCode(account, type), pause, true);
+
+        assertThat(outcomes.first().error()).isNull();
+        assertThat(outcomes.second().error()).isNull();
+        assertThat(unusedCodeCount(account, type)).isEqualTo(1);
+        assertThat(codeUsed((String) outcomes.first().result())).isTrue();
+        assertThat(codeUsed((String) outcomes.second().result())).isFalse();
+    }
+
+    @Test
+    void sameActivationCodeCannotBeConsumedByTwoOverlappingRequests() throws Exception {
+        Account account = account(AuthTokenType.ACCOUNT_ACTIVATION);
+        String code = code(account, AuthTokenType.ACCOUNT_ACTIVATION);
+        Pause pause = new Pause();
+
+        Outcomes outcomes = overlap(() -> {
+            Object result = consumeCode(code, AuthTokenType.ACCOUNT_ACTIVATION);
+            entityManager.flush();
+            pause.hold();
+            return result;
+        }, () -> consumeCode(code, AuthTokenType.ACCOUNT_ACTIVATION), pause, true);
+
+        assertThat(outcomes.first().error()).isNull();
+        assertInvalidToken(outcomes.second());
+        assertThat(codeUsed(code)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT status::text FROM users WHERE id = ?", String.class, account.id()))
+                .isEqualTo("ACTIVE");
+        assertTokenRejected(code, AuthTokenType.ACCOUNT_ACTIVATION);
+    }
+
+    @ParameterizedTest
+    @EnumSource(AuthTokenType.class)
+    void reissueInvalidatesAnOldCodeWhileItsConsumerWaits(AuthTokenType type) throws Exception {
+        Account account = account(type);
+        String oldCode = code(account, type);
+        Pause pause = pauseFirstNotification();
+
+        Outcomes outcomes = overlap(() -> issueCode(account, type),
+                () -> consumeCode(oldCode, type), pause, true);
+
+        assertThat(outcomes.first().error()).isNull();
+        assertInvalidToken(outcomes.second());
+        assertThat(codeUsed(oldCode)).isTrue();
+        assertThat(unusedCodeCount(account, type)).isEqualTo(1);
+        String newCode = (String) outcomes.first().result();
+        assertThat(consumeCode(newCode, type)).isNotNull();
+        assertTokenRejected(newCode, type);
+    }
+
+    @ParameterizedTest
+    @EnumSource(AuthTokenType.class)
+    void reissueSeesTheAccountAfterAWaitingConsumptionCommits(AuthTokenType type) throws Exception {
+        Account account = account(type);
+        String oldCode = code(account, type);
+        Pause pause = new Pause();
+
+        Outcomes outcomes = overlap(() -> {
+            Object result = consumeCode(oldCode, type);
+            entityManager.flush();
+            pause.hold();
+            return result;
+        }, () -> issueCode(account, type), pause, true);
+
+        assertThat(outcomes.first().error()).isNull();
+        assertThat(codeUsed(oldCode)).isTrue();
+        if (type == AuthTokenType.ACCOUNT_ACTIVATION) {
+            assertThat(outcomes.second().error()).isInstanceOf(BusinessRuleException.class)
+                    .hasMessage("Activation can be resent only for pending accounts");
+            assertThat(unusedCodeCount(account, type)).isZero();
+        } else {
+            assertThat(outcomes.second().error()).isNull();
+            assertThat(unusedCodeCount(account, type)).isEqualTo(1);
+            assertThat(codeUsed((String) outcomes.second().result())).isFalse();
+        }
+        assertTokenRejected(oldCode, type);
+    }
+
+    @ParameterizedTest
+    @EnumSource(AuthTokenType.class)
+    void waitingConsumerReadsTheLatestTokenExpiration(AuthTokenType type) throws Exception {
+        Account account = account(type);
+        String code = code(account, type);
+        Pause pause = new Pause();
+
+        Outcomes outcomes = overlap(() -> {
+            jdbc.queryForObject("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, account.id());
+            jdbc.update("UPDATE auth_tokens SET expires_at = CURRENT_TIMESTAMP - INTERVAL '12 hours' WHERE token = ?", code);
+            pause.hold();
+            return null;
+        }, () -> consumeCode(code, type), pause, true);
+
+        assertThat(outcomes.first().error()).isNull();
+        assertInvalidToken(outcomes.second());
+        assertThat(codeUsed(code)).isFalse();
+    }
+
+    @ParameterizedTest
+    @EnumSource(AuthTokenType.class)
+    void consumptionRollsBackBothTheAccountChangeAndTheUsedCode(AuthTokenType type) {
+        Account account = account(type);
+        String code = code(account, type);
+
+        assertThatThrownBy(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            consumeCode(code, type);
+            entityManager.flush();
+            assertThat(codeUsed(code)).isTrue();
+            throw new IllegalStateException("Failure after credential changes were flushed");
+        })).isInstanceOf(IllegalStateException.class).hasMessage("Failure after credential changes were flushed");
+
+        assertThat(codeUsed(code)).isFalse();
+        assertThat(jdbc.queryForObject("SELECT token_version FROM users WHERE id = ?", Long.class, account.id())).isZero();
+        assertThat(encoder.matches(OLD_PASSWORD,
+                jdbc.queryForObject("SELECT password_hash FROM users WHERE id = ?", String.class, account.id()))).isTrue();
+        if (type == AuthTokenType.ACCOUNT_ACTIVATION)
+            assertThat(jdbc.queryForObject("SELECT status::text FROM users WHERE id = ?", String.class, account.id()))
+                    .isEqualTo("PENDING_ACTIVATION");
+        assertThat(consumeCode(code, type)).isNotNull();
+        assertTokenRejected(code, type);
+    }
+
+    @ParameterizedTest
+    @EnumSource(AuthTokenType.class)
+    void failedNotificationCreationRollsBackReissueAndKeepsThePreviousCode(AuthTokenType type) {
+        Account account = account(type);
+        String oldCode = code(account, type);
+        doThrow(new IllegalStateException("Notification creation failed"))
+                .when(notifications).create(any(CreateNotificationRequest.class));
+
+        assertThatThrownBy(() -> issueCode(account, type)).isInstanceOf(IllegalStateException.class)
+                .hasMessage("Notification creation failed");
+
+        assertThat(codeUsed(oldCode)).isFalse();
+        assertThat(unusedCodeCount(account, type)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM auth_tokens WHERE user_id = ?", Integer.class, account.id()))
+                .isEqualTo(1);
+        doReturn(null).when(notifications).create(any(CreateNotificationRequest.class));
+        assertThat(issueCode(account, type)).isNotEqualTo(oldCode);
+        assertThat(codeUsed(oldCode)).isTrue();
+        assertThat(unusedCodeCount(account, type)).isEqualTo(1);
+    }
+
+    @Test
+    void reissueOnlyRevokesCodesOfTheSameType() {
+        Account account = account(AuthTokenType.ACCOUNT_ACTIVATION);
+        String activation = code(account, AuthTokenType.ACCOUNT_ACTIVATION);
+        String recovery = code(account, AuthTokenType.PASSWORD_RESET);
+
+        String newRecovery = issueCode(account, AuthTokenType.PASSWORD_RESET);
+        assertThat(codeUsed(activation)).isFalse();
+        assertThat(codeUsed(recovery)).isTrue();
+
+        String newActivation = issueCode(account, AuthTokenType.ACCOUNT_ACTIVATION);
+        assertThat(codeUsed(activation)).isTrue();
+        assertThat(codeUsed(newRecovery)).isFalse();
+        assertThat(codeUsed(newActivation)).isFalse();
+        assertThat(unusedCodeCount(account, AuthTokenType.ACCOUNT_ACTIVATION)).isEqualTo(1);
+        assertThat(unusedCodeCount(account, AuthTokenType.PASSWORD_RESET)).isEqualTo(1);
+    }
+
+    private Pause pausePasswordEncoding() {
+        Pause pause = new Pause();
+        doAnswer(invocation -> {
+            pause.hold();
+            return invocation.callRealMethod();
+        }).doCallRealMethod().when(encoder).encode(NEW_PASSWORD);
+        return pause;
+    }
+
+    private Pause pauseFirstNotification() {
+        Pause pause = new Pause();
+        doAnswer(invocation -> {
+            pause.hold();
+            return null;
+        }).doReturn(null).when(notifications).create(any(CreateNotificationRequest.class));
+        return pause;
+    }
+
+    private String issueCode(Account account, AuthTokenType type) {
+        if (type == AuthTokenType.ACCOUNT_ACTIVATION)
+            auth.resendActivation(new ResendActivationRequest(account.email()));
+        else
+            auth.requestPasswordRecovery(new PasswordRecoveryRequest(account.email()));
+        return jdbc.queryForObject("""
+                SELECT token FROM auth_tokens WHERE user_id = ? AND type::text = ? AND used_at IS NULL
+                ORDER BY id DESC LIMIT 1
+                """, String.class, account.id(), type.name());
+    }
+
+    private Object consumeCode(String code, AuthTokenType type) {
+        if (type == AuthTokenType.ACCOUNT_ACTIVATION)
+            return auth.activate(new ActivateAccountRequest(code));
+        return reset(code);
+    }
+
+    private void assertTokenRejected(String code, AuthTokenType type) {
+        assertThatThrownBy(() -> consumeCode(code, type)).isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Invalid or expired token");
+    }
+
+    private int unusedCodeCount(Account account, AuthTokenType type) {
+        return jdbc.queryForObject("""
+                SELECT count(*) FROM auth_tokens WHERE user_id = ? AND type::text = ? AND used_at IS NULL
+                """, Integer.class, account.id(), type.name());
+    }
+
+    private boolean codeUsed(String code) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT used_at IS NOT NULL FROM auth_tokens WHERE token = ?",
+                Boolean.class, code));
+    }
+
+    private void assertInvalidToken(Outcome outcome) {
+        assertThat(outcome.error()).isInstanceOf(BusinessRuleException.class).hasMessage("Invalid or expired token");
+        assertThat(outcome.result()).isNull();
+    }
+
     private Pause pauseFirstPasswordCheck(String password) {
         Pause pause = new Pause();
         doAnswer(invocation -> {
@@ -333,12 +583,23 @@ class AuthConcurrencyIntegrationTest {
         return new Account(id, email);
     }
 
+    private Account account(AuthTokenType type) {
+        Account account = account(0);
+        if (type == AuthTokenType.ACCOUNT_ACTIVATION)
+            jdbc.update("UPDATE users SET status = 'PENDING_ACTIVATION' WHERE id = ?", account.id());
+        return account;
+    }
+
     private String resetCode(Account account) {
+        return code(account, AuthTokenType.PASSWORD_RESET);
+    }
+
+    private String code(Account account, AuthTokenType type) {
         String code = UUID.randomUUID().toString();
         jdbc.update("""
                 INSERT INTO auth_tokens (user_id, token, type, created_at, expires_at)
-                VALUES (?, ?, 'PASSWORD_RESET', CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP + INTERVAL '1 day')
-                """, account.id(), code);
+                VALUES (?, ?, CAST(? AS auth_token_type), CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP + INTERVAL '1 day')
+                """, account.id(), code, type.name());
         return code;
     }
 
