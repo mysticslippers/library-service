@@ -62,7 +62,6 @@ public class AuditLog {
                 ", entityType=" + type +
                 ", entityId=" + entityId +
                 ", action=" + action +
-                ", details='" + details + '\'' +
                 ", createdAt=" + createdAt +
                 '}';
     }
