@@ -1,6 +1,7 @@
 package me.ifmo.backend.audit.application.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.audit.application.AuditDetailsSanitizer;
 import me.ifmo.backend.audit.web.request.AuditLogSearchRequest;
 import me.ifmo.backend.audit.web.response.AuditLogResponse;
 import me.ifmo.backend.shared.web.response.PageResponse;
@@ -31,6 +32,7 @@ public class AuditLogServiceImpl implements AuditLogService {
     private final AuditLogRepository repository;
     private final UserRepository userRepository;
     private final AuditLogMapper auditLogMapper;
+    private final AuditDetailsSanitizer auditDetailsSanitizer;
 
     private void validate(AuditLogSearchRequest request) {
         if (request.createdFrom() != null && request.createdTo() != null && request.createdFrom().isAfter(request.createdTo()))
@@ -60,7 +62,8 @@ public class AuditLogServiceImpl implements AuditLogService {
             actor = userRepository.findById(actorUserId).orElseThrow(
                     () -> new ResourceNotFoundException("Actor user with id '%s' not found".formatted(actorUserId)));
 
-        AuditLog auditLog = auditLogMapper.toEntity(actor, type, entityId, action, details != null ? details : Map.of());
+        AuditLog auditLog = auditLogMapper.toEntity(actor, type, entityId, action,
+                auditDetailsSanitizer.sanitize(type, details));
 
         AuditLog saved = repository.save(auditLog);
         return auditLogMapper.toResponse(saved);
