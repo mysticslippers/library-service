@@ -164,6 +164,23 @@ single-use activation/reset codes, parallel reissue, both orderings of code use
 versus reissue, and rollback of consumption or reissue. Notification delivery is
 stubbed; these tests do not send messages.
 
+## Audit data policy
+
+Audit snapshots and manual events use explicit field allowlists in
+`V8__sanitize_audit_details.sql` and `AuditDetailsSanitizer`. Unknown fields and
+unexpected nested payloads are discarded. User snapshots retain account IDs,
+status and security timestamps, excluding password hashes and contact details.
+Password updates retain an event with `password_changed: true`. Notification
+bodies, subjects, transport errors and credential fields are excluded from audit
+details. `AuditLog.toString()` includes event metadata only.
+
+V8 sanitizes existing audit history without changing event IDs, actors, actions or
+timestamps, and protects subsequent database writes. Java sanitizes manual events
+before persistence and filters details again when building API responses. Adding
+an audited field requires updating both policies; PostgreSQL integration tests
+check their agreement for every audit entity type and exercise migration from V7.
+HTTP tests also check legacy data filtering and the controller's ADMIN restriction.
+
 ## Reservation pickup
 
 Issue a reserved copy with `POST /api/loans`, providing `reservationId` along with
