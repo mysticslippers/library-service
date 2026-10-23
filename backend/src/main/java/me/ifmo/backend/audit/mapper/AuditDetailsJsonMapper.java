@@ -1,13 +1,21 @@
 package me.ifmo.backend.audit.mapper;
 
+import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.audit.application.AuditDetailsSanitizer;
+import me.ifmo.backend.audit.domain.AuditLog;
+import org.mapstruct.Named;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
 @Component
+@RequiredArgsConstructor
 public class AuditDetailsJsonMapper {
 
-    public Map<String, Object> toMap(Map<String, Object> details) {
-        return details != null ? details : Map.of();
+    private final AuditDetailsSanitizer sanitizer;
+
+    @Named("safeAuditDetails")
+    public Map<String, Object> toMap(AuditLog auditLog) {
+        return sanitizer.sanitize(auditLog.getType(), auditLog.getDetails());
     }
 }
