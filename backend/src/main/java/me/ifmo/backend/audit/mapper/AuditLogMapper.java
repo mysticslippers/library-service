@@ -28,6 +28,7 @@ public interface AuditLogMapper {
     AuditLog toEntity(User actor, AuditEntityType entityType, Long entityId, AuditAction action, Map<String, Object> details);
 
     @Mapping(target = "actor", source = "user")
+    @Mapping(target = "details", source = "auditLog", qualifiedByName = "safeAuditDetails")
     AuditLogResponse toResponse(AuditLog auditLog);
 
     List<AuditLogResponse> toResponseList(Collection<AuditLog> auditLogs);
