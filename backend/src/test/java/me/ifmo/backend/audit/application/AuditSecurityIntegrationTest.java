@@ -89,6 +89,13 @@ class AuditSecurityIntegrationTest {
     void databaseWritesAndJavaUseTheSameAllowlistForEveryEntity(AuditEntityType type) throws Exception {
         String table = jdbc.queryForObject("SELECT audit_entity_table(?)", String.class, type.name());
         Map<String, Object> unsafe = unsafeDetails(table);
+        // Include every real column so policy differences outside the hand-written examples are detected too.
+        Map<String, Object> fullSnapshot = new LinkedHashMap<>();
+        jdbc.queryForList("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ?",
+                String.class, table).forEach(column -> fullSnapshot.put(column, "example-" + column));
+        fullSnapshot.putAll(snapshotExample(unsafe));
+        unsafe.put("old_data", fullSnapshot);
+        unsafe.put("new_data", fullSnapshot);
         JsonNode expected = json.readTree(json.writeValueAsString(sanitizer.sanitize(type, unsafe)));
         Long id = jdbc.queryForObject("""
                 INSERT INTO audit_logs(entity_type, entity_id, action, details)
@@ -197,12 +204,26 @@ class AuditSecurityIntegrationTest {
         details.put("new_data", snapshot);
         details.put("roles", List.of("READER", Map.of("password", SECRET), SECRET, "ADMIN"));
         details.put("assignedRole", "LIBRARIAN");
+        details.put("revokedRole", "READER");
+        details.put("status", "ACTIVE");
+        details.put("updated", true);
+        details.put("userId", 41);
         details.put("reason", "Routine account maintenance");
         details.put("action", "RESEND");
+        details.put("processed", 2);
+        details.put("createdAt", "2026-10-23T12:00:00");
+        details.put("type", "ACCOUNT_STATUS_CHANGED");
+        details.put("channel", "EMAIL");
         details.put("enabled", true);
+        details.put("preferred", false);
         details.put("password_changed", true);
         details.put("password", SECRET);
         details.put("metadata", Map.of("token", SECRET));
         return details;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> snapshotExample(Map<String, Object> details) {
+        return (Map<String, Object>) details.get("new_data");
     }
 }
