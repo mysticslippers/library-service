@@ -1,6 +1,8 @@
 package me.ifmo.backend.circulation.application.impl;
 
 import io.micrometer.observation.annotation.Observed;
+import jakarta.persistence.EntityManager;
+import me.ifmo.backend.circulation.application.CirculationLocks;
 import me.ifmo.backend.fine.domain.enums.FineStatus;
 import me.ifmo.backend.fine.persistence.FineRepository;
 
@@ -72,6 +74,8 @@ public class LoanServiceImpl implements LoanService {
     private final FineRepository fineRepository;
     private final UserRoleRepository userRoleRepository;
     private final LoanMapper loanMapper;
+    private final CirculationLocks circulationLocks;
+    private final EntityManager entityManager;
 
     private boolean isStaff(Long actorUserId) {
         return userRoleRepository.findRoleCodesByUser_Id(actorUserId).stream()
@@ -156,8 +160,9 @@ public class LoanServiceImpl implements LoanService {
         if (branch.getStatus() != BranchStatus.ACTIVE)
             throw new BusinessRuleException("Loan can be created only in active branch");
 
-        MaterialCopy copy = materialCopyRepository.findById(request.copyId()).orElseThrow(
+        MaterialCopy copy = materialCopyRepository.findByIdForUpdate(request.copyId()).orElseThrow(
                 () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(request.copyId())));
+        entityManager.refresh(copy);
 
         if (!copy.getBranch().getId().equals(branch.getId()))
             throw new BusinessRuleException("Material copy does not belong to requested branch");
@@ -177,13 +182,14 @@ public class LoanServiceImpl implements LoanService {
         Reservation reservation = null;
 
         if (request.reservationId() != null) {
-            reservation = reservationRepository.findById(request.reservationId()).orElseThrow(
+            reservation = reservationRepository.findByIdForUpdate(request.reservationId()).orElseThrow(
                     () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(request.reservationId())));
+            entityManager.refresh(reservation);
 
             if (reservation.getStatus() != ReservationStatus.READY_FOR_PICKUP)
                 throw new BusinessRuleException("Only ready for pickup reservation can be converted to loan");
 
-            if (reservation.getExpiresAt().isBefore(LocalDateTime.now()))
+            if (!reservation.getExpiresAt().isAfter(LocalDateTime.now()))
                 throw new BusinessRuleException("Reservation has expired");
 
             if (!reservation.getUser().getId().equals(user.getId()))
@@ -200,14 +206,13 @@ public class LoanServiceImpl implements LoanService {
 
             if (copy.getStatus() != CopyStatus.RESERVED)
                 throw new BusinessRuleException("Reserved material copy has invalid status");
-
-            reservation.setStatus(ReservationStatus.USED);
-        } else if (copy.getStatus() != CopyStatus.AVAILABLE) {
+        } else {
             reservationRepository.findByCopy_IdAndStatusIn(copy.getId(),
                     Set.of(ReservationStatus.ACTIVE, ReservationStatus.READY_FOR_PICKUP)).ifPresent(activeReservation -> {
                         throw new ResourceInUseException("Material copy is reserved by another user");
                     });
-            throw new ResourceInUseException("Material copy is not available for loan");
+            if (copy.getStatus() != CopyStatus.AVAILABLE)
+                throw new ResourceInUseException("Material copy is not available for loan");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -217,13 +222,16 @@ public class LoanServiceImpl implements LoanService {
         if (!dueAt.isAfter(now))
             throw new BusinessRuleException("Loan dueAt must be in the future");
 
-        copy.setStatus(CopyStatus.LOANED);
-
         Loan loan = loanMapper.toEntity(user, copy, reservation, branch, issuedByUser, dueAt);
         loan.setStatus(LoanStatus.ACTIVE);
         loan.setRenewalCount(0);
 
-        Loan saved = repository.save(loan);
+        Loan saved = repository.saveAndFlush(loan);
+        entityManager.refresh(copy);
+
+        if (reservation != null)
+            entityManager.refresh(reservation);
+
         return loanMapper.toResponse(saved);
     }
 
@@ -249,8 +257,7 @@ public class LoanServiceImpl implements LoanService {
     public LoanResponse returnLoan(Long actorUserId, Long id, ReturnLoanRequest request) {
         validateStaff(actorUserId);
 
-        Loan loan = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
+        Loan loan = circulationLocks.loan(id);
 
         if (loan.getStatus() != LoanStatus.ACTIVE && loan.getStatus() != LoanStatus.OVERDUE && loan.getStatus() != LoanStatus.LOST)
             throw new BusinessRuleException("Only active, overdue or lost loan can be returned");
@@ -259,9 +266,12 @@ public class LoanServiceImpl implements LoanService {
 
         loan.setStatus(LoanStatus.RETURNED);
         loan.setReturnedAt(LocalDateTime.now());
+        Loan saved = repository.saveAndFlush(loan);
+        entityManager.refresh(loan.getCopy());
+        // Apply the requested physical condition after SQL has closed the loan and released the copy.
         loan.getCopy().setStatus(resultingCopyStatus);
-
-        Loan saved = repository.save(loan);
+        entityManager.flush();
+        entityManager.refresh(loan.getCopy());
         return loanMapper.toResponse(saved);
     }
 
@@ -274,8 +284,7 @@ public class LoanServiceImpl implements LoanService {
             lowCardinalityKeyValues = {"domain", "circulation", "operation", "loan.renew"}
     )
     public LoanResponse renew(Long actorUserId, Long id, RenewLoanRequest request) {
-        Loan loan = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
+        Loan loan = circulationLocks.loan(id);
         validateOwnerOrStaff(loan, actorUserId);
 
         if (loan.getStatus() != LoanStatus.ACTIVE)
@@ -316,8 +325,7 @@ public class LoanServiceImpl implements LoanService {
     public LoanResponse markOverdue(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
-        Loan loan = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
+        Loan loan = circulationLocks.loan(id);
 
         if (loan.getStatus() != LoanStatus.ACTIVE)
             throw new BusinessRuleException("Only active loan can be marked as overdue");
@@ -343,16 +351,14 @@ public class LoanServiceImpl implements LoanService {
     public LoanResponse markLost(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
-        Loan loan = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Loan with id '%s' not found".formatted(id)));
+        Loan loan = circulationLocks.loan(id);
 
         if (loan.getStatus() != LoanStatus.ACTIVE && loan.getStatus() != LoanStatus.OVERDUE)
             throw new BusinessRuleException("Only active or overdue loan can be marked as lost");
 
         loan.setStatus(LoanStatus.LOST);
-        loan.getCopy().setStatus(CopyStatus.LOST);
-
-        Loan saved = repository.save(loan);
+        Loan saved = repository.saveAndFlush(loan);
+        entityManager.refresh(loan.getCopy());
         return loanMapper.toResponse(saved);
     }
 
