@@ -1,3 +1,20 @@
+CREATE FUNCTION lock_circulation_copy_before_insert() RETURNS TRIGGER
+    LANGUAGE plpgsql AS $$
+BEGIN
+    PERFORM 1 FROM users WHERE id = NEW.user_id FOR KEY SHARE;
+    IF TG_TABLE_NAME = 'loans' THEN
+        PERFORM 1 FROM users WHERE id = NEW.issued_by_user_id FOR KEY SHARE;
+    END IF;
+    PERFORM 1 FROM material_copies WHERE id = NEW.copy_id FOR NO KEY UPDATE;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_reservations_lock_copy_before_insert
+    BEFORE INSERT ON reservations FOR EACH ROW EXECUTE FUNCTION lock_circulation_copy_before_insert();
+CREATE TRIGGER trg_loans_lock_copy_before_insert
+    BEFORE INSERT ON loans FOR EACH ROW EXECUTE FUNCTION lock_circulation_copy_before_insert();
+
 CREATE OR REPLACE FUNCTION reservation_created_set_copy_reserved() RETURNS TRIGGER
     LANGUAGE plpgsql AS $$
 DECLARE
