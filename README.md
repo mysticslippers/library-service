@@ -192,7 +192,28 @@ all three changes. There is no separate command to mark a reservation as used.
 Creating a reservation or loan locks the reader's user row until the transaction
 ends. Requests for the same reader check limits and duplicate reservations in
 sequence, including requests made by different staff or in different branches.
-Different readers can create reservations independently.
+Different readers using different copies can create reservations independently.
+
+Commands that compete for a copy lock its database row before checking availability,
+branch or active operations. Creation keeps the reader lock first; transitions of
+existing loans/reservations read only the copy ID before locking copy, then the
+operation row. This order also applies to cancellation, expiration, return, loss,
+renewal and pickup readiness. Copy status/branch edits use the same copy lock.
+Automatic selection uses `FOR UPDATE SKIP LOCKED`, choosing another available copy
+or returning the existing unavailable-copy error when no unlocked copy is available.
+
+V9 enforces matching copy/material/branch on reservations. Unreserved loans require
+an available copy without an active reservation; reserved loans require the matching
+reader, copy, branch and an unexpired `READY_FOR_PICKUP` reservation. These conditions
+also apply to initial `ACTIVE`, `OVERDUE` and `LOST` loans, keeping their copy status
+consistent. Expiration is compared in UTC, matching Hibernate's timestamp binding. Insert
+triggers lock parents before foreign-key checks and unique-index insertion can
+invert the copy lock order. Copy status/branch guards also protect direct updates.
+
+SQL owns copy transitions on creation/closing and reservation consumption. Services
+flush and refresh trigger-managed entities before returning responses. A return's
+requested physical condition is applied after SQL closes the loan, in the same
+transaction. V9 is a new migration; earlier migration files remain unchanged.
 
 Run backend checks from `backend/`:
 
@@ -209,6 +230,11 @@ the remaining tests still run.
 `CirculationLimitsIntegrationTest` also uses an isolated PostgreSQL container to
 check overlapping requests, reservation and loan limits, duplicate materials,
 and capacity becoming available after rollback.
+
+`CopyCirculationIntegrationTest` checks different readers competing for one copy,
+automatic selection, independent copies, rollback, status/branch edits, pickup
+against cancellation/expiration, return conditions and direct SQL validation.
+It also covers SQL/service lock ordering and renewal against return.
 
 ## Email delivery
 
