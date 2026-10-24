@@ -1,5 +1,6 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import me.ifmo.backend.circulation.application.CirculationLocks;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.ifmo.backend.catalog.mapper.MaterialCopyMapperImpl;
 import me.ifmo.backend.circulation.application.LoanService;
@@ -45,7 +46,7 @@ import static org.mockito.Mockito.doThrow;
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({LoanServiceImpl.class, LoanMapperImpl.class, UserMapperImpl.class, RoleMapperImpl.class,
+@Import({CirculationLocks.class, LoanServiceImpl.class, LoanMapperImpl.class, UserMapperImpl.class, RoleMapperImpl.class,
         MaterialCopyMapperImpl.class, BranchMapperImpl.class, LibraryMapperImpl.class,
         BranchAddressJsonMapper.class, ReservationLoanIntegrationTest.JsonConfiguration.class})
 @Testcontainers(disabledWithoutDocker = true)
