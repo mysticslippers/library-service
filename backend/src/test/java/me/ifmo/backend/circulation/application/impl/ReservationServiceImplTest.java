@@ -1,5 +1,7 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import jakarta.persistence.EntityManager;
+import me.ifmo.backend.circulation.application.CirculationLocks;
 import me.ifmo.backend.catalog.web.response.MaterialShortResponse;
 import me.ifmo.backend.circulation.web.request.CancelReservationRequest;
 import me.ifmo.backend.circulation.web.request.CreateReservationRequest;
@@ -107,6 +109,9 @@ class ReservationServiceImplTest {
     @Mock
     private ReservationEventPublisher reservationEventPublisher;
 
+    @Mock private CirculationLocks circulationLocks;
+    @Mock private EntityManager entityManager;
+
     @InjectMocks
     private ReservationServiceImpl service;
 
@@ -187,11 +192,11 @@ class ReservationServiceImplTest {
         when(reservationRepository.countByUser_IdAndStatusIn(eq(USER_ID), anyCollection())).thenReturn(0L);
         when(reservationRepository.existsByUser_IdAndMaterial_IdAndStatusIn(
                 eq(USER_ID), eq(MATERIAL_ID), anyCollection())).thenReturn(false);
-        when(materialCopyRepository.findById(COPY_ID)).thenReturn(Optional.of(copy));
+        when(materialCopyRepository.findByIdForUpdate(COPY_ID)).thenReturn(Optional.of(copy));
         when(reservationMapper.toEntity(
                 eq(user), eq(material), eq(copy), eq(branch), any(LocalDateTime.class)))
                 .thenReturn(reservation);
-        when(reservationRepository.save(reservation)).thenReturn(reservation);
+        when(reservationRepository.saveAndFlush(reservation)).thenReturn(reservation);
         stubResponse(reservation, response);
 
         LocalDateTime before = LocalDateTime.now();
@@ -201,7 +206,7 @@ class ReservationServiceImplTest {
         );
 
         assertThat(result).isSameAs(response);
-        assertThat(copy.getStatus()).isEqualTo(CopyStatus.RESERVED);
+        verify(entityManager, org.mockito.Mockito.times(2)).refresh(copy);
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.ACTIVE);
         ArgumentCaptor<LocalDateTime> expiration = ArgumentCaptor.forClass(LocalDateTime.class);
         verify(reservationMapper).toEntity(eq(user), eq(material), eq(copy), eq(branch), expiration.capture());
@@ -263,7 +268,7 @@ class ReservationServiceImplTest {
         when(reservationRepository.countByUser_IdAndStatusIn(eq(USER_ID), anyCollection())).thenReturn(0L);
         when(reservationRepository.existsByUser_IdAndMaterial_IdAndStatusIn(
                 eq(USER_ID), eq(MATERIAL_ID), anyCollection())).thenReturn(false);
-        when(materialCopyRepository.findById(COPY_ID)).thenReturn(Optional.of(copy));
+        when(materialCopyRepository.findByIdForUpdate(COPY_ID)).thenReturn(Optional.of(copy));
 
         assertThatThrownBy(() -> service.create(
                 USER_ID,
@@ -291,8 +296,8 @@ class ReservationServiceImplTest {
                 .build();
         ReservationResponse response = org.mockito.Mockito.mock(ReservationResponse.class);
 
-        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
-        when(reservationRepository.save(reservation)).thenReturn(reservation);
+        when(circulationLocks.reservation(10L)).thenReturn(reservation);
+        when(reservationRepository.saveAndFlush(reservation)).thenReturn(reservation);
         stubResponse(reservation, response);
 
         LocalDateTime before = LocalDateTime.now();
@@ -304,7 +309,7 @@ class ReservationServiceImplTest {
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED_BY_USER);
         assertThat(reservation.getCancellationReason()).isEqualTo("plans changed");
         assertThat(reservation.getCancelledAt()).isAfterOrEqualTo(before);
-        assertThat(copy.getStatus()).isEqualTo(CopyStatus.AVAILABLE);
+        verify(entityManager).refresh(copy);
     }
 
     @Test
@@ -315,7 +320,7 @@ class ReservationServiceImplTest {
                 .user(activeUser())
                 .status(ReservationStatus.ACTIVE)
                 .build();
-        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
+        when(circulationLocks.reservation(10L)).thenReturn(reservation);
 
         assertThatThrownBy(() ->
                 service.cancelByUser(OTHER_USER_ID, 10L, new CancelReservationRequest("reason")))
@@ -335,7 +340,7 @@ class ReservationServiceImplTest {
                 .build();
 
         grantStaff();
-        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
+        when(circulationLocks.reservation(10L)).thenReturn(reservation);
 
         assertThatThrownBy(() -> service.expire(STAFF_ID, 10L))
                 .isInstanceOf(BusinessRuleException.class)
@@ -363,8 +368,8 @@ class ReservationServiceImplTest {
         ReservationResponse response = org.mockito.Mockito.mock(ReservationResponse.class);
 
         grantStaff();
-        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
-        when(reservationRepository.save(reservation)).thenReturn(reservation);
+        when(circulationLocks.reservation(10L)).thenReturn(reservation);
+        when(reservationRepository.saveAndFlush(reservation)).thenReturn(reservation);
         stubResponse(reservation, response);
 
         LocalDateTime before = LocalDateTime.now();
@@ -411,8 +416,8 @@ class ReservationServiceImplTest {
         ReservationResponse response = org.mockito.Mockito.mock(ReservationResponse.class);
 
         grantStaff();
-        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
-        when(reservationRepository.save(reservation)).thenReturn(reservation);
+        when(circulationLocks.reservation(10L)).thenReturn(reservation);
+        when(reservationRepository.saveAndFlush(reservation)).thenReturn(reservation);
         stubResponse(reservation, response);
 
         ReservationResponse result = service.cancelByLibrarian(
@@ -421,7 +426,7 @@ class ReservationServiceImplTest {
 
         assertThat(result).isSameAs(response);
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED_BY_LIBRARIAN);
-        assertThat(copy.getStatus()).isEqualTo(CopyStatus.AVAILABLE);
+        verify(entityManager).refresh(copy);
     }
 
     @Test
@@ -441,13 +446,13 @@ class ReservationServiceImplTest {
         ReservationResponse response = org.mockito.Mockito.mock(ReservationResponse.class);
 
         grantStaff();
-        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
-        when(reservationRepository.save(reservation)).thenReturn(reservation);
+        when(circulationLocks.reservation(10L)).thenReturn(reservation);
+        when(reservationRepository.saveAndFlush(reservation)).thenReturn(reservation);
         stubResponse(reservation, response);
 
         assertThat(service.expire(STAFF_ID, 10L)).isSameAs(response);
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.EXPIRED);
-        assertThat(copy.getStatus()).isEqualTo(CopyStatus.AVAILABLE);
+        verify(entityManager).refresh(copy);
     }
 
     @Test
