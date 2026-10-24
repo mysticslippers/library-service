@@ -1,5 +1,7 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import jakarta.persistence.EntityManager;
+import me.ifmo.backend.circulation.application.CirculationLocks;
 import me.ifmo.backend.circulation.web.request.CreateLoanRequest;
 import me.ifmo.backend.circulation.web.request.LoanSearchRequest;
 import me.ifmo.backend.circulation.web.request.RenewLoanRequest;
@@ -90,6 +92,9 @@ class LoanServiceImplTest {
     @Mock
     private LoanMapper loanMapper;
 
+    @Mock private CirculationLocks circulationLocks;
+    @Mock private EntityManager entityManager;
+
     @InjectMocks
     private LoanServiceImpl service;
 
@@ -125,7 +130,7 @@ class LoanServiceImplTest {
         when(userRepository.findById(STAFF_ID)).thenReturn(Optional.of(staff));
         allowBorrowing(reader);
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
-        when(materialCopyRepository.findById(COPY_ID)).thenReturn(Optional.of(copy));
+        when(materialCopyRepository.findByIdForUpdate(COPY_ID)).thenReturn(Optional.of(copy));
         when(loanRepository.findByCopy_IdAndStatusIn(eq(COPY_ID), anyCollection())).thenReturn(Optional.empty());
         when(libraryRuleRepository.findActualByBranchIdAndStatus(eq(BRANCH_ID), eq(LibraryRuleStatus.ACTIVE), any(LocalDateTime.class))).thenReturn(Optional.of(rule));
 
@@ -138,16 +143,16 @@ class LoanServiceImplTest {
                         .dueAt(invocation.getArgument(5))
                         .build());
 
-        when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(loanRepository.saveAndFlush(any(Loan.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(loanMapper.toResponse(any(Loan.class))).thenReturn(response);
 
         LocalDateTime before = LocalDateTime.now();
         LoanResponse result = service.create(STAFF_ID, new CreateLoanRequest(READER_ID, COPY_ID, null, BRANCH_ID, STAFF_ID, null));
 
         assertThat(result).isSameAs(response);
-        assertThat(copy.getStatus()).isEqualTo(CopyStatus.LOANED);
+        verify(entityManager, org.mockito.Mockito.times(2)).refresh(copy);
         var savedLoan = org.mockito.ArgumentCaptor.forClass(Loan.class);
-        verify(loanRepository).save(savedLoan.capture());
+        verify(loanRepository).saveAndFlush(savedLoan.capture());
         assertThat(savedLoan.getValue().getStatus()).isEqualTo(LoanStatus.ACTIVE);
         assertThat(savedLoan.getValue().getRenewalCount()).isZero();
         assertThat(savedLoan.getValue().getDueAt()).isAfterOrEqualTo(before.plusDays(14));
@@ -203,19 +208,19 @@ class LoanServiceImplTest {
         when(userRepository.findById(STAFF_ID)).thenReturn(Optional.of(staff));
         allowBorrowing(reader);
         when(branchRepository.findById(BRANCH_ID)).thenReturn(Optional.of(branch));
-        when(materialCopyRepository.findById(COPY_ID)).thenReturn(Optional.of(copy));
+        when(materialCopyRepository.findByIdForUpdate(COPY_ID)).thenReturn(Optional.of(copy));
         when(loanRepository.findByCopy_IdAndStatusIn(eq(COPY_ID), anyCollection())).thenReturn(Optional.empty());
         when(libraryRuleRepository.findActualByBranchIdAndStatus(eq(BRANCH_ID), eq(LibraryRuleStatus.ACTIVE), any(LocalDateTime.class))).thenReturn(Optional.of(libraryRule()));
-        when(reservationRepository.findById(30L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(reservation));
         when(loanRepository.findByReservation_Id(30L)).thenReturn(Optional.empty());
 
         when(loanMapper.toEntity(eq(reader), eq(copy), eq(reservation), eq(branch), eq(staff), any(LocalDateTime.class))).thenReturn(loan);
-        when(loanRepository.save(loan)).thenReturn(loan);
+        when(loanRepository.saveAndFlush(loan)).thenReturn(loan);
 
         service.create(STAFF_ID, new CreateLoanRequest(READER_ID, COPY_ID, 30L, BRANCH_ID, STAFF_ID, null));
 
-        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.USED);
-        assertThat(copy.getStatus()).isEqualTo(CopyStatus.LOANED);
+        verify(entityManager, org.mockito.Mockito.times(2)).refresh(reservation);
+        verify(entityManager, org.mockito.Mockito.times(2)).refresh(copy);
         assertThat(loan.getStatus()).isEqualTo(LoanStatus.ACTIVE);
     }
 
@@ -227,8 +232,8 @@ class LoanServiceImplTest {
         LoanResponse response = org.mockito.Mockito.mock(LoanResponse.class);
 
         grantStaff();
-        when(loanRepository.findById(10L)).thenReturn(Optional.of(loan));
-        when(loanRepository.save(loan)).thenReturn(loan);
+        when(circulationLocks.loan(10L)).thenReturn(loan);
+        when(loanRepository.saveAndFlush(loan)).thenReturn(loan);
         when(loanMapper.toResponse(loan)).thenReturn(response);
 
         LocalDateTime before = LocalDateTime.now();
@@ -247,7 +252,7 @@ class LoanServiceImplTest {
         Loan loan = Loan.builder().id(10L).status(LoanStatus.ACTIVE).copy(copy).build();
 
         grantStaff();
-        when(loanRepository.findById(10L)).thenReturn(Optional.of(loan));
+        when(circulationLocks.loan(10L)).thenReturn(loan);
 
         assertThatThrownBy(() -> service.returnLoan(STAFF_ID, 10L, new ReturnLoanRequest(CopyStatus.RESERVED, null)))
                 .isInstanceOf(BusinessRuleException.class).hasMessage("Returned copy cannot become 'RESERVED'");
@@ -267,7 +272,7 @@ class LoanServiceImplTest {
         LibraryRule rule = libraryRule();
         LoanResponse response = org.mockito.Mockito.mock(LoanResponse.class);
 
-        when(loanRepository.findById(10L)).thenReturn(Optional.of(loan));
+        when(circulationLocks.loan(10L)).thenReturn(loan);
         allowBorrowing(reader);
         when(libraryRuleRepository.findActualByBranchIdAndStatus(eq(BRANCH_ID), eq(LibraryRuleStatus.ACTIVE), any(LocalDateTime.class))).thenReturn(Optional.of(rule));
         when(loanRepository.save(loan)).thenReturn(loan);
@@ -285,7 +290,7 @@ class LoanServiceImplTest {
     void renewRejectsLoanWhoseDueDateHasPassed() {
         User reader = activeUser(READER_ID);
         Loan loan = Loan.builder().id(10L).user(reader).status(LoanStatus.ACTIVE).dueAt(LocalDateTime.now().minusMinutes(1)).build();
-        when(loanRepository.findById(10L)).thenReturn(Optional.of(loan));
+        when(circulationLocks.loan(10L)).thenReturn(loan);
 
         assertThatThrownBy(() -> service.renew(READER_ID, 10L, new RenewLoanRequest(7)))
                 .isInstanceOf(BusinessRuleException.class).hasMessage("Overdue loan cannot be renewed");
@@ -302,15 +307,15 @@ class LoanServiceImplTest {
         LoanResponse response = org.mockito.Mockito.mock(LoanResponse.class);
 
         grantStaff();
-        when(loanRepository.findById(10L)).thenReturn(Optional.of(loan));
-        when(loanRepository.save(loan)).thenReturn(loan);
+        when(circulationLocks.loan(10L)).thenReturn(loan);
+        when(loanRepository.saveAndFlush(loan)).thenReturn(loan);
         when(loanMapper.toResponse(loan)).thenReturn(response);
 
         LoanResponse result = service.markLost(STAFF_ID, 10L);
 
         assertThat(result).isSameAs(response);
         assertThat(loan.getStatus()).isEqualTo(LoanStatus.LOST);
-        assertThat(copy.getStatus()).isEqualTo(CopyStatus.LOST);
+        verify(entityManager).refresh(copy);
     }
 
     @Test
@@ -320,7 +325,7 @@ class LoanServiceImplTest {
         LoanResponse response = org.mockito.Mockito.mock(LoanResponse.class);
 
         grantStaff();
-        when(loanRepository.findById(10L)).thenReturn(Optional.of(loan));
+        when(circulationLocks.loan(10L)).thenReturn(loan);
         when(loanRepository.save(loan)).thenReturn(loan);
         when(loanMapper.toResponse(loan)).thenReturn(response);
 
