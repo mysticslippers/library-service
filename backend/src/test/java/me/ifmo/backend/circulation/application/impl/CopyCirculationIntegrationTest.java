@@ -280,14 +280,23 @@ class CopyCirculationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ACTIVE", "READY_FOR_PICKUP"})
-    void sqlCannotIssueAReservedCopyWithoutItsReservation(String state) {
+    @CsvSource({"ACTIVE,ACTIVE", "ACTIVE,OVERDUE", "ACTIVE,LOST", "READY_FOR_PICKUP,ACTIVE",
+            "READY_FOR_PICKUP,OVERDUE", "READY_FOR_PICKUP,LOST"})
+    void sqlCannotIssueAReservedCopyWithoutItsReservation(String state, String loanStatus) {
         Fixture f = fixture();
         long reservation = reserve(f, f.reader(), f.copy()).id();
         if (state.equals("READY_FOR_PICKUP")) reservations.markReadyForPickup(f.staff(), reservation);
-        assertThatThrownBy(() -> sqlLoan(f, f.otherReader(), f.copy(), null, f.branch()))
+        assertThatThrownBy(() -> sqlLoan(f, f.otherReader(), f.copy(), null, f.branch(), loanStatus))
                 .isInstanceOf(DataIntegrityViolationException.class);
         assertState(f.copy(), "RESERVED", 1, 0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ACTIVE", "OVERDUE", "LOST"})
+    void sqlBlockingLoansSetTheMatchingCopyState(String status) {
+        Fixture f = fixture();
+        sqlLoan(f, f.reader(), f.copy(), null, f.branch(), status);
+        assertState(f.copy(), status.equals("LOST") ? "LOST" : "LOANED", 0, 1);
     }
 
     @ParameterizedTest
@@ -442,10 +451,14 @@ class CopyCirculationIntegrationTest {
     }
 
     private void sqlLoan(Fixture f, long reader, Book book, Long reservation, long branch) {
+        sqlLoan(f, reader, book, reservation, branch, "ACTIVE");
+    }
+
+    private void sqlLoan(Fixture f, long reader, Book book, Long reservation, long branch, String status) {
         jdbc.update("""
-                INSERT INTO loans(user_id, copy_id, reservation_id, branch_id, issued_by_user_id, due_at)
-                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP + INTERVAL '7 days')
-                """, reader, book.id(), reservation, branch, f.staff());
+                INSERT INTO loans(user_id, copy_id, reservation_id, branch_id, issued_by_user_id, due_at, status)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP + INTERVAL '7 days', CAST(? AS loan_status))
+                """, reader, book.id(), reservation, branch, f.staff(), status);
     }
 
     private void assertSuccess(Outcome outcome) {
