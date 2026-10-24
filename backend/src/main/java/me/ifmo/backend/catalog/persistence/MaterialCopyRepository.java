@@ -5,12 +5,24 @@ import me.ifmo.backend.catalog.domain.enums.CopyStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Collection;
 
 public interface MaterialCopyRepository extends JpaRepository<MaterialCopy, Long> {
+
+    @Query(value = "SELECT copy.* FROM material_copies copy WHERE copy.id = :id FOR UPDATE", nativeQuery = true)
+    Optional<MaterialCopy> findByIdForUpdate(@Param("id") Long id);
+
+    @Query(value = """
+            SELECT copy.* FROM material_copies copy
+            WHERE copy.material_id = :materialId AND copy.branch_id = :branchId AND copy.status = 'AVAILABLE'
+            ORDER BY copy.created_at, copy.id LIMIT 1 FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    Optional<MaterialCopy> findAvailableForUpdate(@Param("materialId") Long materialId, @Param("branchId") Long branchId);
 
     Optional<MaterialCopy> findByInventoryNumber(String inventoryNumber);
 
@@ -38,5 +50,4 @@ public interface MaterialCopyRepository extends JpaRepository<MaterialCopy, Long
 
     boolean existsByBranch_IdAndStatusNot(Long branchId, CopyStatus status);
 
-    Optional<MaterialCopy> findFirstByMaterial_IdAndBranch_IdAndStatusOrderByCreatedAtAsc(Long materialId, Long branchId, CopyStatus status);
 }
