@@ -43,7 +43,7 @@ DECLARE
     v_copy material_copies%ROWTYPE;
     v_reservation reservations%ROWTYPE;
 BEGIN
-    IF NEW.status = 'ACTIVE' THEN
+    IF NEW.status IN ('ACTIVE', 'OVERDUE', 'LOST') THEN
         SELECT * INTO v_copy FROM material_copies WHERE id = NEW.copy_id FOR NO KEY UPDATE;
         IF NOT FOUND OR v_copy.branch_id <> NEW.branch_id THEN
             RAISE EXCEPTION 'Copy does not belong to the loan branch' USING ERRCODE = '23514';
@@ -75,7 +75,9 @@ BEGIN
             END IF;
             UPDATE reservations SET status = 'USED' WHERE id = NEW.reservation_id;
         END IF;
-        UPDATE material_copies SET status = 'LOANED' WHERE id = NEW.copy_id;
+        UPDATE material_copies
+        SET status = CASE WHEN NEW.status = 'LOST' THEN 'LOST'::copy_status ELSE 'LOANED'::copy_status END
+        WHERE id = NEW.copy_id;
     END IF;
     RETURN NEW;
 END;
