@@ -11,6 +11,7 @@ import me.ifmo.backend.catalog.persistence.MaterialCopyRepository;
 import me.ifmo.backend.catalog.persistence.MaterialRepository;
 
 import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityManager;
 import me.ifmo.backend.catalog.web.request.ChangeMaterialCopyStatusRequest;
 import me.ifmo.backend.catalog.web.request.CreateMaterialCopyRequest;
 import me.ifmo.backend.catalog.web.request.UpdateMaterialCopyRequest;
@@ -51,6 +52,7 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
     private final LoanRepository loanRepository;
     private final ReservationRepository reservationRepository;
     private final MaterialCopyMapper materialCopyMapper;
+    private final EntityManager entityManager;
     
     private String normalize(String value, String fieldName) {
         if(fieldName.equals("Inventory number")){
@@ -155,8 +157,10 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
     @Transactional
     @InvalidateCatalogSearch
     public MaterialCopyResponse update(Long id, UpdateMaterialCopyRequest request) {
-        MaterialCopy copy = repository.findById(id).orElseThrow(
+        MaterialCopy copy = repository.findByIdForUpdate(id).orElseThrow(
                 () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(id)));
+
+        entityManager.refresh(copy);
 
         if (copy.getStatus() == CopyStatus.REMOVED)
             throw new BusinessRuleException("Removed material copy cannot be updated");
@@ -192,8 +196,10 @@ public class MaterialCopyServiceImpl implements MaterialCopyService {
     @Transactional
     @InvalidateCatalogSearch
     public MaterialCopyResponse changeStatus(Long id, ChangeMaterialCopyStatusRequest request) {
-        MaterialCopy copy = repository.findById(id).orElseThrow(
+        MaterialCopy copy = repository.findByIdForUpdate(id).orElseThrow(
                 () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(id)));
+
+        entityManager.refresh(copy);
 
         CopyStatus status = request.status();
 
