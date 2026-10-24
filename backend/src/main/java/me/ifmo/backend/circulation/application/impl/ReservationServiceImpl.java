@@ -1,6 +1,8 @@
 package me.ifmo.backend.circulation.application.impl;
 
 import io.micrometer.observation.annotation.Observed;
+import jakarta.persistence.EntityManager;
+import me.ifmo.backend.circulation.application.CirculationLocks;
 import me.ifmo.backend.fine.domain.enums.FineStatus;
 import me.ifmo.backend.fine.persistence.FineRepository;
 
@@ -85,6 +87,8 @@ public class ReservationServiceImpl implements ReservationService {
     private final ReservationMapper reservationMapper;
     private final MaterialMapper materialMapper;
     private final ReservationEventPublisher reservationEventPublisher;
+    private final CirculationLocks circulationLocks;
+    private final EntityManager entityManager;
 
     private String normalize(String value) {
         if (value == null || value.strip().isBlank())
@@ -141,15 +145,17 @@ public class ReservationServiceImpl implements ReservationService {
             throw new BusinessRuleException("User has overdue or lost loans");
     }
 
-    private void releaseReservedCopy(Reservation reservation) {
-        if (reservation.getCopy().getStatus() == CopyStatus.RESERVED)
-            reservation.getCopy().setStatus(CopyStatus.AVAILABLE);
+    private Reservation saveTransition(Reservation reservation) {
+        Reservation saved = repository.saveAndFlush(reservation);
+        entityManager.refresh(saved.getCopy());
+        return saved;
     }
 
     private MaterialCopy resolveCopy(CreateReservationRequest request) {
         if (request.copyId() != null) {
-            MaterialCopy copy = materialCopyRepository.findById(request.copyId()).orElseThrow(
+            MaterialCopy copy = materialCopyRepository.findByIdForUpdate(request.copyId()).orElseThrow(
                     () -> new ResourceNotFoundException("Material copy with id '%s' not found".formatted(request.copyId())));
+            entityManager.refresh(copy);
 
             if (!copy.getMaterial().getId().equals(request.materialId()))
                 throw new BusinessRuleException("Material copy does not belong to requested material");
@@ -163,10 +169,12 @@ public class ReservationServiceImpl implements ReservationService {
             return copy;
         }
 
-        return materialCopyRepository.findFirstByMaterial_IdAndBranch_IdAndStatusOrderByCreatedAtAsc(
-                        request.materialId(), request.branchId(), CopyStatus.AVAILABLE).orElseThrow(
+        MaterialCopy copy = materialCopyRepository.findAvailableForUpdate(request.materialId(), request.branchId()).orElseThrow(
                         () -> new ResourceNotFoundException("Available material copy for material id '%s' in branch id '%s' not found"
                                 .formatted(request.materialId(), request.branchId())));
+
+        entityManager.refresh(copy);
+        return copy;
     }
 
     @Override
@@ -216,15 +224,17 @@ public class ReservationServiceImpl implements ReservationService {
             throw new BusinessRuleException("User already has active reservation for this material");
 
         MaterialCopy copy = resolveCopy(request);
+        if (repository.findByCopy_IdAndStatusIn(copy.getId(), ACTIVE_RESERVATION_STATUSES).isPresent()
+                || loanRepository.findByCopy_IdAndStatusIn(copy.getId(),
+                        Set.of(LoanStatus.ACTIVE, LoanStatus.OVERDUE, LoanStatus.LOST)).isPresent())
+            throw new ResourceInUseException("Material copy has active operations");
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusDays(rule.getReservationTtlDays());
-
-        copy.setStatus(CopyStatus.RESERVED);
 
         Reservation reservation = reservationMapper.toEntity(user, material, copy, branch, expiresAt);
         reservation.setStatus(ReservationStatus.ACTIVE);
 
-        Reservation saved = repository.save(reservation);
+        Reservation saved = saveTransition(reservation);
         return toResponse(saved);
     }
 
@@ -247,8 +257,7 @@ public class ReservationServiceImpl implements ReservationService {
             lowCardinalityKeyValues = {"domain", "circulation", "operation", "reservation.cancel-by-user"}
     )
     public ReservationResponse cancelByUser(Long actorUserId, Long id, CancelReservationRequest request) {
-        Reservation reservation = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+        Reservation reservation = circulationLocks.reservation(id);
         validateReservationOwner(reservation, actorUserId);
 
         if (!ACTIVE_RESERVATION_STATUSES.contains(reservation.getStatus()))
@@ -258,9 +267,7 @@ public class ReservationServiceImpl implements ReservationService {
         reservation.setCancelledAt(LocalDateTime.now());
         reservation.setCancellationReason(normalize(request.reason()));
 
-        releaseReservedCopy(reservation);
-
-        Reservation saved = repository.save(reservation);
+        Reservation saved = saveTransition(reservation);
         return toResponse(saved);
     }
 
@@ -276,8 +283,7 @@ public class ReservationServiceImpl implements ReservationService {
     public ReservationResponse cancelByLibrarian(Long actorUserId, Long id, CancelReservationRequest request) {
         validateStaff(actorUserId);
 
-        Reservation reservation = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+        Reservation reservation = circulationLocks.reservation(id);
 
         if (!ACTIVE_RESERVATION_STATUSES.contains(reservation.getStatus()))
             throw new BusinessRuleException("Only active reservation can be cancelled");
@@ -286,9 +292,7 @@ public class ReservationServiceImpl implements ReservationService {
         reservation.setCancelledAt(LocalDateTime.now());
         reservation.setCancellationReason(normalize(request.reason()));
 
-        releaseReservedCopy(reservation);
-
-        Reservation saved = repository.save(reservation);
+        Reservation saved = saveTransition(reservation);
         return toResponse(saved);
     }
 
@@ -304,8 +308,7 @@ public class ReservationServiceImpl implements ReservationService {
     public ReservationResponse expire(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
-        Reservation reservation = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+        Reservation reservation = circulationLocks.reservation(id);
 
         if (!ACTIVE_RESERVATION_STATUSES.contains(reservation.getStatus()))
             throw new BusinessRuleException("Only active reservation can be expired");
@@ -315,9 +318,7 @@ public class ReservationServiceImpl implements ReservationService {
 
         reservation.setStatus(ReservationStatus.EXPIRED);
 
-        releaseReservedCopy(reservation);
-
-        Reservation saved = repository.save(reservation);
+        Reservation saved = saveTransition(reservation);
         return toResponse(saved);
     }
 
@@ -332,13 +333,12 @@ public class ReservationServiceImpl implements ReservationService {
     public ReservationResponse markReadyForPickup(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
-        Reservation reservation = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Reservation with id '%s' not found".formatted(id)));
+        Reservation reservation = circulationLocks.reservation(id);
 
         if (reservation.getStatus() != ReservationStatus.ACTIVE)
             throw new BusinessRuleException("Only active reservation can be marked as ready for pickup");
 
-        if (reservation.getExpiresAt().isBefore(LocalDateTime.now()))
+        if (!reservation.getExpiresAt().isAfter(LocalDateTime.now()))
             throw new BusinessRuleException("Expired reservation cannot be marked as ready for pickup");
 
         if (reservation.getCopy().getStatus() != CopyStatus.RESERVED)
@@ -347,7 +347,7 @@ public class ReservationServiceImpl implements ReservationService {
         reservation.setStatus(ReservationStatus.READY_FOR_PICKUP);
         reservation.setReadyAt(LocalDateTime.now());
 
-        Reservation saved = repository.save(reservation);
+        Reservation saved = saveTransition(reservation);
         reservationEventPublisher.reservationReadyForPickup(actorUserId, saved);
         return toResponse(saved);
     }
