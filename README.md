@@ -255,6 +255,38 @@ It uses the real reservation event publisher and transactional outbox: readiness
 creates one committed event, while a rollback or serialization failure leaves no
 event or partial status change. Event delivery to Kafka is outside this test.
 
+## Fine payments
+
+Repeating a payment status command with the same status and effective external
+payment ID returns the stored result without changing rows, timestamps or audit
+history. Omitting the external ID preserves its current value. An assigned ID
+cannot be replaced; final payments cannot acquire a new ID or change status.
+A repeated `SUCCESS` also requires the associated fine to be `PAID`.
+
+Payment creation, status changes, manual fine payment and fine cancellation lock
+the fine first. Status changes read only its ID before locking the fine, then
+lock and refresh the payment. Different fines remain independent. Manual payment
+and cancellation are rejected while a payment is `CREATED` or `PENDING`; finish
+or cancel that payment first.
+
+V11 makes the SQL trigger responsible for settling a fine on payment success,
+including direct SQL inserts. Services flush and refresh trigger-managed values.
+Database guards validate transitions, amounts and immutable associations, and
+prevent changes to closed fines and final payments. Identical SQL updates skip
+the write itself. Native insert defaults and payment update/settlement timestamps
+use UTC, matching Hibernate's timestamp binding. Applied migrations remain unchanged.
+
+A direct SQL payment update already holds its payment row: if another transaction
+holds the fine lock, the guard rejects it with a constraint conflict so the command
+can be retried instead of inverting the service's lock order. Inserts acquire the
+fine lock before foreign-key checks and unique-index insertion.
+
+`PaymentConsistencyIntegrationTest` uses PostgreSQL/Flyway and the actual services,
+mappers and triggers. It covers status matrices, repeated confirmations, unchanged
+timestamps/audit, external IDs, competing fine/payment commands, independent fines,
+SQL/service lock ordering and transaction rollback. Payment provider/webhook
+integration remains a separate planned feature.
+
 ## Email delivery
 
 Pending email notifications are delivered through an SMTP server using Spring Mail.
