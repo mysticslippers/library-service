@@ -54,6 +54,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -76,6 +77,7 @@ public class LoanServiceImpl implements LoanService {
     private final LoanMapper loanMapper;
     private final CirculationLocks circulationLocks;
     private final EntityManager entityManager;
+    private final Clock clock;
 
     private boolean isStaff(Long actorUserId) {
         return userRoleRepository.findRoleCodesByUser_Id(actorUserId).stream()
@@ -93,7 +95,7 @@ public class LoanServiceImpl implements LoanService {
     }
 
     private LibraryRule getActualRule(Long branchId) {
-        return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now()).orElseThrow(
+        return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now(clock)).orElseThrow(
                         () -> new ResourceNotFoundException("Actual library rule for branch with id '%s' not found".formatted(branchId)));
     }
 
@@ -189,7 +191,7 @@ public class LoanServiceImpl implements LoanService {
             if (reservation.getStatus() != ReservationStatus.READY_FOR_PICKUP)
                 throw new BusinessRuleException("Only ready for pickup reservation can be converted to loan");
 
-            if (!reservation.getExpiresAt().isAfter(LocalDateTime.now()))
+            if (!reservation.getExpiresAt().isAfter(LocalDateTime.now(clock)))
                 throw new BusinessRuleException("Reservation has expired");
 
             if (!reservation.getUser().getId().equals(user.getId()))
@@ -215,7 +217,7 @@ public class LoanServiceImpl implements LoanService {
                 throw new ResourceInUseException("Material copy is not available for loan");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         LocalDateTime dueAt = request.dueAt() != null ? request.dueAt() : now.plusDays(rule.getDefaultLoanDays());
 
@@ -265,7 +267,7 @@ public class LoanServiceImpl implements LoanService {
         CopyStatus resultingCopyStatus = resolveReturnCopyStatus(request);
 
         loan.setStatus(LoanStatus.RETURNED);
-        loan.setReturnedAt(LocalDateTime.now());
+        loan.setReturnedAt(LocalDateTime.now(clock));
         Loan saved = repository.saveAndFlush(loan);
         entityManager.refresh(loan.getCopy());
         // Apply the requested physical condition after SQL has closed the loan and released the copy.
@@ -290,7 +292,7 @@ public class LoanServiceImpl implements LoanService {
         if (loan.getStatus() != LoanStatus.ACTIVE)
             throw new BusinessRuleException("Only active loan can be renewed");
 
-        if (!loan.getDueAt().isAfter(LocalDateTime.now()))
+        if (!loan.getDueAt().isAfter(LocalDateTime.now(clock)))
             throw new BusinessRuleException("Overdue loan cannot be renewed");
 
         validateUserCanBorrow(loan.getUser());
@@ -330,7 +332,7 @@ public class LoanServiceImpl implements LoanService {
         if (loan.getStatus() != LoanStatus.ACTIVE)
             throw new BusinessRuleException("Only active loan can be marked as overdue");
 
-        if (loan.getDueAt().isAfter(LocalDateTime.now()))
+        if (loan.getDueAt().isAfter(LocalDateTime.now(clock)))
             throw new BusinessRuleException("Loan dueAt has not passed yet");
 
         loan.setStatus(LoanStatus.OVERDUE);
