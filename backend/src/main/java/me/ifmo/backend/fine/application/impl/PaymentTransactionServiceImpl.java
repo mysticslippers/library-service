@@ -1,6 +1,8 @@
 package me.ifmo.backend.fine.application.impl;
 
 import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityManager;
+import me.ifmo.backend.fine.application.PaymentLocks;
 import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.fine.web.request.CreatePaymentTransactionRequest;
 import me.ifmo.backend.fine.web.request.PaymentTransactionSearchRequest;
@@ -15,7 +17,6 @@ import me.ifmo.backend.shared.exceptions.BusinessRuleException;
 import me.ifmo.backend.shared.exceptions.DuplicateResourceException;
 import me.ifmo.backend.shared.exceptions.ResourceNotFoundException;
 import me.ifmo.backend.fine.mapper.PaymentTransactionMapper;
-import me.ifmo.backend.fine.persistence.FineRepository;
 import me.ifmo.backend.fine.persistence.PaymentTransactionRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
 import me.ifmo.backend.fine.application.PaymentTransactionService;
@@ -27,7 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -41,9 +42,10 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
             Set.of(PaymentStatus.CREATED, PaymentStatus.PENDING);
 
     private final PaymentTransactionRepository repository;
-    private final FineRepository fineRepository;
     private final UserRoleRepository userRoleRepository;
     private final PaymentTransactionMapper paymentTransactionMapper;
+    private final PaymentLocks paymentLocks;
+    private final EntityManager entityManager;
 
     private String normalize(String value) {
         if (value == null || value.strip().isBlank()) {
@@ -97,8 +99,7 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
     @Override
     @Transactional
     public PaymentTransactionResponse create(Long actorUserId, CreatePaymentTransactionRequest request) {
-        Fine fine = fineRepository.findById(request.fineId()).orElseThrow(
-                () -> new ResourceNotFoundException("Fine with id '%s' not found".formatted(request.fineId())));
+        Fine fine = paymentLocks.fine(request.fineId());
         validateOwnerOrStaff(fine, actorUserId);
 
         if (fine.getStatus() != FineStatus.ACTIVE)
@@ -123,7 +124,8 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         PaymentTransaction transaction = paymentTransactionMapper.toEntity(fine, externalPayment, request.amount());
         transaction.setStatus(PaymentStatus.CREATED);
 
-        PaymentTransaction saved = repository.save(transaction);
+        PaymentTransaction saved = repository.saveAndFlush(transaction);
+        entityManager.refresh(saved);
         return paymentTransactionMapper.toResponse(saved);
     }
 
@@ -158,34 +160,46 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
     public PaymentTransactionResponse updateStatus(Long actorUserId, Long id, UpdatePaymentStatusRequest request) {
         validateStaff(actorUserId);
 
-        PaymentTransaction transaction = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Payment transaction with id '%s' not found".formatted(id)));
-
+        PaymentTransaction transaction = paymentLocks.payment(id);
+        Fine fine = transaction.getFine();
         PaymentStatus targetStatus = request.status();
+
+        if (targetStatus == null)
+            throw new BusinessRuleException("Payment status must be specified");
+
+        String externalPayment = normalize(request.externalPayment());
+        if (externalPayment == null)
+            externalPayment = transaction.getExternalPayment();
+
+        if (transaction.getExternalPayment() != null && !transaction.getExternalPayment().equals(externalPayment))
+            throw new BusinessRuleException("External payment id cannot be changed once assigned");
+
+        if (transaction.getStatus() == targetStatus && Objects.equals(transaction.getExternalPayment(), externalPayment)) {
+            if (targetStatus == PaymentStatus.SUCCESS && fine.getStatus() != FineStatus.PAID)
+                throw new BusinessRuleException("Successful payment must have a paid fine");
+            return paymentTransactionMapper.toResponse(transaction);
+        }
 
         if (!isTransitionAllowed(transaction.getStatus(), targetStatus))
             throw new BusinessRuleException("Payment status transition from '%s' to '%s' is not allowed".formatted(transaction.getStatus(), targetStatus));
 
-        String externalPayment = normalize(request.externalPayment());
+        if (FINAL_STATUSES.contains(transaction.getStatus()))
+            throw new BusinessRuleException("Final payment transaction cannot be changed");
+
+        if (fine.getStatus() != FineStatus.ACTIVE)
+            throw new BusinessRuleException("Payment can be updated only for active fine");
+
+        if (transaction.getAmount().compareTo(fine.getAmount()) != 0)
+            throw new BusinessRuleException("Payment amount must be equal to fine amount");
 
         if (externalPayment != null && !externalPayment.equals(transaction.getExternalPayment()) && repository.existsByExternalPayment(externalPayment))
             throw new DuplicateResourceException(
                     "Payment transaction with external payment id '%s' already exists".formatted(externalPayment));
 
         paymentTransactionMapper.updateStatus(new UpdatePaymentStatusRequest(targetStatus, externalPayment), transaction);
-        transaction.setUpdatedAt(LocalDateTime.now());
-
-        if (targetStatus == PaymentStatus.SUCCESS) {
-            Fine fine = transaction.getFine();
-
-            if (fine.getStatus() != FineStatus.ACTIVE)
-                throw new BusinessRuleException("Only active fine can be paid");
-
-            fine.setStatus(FineStatus.PAID);
-            fine.setPaidAt(LocalDateTime.now());
-        }
-
-        PaymentTransaction saved = repository.save(transaction);
+        PaymentTransaction saved = repository.saveAndFlush(transaction);
+        entityManager.refresh(saved);
+        entityManager.refresh(fine);
         return paymentTransactionMapper.toResponse(saved);
     }
 
