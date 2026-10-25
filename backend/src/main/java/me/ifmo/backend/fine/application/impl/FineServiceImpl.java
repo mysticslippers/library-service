@@ -20,6 +20,7 @@ import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
 
 import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityManager;
 import me.ifmo.backend.shared.web.response.PageResponse;
 import me.ifmo.backend.fine.web.request.CancelFineRequest;
 import me.ifmo.backend.fine.web.request.CreateFineRequest;
@@ -30,6 +31,9 @@ import me.ifmo.backend.shared.exceptions.DuplicateResourceException;
 import me.ifmo.backend.shared.exceptions.ResourceNotFoundException;
 import me.ifmo.backend.fine.mapper.FineMapper;
 import me.ifmo.backend.fine.application.FineService;
+import me.ifmo.backend.fine.application.PaymentLocks;
+import me.ifmo.backend.fine.domain.enums.PaymentStatus;
+import me.ifmo.backend.fine.persistence.PaymentTransactionRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -39,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +56,14 @@ public class FineServiceImpl implements FineService {
     private final FineTariffRepository fineTariffRepository;
     private final UserRoleRepository userRoleRepository;
     private final FineMapper fineMapper;
+    private final PaymentLocks paymentLocks;
+    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final EntityManager entityManager;
+
+    private void validateNoPendingPayment(Long fineId) {
+        if (paymentTransactionRepository.existsByFine_IdAndStatusIn(fineId, Set.of(PaymentStatus.CREATED, PaymentStatus.PENDING)))
+            throw new BusinessRuleException("Fine has a payment transaction in progress");
+    }
 
     private String normalize(String value) {
         if (value == null || value.strip().isBlank())
@@ -151,11 +164,12 @@ public class FineServiceImpl implements FineService {
     public FineResponse cancel(Long actorUserId, Long id, CancelFineRequest request) {
         validateStaff(actorUserId);
 
-        Fine fine = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Fine with id '%s' not found".formatted(id)));
+        Fine fine = paymentLocks.fine(id);
 
         if (fine.getStatus() != FineStatus.ACTIVE)
             throw new BusinessRuleException("Only active fine can be cancelled");
+
+        validateNoPendingPayment(id);
 
         String reason = normalize(request.reason());
 
@@ -163,7 +177,8 @@ public class FineServiceImpl implements FineService {
         fine.setCancelledAt(LocalDateTime.now());
         fine.setCancellationReason(reason);
 
-        Fine saved = repository.save(fine);
+        Fine saved = repository.saveAndFlush(fine);
+        entityManager.refresh(saved);
         return fineMapper.toResponse(saved);
     }
 
@@ -172,16 +187,18 @@ public class FineServiceImpl implements FineService {
     public FineResponse markPaid(Long actorUserId, Long id) {
         validateStaff(actorUserId);
 
-        Fine fine = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Fine with id '%s' not found".formatted(id)));
+        Fine fine = paymentLocks.fine(id);
 
         if (fine.getStatus() != FineStatus.ACTIVE)
             throw new BusinessRuleException("Only active fine can be marked as paid");
 
+        validateNoPendingPayment(id);
+
         fine.setStatus(FineStatus.PAID);
         fine.setPaidAt(LocalDateTime.now());
 
-        Fine saved = repository.save(fine);
+        Fine saved = repository.saveAndFlush(fine);
+        entityManager.refresh(saved);
         return fineMapper.toResponse(saved);
     }
 
