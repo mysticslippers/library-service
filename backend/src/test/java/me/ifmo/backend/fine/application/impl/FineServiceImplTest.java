@@ -19,6 +19,8 @@ import me.ifmo.backend.fine.domain.enums.ViolationType;
 import me.ifmo.backend.shared.exceptions.BusinessRuleException;
 import me.ifmo.backend.shared.exceptions.DuplicateResourceException;
 import me.ifmo.backend.fine.mapper.FineMapper;
+import me.ifmo.backend.fine.application.PaymentLocks;
+import me.ifmo.backend.fine.persistence.PaymentTransactionRepository;
 import me.ifmo.backend.fine.persistence.FineRepository;
 import me.ifmo.backend.fine.persistence.FineTariffRepository;
 import me.ifmo.backend.circulation.persistence.LoanRepository;
@@ -75,6 +77,8 @@ class FineServiceImplTest {
     private UserRoleRepository userRoleRepository;
     @Mock
     private FineMapper fineMapper;
+    @Mock private PaymentLocks paymentLocks;
+    @Mock private PaymentTransactionRepository paymentTransactionRepository;
 
     @InjectMocks
     private FineServiceImpl service;
@@ -194,8 +198,8 @@ class FineServiceImplTest {
         FineResponse response = org.mockito.Mockito.mock(FineResponse.class);
 
         grantStaff();
-        when(fineRepository.findById(10L)).thenReturn(Optional.of(fine));
-        when(fineRepository.save(fine)).thenReturn(fine);
+        when(paymentLocks.fine(10L)).thenReturn(fine);
+        when(fineRepository.saveAndFlush(fine)).thenReturn(fine);
         when(fineMapper.toResponse(fine)).thenReturn(response);
 
         LocalDateTime before = LocalDateTime.now();
@@ -214,8 +218,8 @@ class FineServiceImplTest {
         FineResponse response = org.mockito.Mockito.mock(FineResponse.class);
 
         grantStaff();
-        when(fineRepository.findById(10L)).thenReturn(Optional.of(fine));
-        when(fineRepository.save(fine)).thenReturn(fine);
+        when(paymentLocks.fine(10L)).thenReturn(fine);
+        when(fineRepository.saveAndFlush(fine)).thenReturn(fine);
         when(fineMapper.toResponse(fine)).thenReturn(response);
 
         LocalDateTime before = LocalDateTime.now();
