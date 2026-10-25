@@ -17,6 +17,7 @@ import me.ifmo.backend.fine.web.request.CancelFineRequest;
 import me.ifmo.backend.fine.web.request.CreatePaymentTransactionRequest;
 import me.ifmo.backend.fine.web.request.UpdatePaymentStatusRequest;
 import me.ifmo.backend.fine.web.response.PaymentTransactionResponse;
+import me.ifmo.backend.fine.web.response.FineResponse;
 import me.ifmo.backend.library.mapper.BranchAddressJsonMapper;
 import me.ifmo.backend.library.mapper.BranchMapperImpl;
 import me.ifmo.backend.library.mapper.LibraryMapperImpl;
@@ -132,6 +133,28 @@ class PaymentConsistencyIntegrationTest {
             assertThat(loaded.getPaidAt()).isNotNull();
         });
         assertPaid(f, id);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PaymentStatus.class, names = {"CREATED", "PENDING"})
+    void timestampOrderingSurvivesAJvmClockAheadOfTheDatabase(PaymentStatus state) {
+        Fixture f = fixture();
+        long id = jdbc.queryForObject("""
+                INSERT INTO payment_transactions(fine_id, amount, status, created_at)
+                VALUES (?, ?, CAST(? AS payment_status), timezone('UTC', clock_timestamp()) + INTERVAL '1 hour') RETURNING id
+                """, Long.class, f.fine(), AMOUNT, state.name());
+        PaymentTransactionResponse response = update(f, id, PaymentStatus.SUCCESS, null);
+        assertThat(response.updatedAt()).isAfterOrEqualTo(response.createdAt());
+        assertThat(fines.getFineById(f.reader(), f.fine()).paidAt()).isAfterOrEqualTo(response.updatedAt());
+        assertThat(update(f, id, PaymentStatus.SUCCESS, null)).isEqualTo(response);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"PAY", "CANCEL"})
+    void manualClosureRefreshesDatesWhenTheDatabaseCreationClockWasAhead(String command) {
+        Fixture f = fixture(true);
+        FineResponse response = (FineResponse) close(f, command);
+        assertThat(command.equals("PAY") ? response.paidAt() : response.cancelledAt()).isAfterOrEqualTo(response.createdAt());
     }
 
     static Stream<Arguments> transitions() {
@@ -597,9 +620,15 @@ class PaymentConsistencyIntegrationTest {
     }
 
     private Fixture fixture() {
+        return fixture(false);
+    }
+    private Fixture fixture(boolean futureCreation) {
         long reader = user(), staff = user();
         jdbc.update("INSERT INTO user_roles(user_id, role_id) SELECT ?, id FROM roles WHERE code = 'LIBRARIAN'", staff);
-        long fine = jdbc.queryForObject("INSERT INTO fines(user_id, reason, amount) VALUES (?, 'OTHER', ?) RETURNING id", Long.class, reader, AMOUNT);
+        long fine = jdbc.queryForObject("""
+                INSERT INTO fines(user_id, reason, amount, created_at)
+                VALUES (?, 'OTHER', ?, timezone('UTC', clock_timestamp()) + CAST(? AS interval)) RETURNING id
+                """, Long.class, reader, AMOUNT, futureCreation ? "1 hour" : "0 seconds");
         return new Fixture(reader, staff, fine);
     }
     private long user() {

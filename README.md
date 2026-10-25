@@ -275,6 +275,8 @@ Database guards validate transitions, amounts and immutable associations, and
 prevent changes to closed fines and final payments. Identical SQL updates skip
 the write itself. Native insert defaults and payment update/settlement timestamps
 use UTC, matching Hibernate's timestamp binding. Applied migrations remain unchanged.
+Creation, update and closure timestamps remain ordered when the JVM and database
+clocks differ.
 
 A direct SQL payment update already holds its payment row: if another transaction
 holds the fine lock, the guard rejects it with a constraint conflict so the command

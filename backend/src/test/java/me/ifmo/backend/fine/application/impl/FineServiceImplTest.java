@@ -1,5 +1,7 @@
 package me.ifmo.backend.fine.application.impl;
 
+import jakarta.persistence.EntityManager;
+
 import me.ifmo.backend.fine.web.request.CancelFineRequest;
 import me.ifmo.backend.fine.web.request.CreateFineRequest;
 import me.ifmo.backend.fine.web.request.FineSearchRequest;
@@ -79,6 +81,7 @@ class FineServiceImplTest {
     private FineMapper fineMapper;
     @Mock private PaymentLocks paymentLocks;
     @Mock private PaymentTransactionRepository paymentTransactionRepository;
+    @Mock private EntityManager entityManager;
 
     @InjectMocks
     private FineServiceImpl service;
