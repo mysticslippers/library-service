@@ -24,6 +24,7 @@ public class PaymentLocks {
         Fine fine = fines.findByIdForUpdate(id).orElseThrow(
                 () -> new ResourceNotFoundException("Fine with id '%s' not found".formatted(id)));
         entityManager.refresh(fine);
+
         return fine;
     }
 
@@ -31,9 +32,11 @@ public class PaymentLocks {
         Long fineId = payments.findFineIdById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Payment transaction with id '%s' not found".formatted(id)));
         fine(fineId);
+
         PaymentTransaction payment = payments.findByIdForUpdate(id).orElseThrow(
                 () -> new ResourceNotFoundException("Payment transaction with id '%s' not found".formatted(id)));
         entityManager.refresh(payment);
+
         return payment;
     }
 }
