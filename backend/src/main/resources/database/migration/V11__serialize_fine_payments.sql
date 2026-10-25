@@ -14,7 +14,7 @@ BEGIN
             IS DISTINCT FROM ROW(OLD.id, OLD.fine_id, OLD.amount, OLD.created_at) THEN
             RAISE EXCEPTION 'Payment identity and amount cannot be changed' USING ERRCODE = '23514';
         END IF;
-        -- Skip the write itself, including timestamp and audit updates, on an identical replay.
+
         IF NEW IS NOT DISTINCT FROM OLD THEN
             RETURN NULL;
         END IF;
@@ -35,11 +35,8 @@ BEGIN
         END IF;
     END IF;
 
-    -- On INSERT this runs before FK checks and unique-index insertion. The lock is
-    -- compatible with FK KEY SHARE and is also the first lock acquired by services.
+
     IF TG_OP = 'UPDATE' THEN
-        -- A direct SQL UPDATE already holds the payment row. Reject an inverted
-        -- lock order instead of deadlocking a service that holds the fine first.
         BEGIN
             SELECT * INTO v_fine FROM fines WHERE id = NEW.fine_id FOR NO KEY UPDATE NOWAIT;
         EXCEPTION WHEN lock_not_available THEN
@@ -59,8 +56,10 @@ BEGIN
         RAISE EXCEPTION 'Fine already has a successful payment' USING ERRCODE = '23514';
     END IF;
 
-    IF TG_OP = 'UPDATE' OR NEW.status <> 'CREATED' THEN
-        NEW.updated_at := timezone('UTC', clock_timestamp());
+    IF TG_OP = 'UPDATE' THEN
+        NEW.updated_at := GREATEST(timezone('UTC', clock_timestamp()), NEW.created_at, OLD.updated_at);
+    ELSIF NEW.status <> 'CREATED' THEN
+        NEW.updated_at := GREATEST(timezone('UTC', clock_timestamp()), NEW.created_at);
     ELSE
         NEW.updated_at := NULL;
     END IF;
@@ -102,6 +101,12 @@ BEGIN
     IF NEW.status = 'PAID' AND NEW.cancellation_reason IS NOT NULL THEN
         RAISE EXCEPTION 'Paid fine cannot have a cancellation reason' USING ERRCODE = '23514';
     END IF;
+
+    IF NEW.status = 'PAID' AND NEW.paid_at IS NOT NULL THEN
+        NEW.paid_at := GREATEST(NEW.paid_at, NEW.created_at);
+    ELSIF NEW.status = 'CANCELLED' AND NEW.cancelled_at IS NOT NULL THEN
+        NEW.cancelled_at := GREATEST(NEW.cancelled_at, NEW.created_at);
+    END IF;
     RETURN NEW;
 END;
 $$;
@@ -119,7 +124,8 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    UPDATE fines SET status = 'PAID', paid_at = timezone('UTC', clock_timestamp())
+    UPDATE fines SET status = 'PAID',
+        paid_at = GREATEST(timezone('UTC', clock_timestamp()), created_at, NEW.created_at, NEW.updated_at)
     WHERE id = NEW.fine_id AND status = 'ACTIVE';
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Successful payment requires an active fine' USING ERRCODE = '23514';
