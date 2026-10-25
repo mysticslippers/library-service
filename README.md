@@ -213,7 +213,19 @@ invert the copy lock order. Copy status/branch guards also protect direct update
 SQL owns copy transitions on creation/closing and reservation consumption. Services
 flush and refresh trigger-managed entities before returning responses. A return's
 requested physical condition is applied after SQL closes the loan, in the same
-transaction. V9 is a new migration; earlier migration files remain unchanged.
+transaction.
+
+V10 validates status changes on existing loans and reservations, freezes their
+reader/copy/branch associations, and prevents changes to closed records. A loan
+can move from `ACTIVE` to `OVERDUE`, `LOST`, `RETURNED` or `CANCELLED`; from
+`OVERDUE` to `LOST`, `RETURNED` or `CANCELLED`; and from `LOST` to `RETURNED`.
+An active reservation can become ready, cancelled or expired; a ready reservation
+can also become `USED`, provided its matching loan exists in the same transaction.
+Renewal must increase both the due date and its counter once while the loan stays
+active. Deadline and library-rule checks remain in the services under the row locks.
+Circulation uses an injectable `Clock`, defaulting to the server's system zone,
+so deadline equality and requests crossing a deadline can be tested deterministically.
+V9 and V10 are new migrations; earlier migration files remain unchanged.
 
 Run backend checks from `backend/`:
 
@@ -235,6 +247,13 @@ and capacity becoming available after rollback.
 automatic selection, independent copies, rollback, status/branch edits, pickup
 against cancellation/expiration, return conditions and direct SQL validation.
 It also covers SQL/service lock ordering and renewal against return.
+
+`CirculationStateIntegrationTest` checks every source status for service commands,
+every pair of database statuses, immutable associations, and overlapping commands
+including renewal/loss/overdue, readiness/cancellation/expiration and repeated commands.
+It uses the real reservation event publisher and transactional outbox: readiness
+creates one committed event, while a rollback or serialization failure leaves no
+event or partial status change. Event delivery to Kafka is outside this test.
 
 ## Email delivery
 
