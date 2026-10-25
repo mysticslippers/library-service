@@ -9,6 +9,7 @@ import me.ifmo.backend.catalog.mapper.MaterialMapper;
 import me.ifmo.backend.catalog.web.request.ChangeMaterialCopyStatusRequest;
 import me.ifmo.backend.catalog.web.request.UpdateMaterialCopyRequest;
 import me.ifmo.backend.circulation.application.CirculationLocks;
+import me.ifmo.backend.circulation.configuration.CirculationTimeConfiguration;
 import me.ifmo.backend.circulation.application.LoanService;
 import me.ifmo.backend.circulation.application.ReservationService;
 import me.ifmo.backend.circulation.integration.ReservationEventPublisher;
@@ -67,7 +68,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({CirculationLocks.class, LoanServiceImpl.class, ReservationServiceImpl.class, MaterialCopyServiceImpl.class,
+@Import({CirculationTimeConfiguration.class, CirculationLocks.class, LoanServiceImpl.class, ReservationServiceImpl.class, MaterialCopyServiceImpl.class,
         LoanMapperImpl.class, ReservationMapperImpl.class, MaterialCopyMapperImpl.class, UserMapperImpl.class,
         RoleMapperImpl.class, BranchMapperImpl.class, LibraryMapperImpl.class, BranchAddressJsonMapper.class,
         CopyCirculationIntegrationTest.JsonConfiguration.class})
@@ -83,7 +84,6 @@ class CopyCirculationIntegrationTest {
     @Autowired private MaterialCopyService copies;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactions;
-    // Only presentation of catalog details and event transport are replaced.
     @MockitoBean private MaterialMapper materialMapper;
     @MockitoBean private ReservationEventPublisher events;
 
