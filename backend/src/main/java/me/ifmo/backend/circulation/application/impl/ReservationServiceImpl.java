@@ -60,6 +60,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -89,6 +90,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final ReservationEventPublisher reservationEventPublisher;
     private final CirculationLocks circulationLocks;
     private final EntityManager entityManager;
+    private final Clock clock;
 
     private String normalize(String value) {
         if (value == null || value.strip().isBlank())
@@ -130,7 +132,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private LibraryRule getActualRule(Long branchId) {
-        return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now()).orElseThrow(
+        return libraryRuleRepository.findActualByBranchIdAndStatus(branchId, LibraryRuleStatus.ACTIVE, LocalDateTime.now(clock)).orElseThrow(
                 () -> new ResourceNotFoundException("Actual library rule for branch with id '%s' not found".formatted(branchId)));
     }
 
@@ -228,7 +230,7 @@ public class ReservationServiceImpl implements ReservationService {
                 || loanRepository.findByCopy_IdAndStatusIn(copy.getId(),
                         Set.of(LoanStatus.ACTIVE, LoanStatus.OVERDUE, LoanStatus.LOST)).isPresent())
             throw new ResourceInUseException("Material copy has active operations");
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime expiresAt = now.plusDays(rule.getReservationTtlDays());
 
         Reservation reservation = reservationMapper.toEntity(user, material, copy, branch, expiresAt);
@@ -264,7 +266,7 @@ public class ReservationServiceImpl implements ReservationService {
             throw new BusinessRuleException("Only active reservation can be cancelled");
 
         reservation.setStatus(ReservationStatus.CANCELLED_BY_USER);
-        reservation.setCancelledAt(LocalDateTime.now());
+        reservation.setCancelledAt(LocalDateTime.now(clock));
         reservation.setCancellationReason(normalize(request.reason()));
 
         Reservation saved = saveTransition(reservation);
@@ -289,7 +291,7 @@ public class ReservationServiceImpl implements ReservationService {
             throw new BusinessRuleException("Only active reservation can be cancelled");
 
         reservation.setStatus(ReservationStatus.CANCELLED_BY_LIBRARIAN);
-        reservation.setCancelledAt(LocalDateTime.now());
+        reservation.setCancelledAt(LocalDateTime.now(clock));
         reservation.setCancellationReason(normalize(request.reason()));
 
         Reservation saved = saveTransition(reservation);
@@ -313,7 +315,7 @@ public class ReservationServiceImpl implements ReservationService {
         if (!ACTIVE_RESERVATION_STATUSES.contains(reservation.getStatus()))
             throw new BusinessRuleException("Only active reservation can be expired");
 
-        if (reservation.getExpiresAt().isAfter(LocalDateTime.now()))
+        if (reservation.getExpiresAt().isAfter(LocalDateTime.now(clock)))
             throw new BusinessRuleException("Reservation has not expired yet");
 
         reservation.setStatus(ReservationStatus.EXPIRED);
@@ -338,14 +340,15 @@ public class ReservationServiceImpl implements ReservationService {
         if (reservation.getStatus() != ReservationStatus.ACTIVE)
             throw new BusinessRuleException("Only active reservation can be marked as ready for pickup");
 
-        if (!reservation.getExpiresAt().isAfter(LocalDateTime.now()))
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (!reservation.getExpiresAt().isAfter(now))
             throw new BusinessRuleException("Expired reservation cannot be marked as ready for pickup");
 
         if (reservation.getCopy().getStatus() != CopyStatus.RESERVED)
             throw new BusinessRuleException("Reserved material copy has invalid status");
 
         reservation.setStatus(ReservationStatus.READY_FOR_PICKUP);
-        reservation.setReadyAt(LocalDateTime.now());
+        reservation.setReadyAt(now);
 
         Reservation saved = saveTransition(reservation);
         reservationEventPublisher.reservationReadyForPickup(actorUserId, saved);
