@@ -227,6 +227,12 @@ Circulation uses an injectable `Clock`, defaulting to the server's system zone,
 so deadline equality and requests crossing a deadline can be tested deterministically.
 V9 and V10 are new migrations; earlier migration files remain unchanged.
 
+Renewal uses the current rules of the loan's branch. Omitting `renewalDays` adds
+the rule's full `renewalPeriodDays`; an explicit value must be between 1 and that
+period. Readers, librarians and administrators have the same bound. Requests
+above it are rejected without changing the loan, copy or audit history. The
+extension is added to the existing due date and consumes one allowed renewal.
+
 Run backend checks from `backend/`:
 
 ```shell
@@ -254,6 +260,8 @@ including renewal/loss/overdue, readiness/cancellation/expiration and repeated c
 It uses the real reservation event publisher and transactional outbox: readiness
 creates one committed event, while a rollback or serialization failure leaves no
 event or partial status change. Event delivery to Kafka is outside this test.
+It also verifies renewal period boundaries for all three roles, current rules
+across branches and rule changes, and denial of another reader's renewal request.
 
 ## Fine payments
 
