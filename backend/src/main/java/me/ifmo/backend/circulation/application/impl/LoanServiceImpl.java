@@ -270,7 +270,7 @@ public class LoanServiceImpl implements LoanService {
         loan.setReturnedAt(LocalDateTime.now(clock));
         Loan saved = repository.saveAndFlush(loan);
         entityManager.refresh(loan.getCopy());
-        // Apply the requested physical condition after SQL has closed the loan and released the copy.
+
         loan.getCopy().setStatus(resultingCopyStatus);
         entityManager.flush();
         entityManager.refresh(loan.getCopy());
@@ -305,9 +305,10 @@ public class LoanServiceImpl implements LoanService {
         if (loan.getRenewalCount() >= rule.getMaxRenewalCount())
             throw new BusinessRuleException("Loan renewal limit has been reached");
 
-        int renewalDays = request.renewalDays() != null ? request.renewalDays() : rule.getRenewalPeriodDays();
-        if (renewalDays <= 0)
-            throw new BusinessRuleException("Renewal days must be positive");
+        int allowedDays = rule.getRenewalPeriodDays();
+        int renewalDays = request.renewalDays() != null ? request.renewalDays() : allowedDays;
+        if (renewalDays <= 0 || renewalDays > allowedDays)
+            throw new BusinessRuleException("Renewal days must be between 1 and %d".formatted(allowedDays));
 
         loan.setDueAt(loan.getDueAt().plusDays(renewalDays));
         loan.setRenewalCount(loan.getRenewalCount() + 1);
