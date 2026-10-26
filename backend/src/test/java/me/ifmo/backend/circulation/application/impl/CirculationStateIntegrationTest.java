@@ -18,21 +18,25 @@ import me.ifmo.backend.circulation.web.request.CancelReservationRequest;
 import me.ifmo.backend.circulation.web.request.CreateLoanRequest;
 import me.ifmo.backend.circulation.web.request.RenewLoanRequest;
 import me.ifmo.backend.circulation.web.request.ReturnLoanRequest;
+import me.ifmo.backend.circulation.web.response.LoanResponse;
 import me.ifmo.backend.library.mapper.BranchAddressJsonMapper;
 import me.ifmo.backend.library.mapper.BranchMapperImpl;
 import me.ifmo.backend.library.mapper.LibraryMapperImpl;
 import me.ifmo.backend.shared.exceptions.ApiException;
+import me.ifmo.backend.shared.exceptions.BusinessRuleException;
 import me.ifmo.backend.shared.messaging.EventEnvelope;
 import me.ifmo.backend.shared.messaging.KafkaMessagingProperties;
 import me.ifmo.backend.shared.messaging.outbox.OutboxService;
 import me.ifmo.backend.user.mapper.RoleMapperImpl;
 import me.ifmo.backend.user.mapper.UserMapperImpl;
+import me.ifmo.backend.user.domain.enums.RoleCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -42,6 +46,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -147,6 +152,76 @@ class CirculationStateIntegrationTest {
             assertThat(loanRow(id)).isEqualTo(before);
             assertThat(copyStatus(f)).isEqualTo(copyBefore);
         }
+    }
+
+    static Stream<Arguments> renewalPeriods() {
+        return Stream.of(RoleCode.READER, RoleCode.LIBRARIAN, RoleCode.ADMIN)
+                .flatMap(role -> Stream.<Integer>of(null, 1, 7, 8, 36500, Integer.MAX_VALUE, 0, -1)
+                        .map(days -> Arguments.of(role, days)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("renewalPeriods")
+    void renewalPeriodIsBoundedByTheRuleForEveryRole(RoleCode role, Integer days) {
+        Fixture f = fixture();
+        long actor = role == RoleCode.READER ? f.reader() : f.staff();
+        jdbc.update("DELETE FROM user_roles WHERE user_id = ?", actor);
+        jdbc.update("INSERT INTO user_roles(user_id, role_id) SELECT ?, id FROM roles WHERE code::text = ?", actor, role.name());
+        long id = loan(f, "ACTIVE", dbNow().plusDays(7), 0);
+        LocalDateTime originalDue = loans.getLoanById(f.reader(), id).dueAt();
+        Map<String, Object> before = loanRow(id), copy = copyRow(f);
+        long audit = audits();
+
+        if (days == null || days > 0 && days <= 7) {
+            LoanResponse renewed = loans.renew(actor, id, new RenewLoanRequest(days));
+            assertThat(renewed.dueAt()).isEqualTo(originalDue.plusDays(days == null ? 7 : days));
+            assertThat(renewed.renewalCount()).isEqualTo(1);
+            assertThat(loanRow(id).get("renewal_count")).isEqualTo(1);
+        } else {
+            assertThatThrownBy(() -> loans.renew(actor, id, new RenewLoanRequest(days)))
+                    .isInstanceOf(BusinessRuleException.class).hasMessage("Renewal days must be between 1 and 7");
+            assertThat(loanRow(id)).isEqualTo(before);
+            assertThat(audits()).isEqualTo(audit);
+        }
+        assertThat(copyRow(f)).isEqualTo(copy);
+    }
+
+    @Test
+    void renewalUsesTheCurrentRuleOfTheLoansBranchForDefaultAndMaximum() {
+        Fixture shortPeriod = fixture(), longPeriod = fixture();
+        jdbc.update("UPDATE library_rules SET renewal_period_days = 3 WHERE branch_id = ?", shortPeriod.branch());
+        jdbc.update("UPDATE library_rules SET renewal_period_days = 10 WHERE branch_id = ?", longPeriod.branch());
+        long shortLoan = loan(shortPeriod, "ACTIVE", dbNow().plusDays(7), 0);
+        long longLoan = loan(longPeriod, "ACTIVE", dbNow().plusDays(7), 0);
+        LocalDateTime shortDue = loans.getLoanById(shortPeriod.reader(), shortLoan).dueAt();
+        LocalDateTime longDue = loans.getLoanById(longPeriod.reader(), longLoan).dueAt();
+
+        assertThatThrownBy(() -> loans.renew(shortPeriod.reader(), shortLoan, new RenewLoanRequest(7)))
+                .isInstanceOf(BusinessRuleException.class).hasMessage("Renewal days must be between 1 and 3");
+        assertThat(loans.renew(shortPeriod.reader(), shortLoan, new RenewLoanRequest(null)).dueAt()).isEqualTo(shortDue.plusDays(3));
+        assertThat(loans.renew(longPeriod.reader(), longLoan, new RenewLoanRequest(7)).dueAt()).isEqualTo(longDue.plusDays(7));
+
+        // Change the current rule between commands: the next default must use it immediately.
+        jdbc.update("UPDATE library_rules SET renewal_period_days = 4 WHERE branch_id = ?", longPeriod.branch());
+        LoanResponse renewed = loans.renew(longPeriod.reader(), longLoan, new RenewLoanRequest(null));
+        assertThat(renewed.dueAt()).isEqualTo(longDue.plusDays(11));
+        assertThat(renewed.renewalCount()).isEqualTo(2);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(ints = {1, 8})
+    void anotherReaderCannotRenewRegardlessOfTheRequestedPeriod(Integer days) {
+        Fixture f = fixture();
+        long otherReader = user();
+        jdbc.update("INSERT INTO user_roles(user_id, role_id) SELECT ?, id FROM roles WHERE code = 'READER'", otherReader);
+        long id = loan(f, "ACTIVE", dbNow().plusDays(7), 0);
+        Map<String, Object> before = loanRow(id), copy = copyRow(f);
+        long audit = audits();
+        assertThatThrownBy(() -> loans.renew(otherReader, id, new RenewLoanRequest(days))).isInstanceOf(AccessDeniedException.class);
+        assertThat(loanRow(id)).isEqualTo(before);
+        assertThat(copyRow(f)).isEqualTo(copy);
+        assertThat(audits()).isEqualTo(audit);
     }
 
     static Stream<Arguments> reservationCommands() {
@@ -648,6 +723,8 @@ class CirculationStateIntegrationTest {
     private void rejected(Outcome result) { assertThat(result.error()).isInstanceOf(ApiException.class); }
     private LocalDateTime dbNow() { return LocalDateTime.ofInstant(time.get(), ZoneOffset.UTC); }
     private Map<String, Object> loanRow(long id) { return jdbc.queryForMap("SELECT * FROM loans WHERE id = ?", id); }
+    private Map<String, Object> copyRow(Fixture f) { return jdbc.queryForMap("SELECT * FROM material_copies WHERE id = ?", f.copy()); }
+    private long audits() { return jdbc.queryForObject("SELECT count(*) FROM audit_logs", Long.class); }
     private Map<String, Object> reservationRow(long id) { return jdbc.queryForMap("SELECT * FROM reservations WHERE id = ?", id); }
     private String loanStatus(long id) { return jdbc.queryForObject("SELECT status::text FROM loans WHERE id = ?", String.class, id); }
     private String reservationStatus(long id) { return jdbc.queryForObject("SELECT status::text FROM reservations WHERE id = ?", String.class, id); }
