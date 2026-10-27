@@ -185,6 +185,22 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    public NotificationResponse createAuth(CreateNotificationRequest request, Long authTokenId, LocalDateTime secretExpiresAt) {
+        if (request.type() != NotificationType.ACCOUNT_ACTIVATION && request.type() != NotificationType.PASSWORD_RECOVERY)
+            throw new BusinessRuleException("Authentication notification type is required");
+
+        if (authTokenId == null || secretExpiresAt == null)
+            throw new BusinessRuleException("Authentication notification requires its token and expiration");
+
+        NotificationResponse response = create(request);
+        Notification notification = repository.findById(response.id()).orElseThrow();
+        notification.setAuthTokenId(authTokenId);
+        notification.setSecretExpiresAt(secretExpiresAt);
+        return response;
+    }
+
+    @Override
+    @Transactional
     public NotificationResponse create(CreateNotificationRequest request) {
         User user = userRepository.findById(request.userId()).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(request.userId())));
@@ -287,6 +303,9 @@ public class NotificationServiceImpl implements NotificationService {
 
         Notification notification = repository.findByIdForUpdate(id).orElseThrow(
                 () -> new ResourceNotFoundException("Notification with id '%s' not found".formatted(id)));
+
+        if (notification.getType() == NotificationType.ACCOUNT_ACTIVATION || notification.getType() == NotificationType.PASSWORD_RECOVERY)
+            throw new BusinessRuleException("Request a new authentication message through the authentication endpoints");
 
         if (notification.getStatus() != NotificationStatus.FAILED && notification.getStatus() != NotificationStatus.UNDELIVERED)
             throw new BusinessRuleException("Only failed or undelivered notification can be resent");
