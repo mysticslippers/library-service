@@ -26,6 +26,9 @@ import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
 import me.ifmo.backend.authentication.security.JwtService;
 import me.ifmo.backend.notification.application.NotificationService;
+import me.ifmo.backend.authentication.protection.AuthRequestLimiter;
+import me.ifmo.backend.authentication.protection.AuthPasswordVerifier;
+import me.ifmo.backend.authentication.protection.RegistrationStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -74,6 +77,9 @@ class AuthServiceImplTest {
     private JwtService jwtService;
     @Mock
     private NotificationService notificationService;
+    @Mock private AuthRequestLimiter requestLimiter;
+    @Mock private AuthPasswordVerifier passwordVerifier;
+    @Mock private RegistrationStore registrationStore;
 
     @InjectMocks
     private AuthServiceImpl service;
@@ -109,18 +115,16 @@ class AuthServiceImplTest {
         User user = User.builder().id(USER_ID).build();
         Role readerRole = Role.builder().id(10L).code(RoleCode.READER).build();
 
-        when(userRepository.existsByEmail("reader@example.com")).thenReturn(false);
-        when(userRepository.existsByPhone("+79991234567")).thenReturn(false);
         when(userMapper.toEntity(any(RegisterRequest.class))).thenReturn(user);
         when(passwordEncoder.encode("password1")).thenReturn("encoded-password");
-        when(userRepository.save(user)).thenReturn(user);
+        when(registrationStore.insertIfAbsent(user)).thenReturn(Optional.of(user));
         when(roleRepository.findByCode(RoleCode.READER)).thenReturn(Optional.of(readerRole));
         when(authTokenRepository.findByUser_IdAndTypeAndUsedAtIsNull(USER_ID, AuthTokenType.ACCOUNT_ACTIVATION)).thenReturn(List.of());
         when(authTokenRepository.save(any(AuthToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = service.register(request);
 
-        assertThat(result.message()).contains("Registration created");
+        assertThat(result.message()).isEqualTo(AuthServiceImpl.AUTH_INSTRUCTIONS_MESSAGE);
         assertThat(user.getPasswordHash()).isEqualTo("encoded-password");
         assertThat(user.getStatus()).isEqualTo(UserStatus.PENDING_ACTIVATION);
         assertThat(user.getFailedLoginAttempts()).isZero();
@@ -140,7 +144,7 @@ class AuthServiceImplTest {
 
         ArgumentCaptor<CreateNotificationRequest> notification =
                 ArgumentCaptor.forClass(CreateNotificationRequest.class);
-        verify(notificationService).create(notification.capture());
+        verify(notificationService).createAuth(notification.capture(), any(), any());
         assertThat(notification.getValue().userId()).isEqualTo(USER_ID);
         assertThat(notification.getValue().type()).isEqualTo(NotificationType.ACCOUNT_ACTIVATION);
         assertThat(notification.getValue().channel()).isEqualTo(NotificationChannel.EMAIL);
@@ -175,7 +179,7 @@ class AuthServiceImplTest {
         UserProfileResponse profile = org.mockito.Mockito.mock(UserProfileResponse.class);
 
         when(userRepository.findByEmailForUpdate("reader@example.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("password1", "encoded-password")).thenReturn(true);
+        when(passwordVerifier.matches("password1", "encoded-password")).thenReturn(true);
         when(userRepository.save(user)).thenReturn(user);
         when(userRoleRepository.findRoleCodesByUser_Id(USER_ID)).thenReturn(List.of(RoleCode.READER));
         when(jwtService.generate(eq(user), anyList())).thenReturn("jwt-token");
@@ -201,7 +205,7 @@ class AuthServiceImplTest {
         user.setFailedLoginAttempts((short) 4);
 
         when(userRepository.findByEmailForUpdate("reader@example.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
+        when(passwordVerifier.matches("wrong-password", "encoded-password")).thenReturn(false);
         when(userRepository.save(user)).thenReturn(user);
 
         LocalDateTime before = LocalDateTime.now();
@@ -214,16 +218,16 @@ class AuthServiceImplTest {
     }
 
     @Test
-    @DisplayName("Rejects login while user is temporarily locked")
-    void loginRejectsTemporarilyLockedUserBeforePasswordCheck() {
+    @DisplayName("Rejects locked account with the same credentials error")
+    void loginRejectsTemporarilyLockedUserWithGenericError() {
         User user = activeUser();
         user.setLockedUntil(LocalDateTime.now().plusMinutes(5));
         when(userRepository.findByEmailForUpdate("reader@example.com")).thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> service.login(new LoginRequest("reader@example.com", "password1")))
-                .isInstanceOf(BusinessRuleException.class).hasMessage("User is temporarily locked");
+                .isInstanceOf(BusinessRuleException.class).hasMessage("Invalid email or password");
 
-        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(passwordVerifier).matches("password1", "encoded-password");
         verify(userRepository, never()).save(any());
     }
 
@@ -353,7 +357,7 @@ class AuthServiceImplTest {
         assertThat(result.message()).contains("sent");
         assertThat(previousToken.getUsedAt()).isAfterOrEqualTo(before);
         ArgumentCaptor<CreateNotificationRequest> notification = ArgumentCaptor.forClass(CreateNotificationRequest.class);
-        verify(notificationService).create(notification.capture());
+        verify(notificationService).createAuth(notification.capture(), any(), any());
         assertThat(notification.getValue().type()).isEqualTo(NotificationType.ACCOUNT_ACTIVATION);
         assertThat(notification.getValue().channel()).isEqualTo(NotificationChannel.EMAIL);
     }
@@ -370,7 +374,7 @@ class AuthServiceImplTest {
 
         assertThat(result.message()).contains("sent");
         ArgumentCaptor<CreateNotificationRequest> notification = ArgumentCaptor.forClass(CreateNotificationRequest.class);
-        verify(notificationService).create(notification.capture());
+        verify(notificationService).createAuth(notification.capture(), any(), any());
         assertThat(notification.getValue().type()).isEqualTo(NotificationType.PASSWORD_RECOVERY);
         assertThat(notification.getValue().channel()).isEqualTo(NotificationChannel.EMAIL);
     }
