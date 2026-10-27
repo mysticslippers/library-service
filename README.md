@@ -73,7 +73,7 @@ The main goal of the project is to automate common library workflows and provide
 
 The system follows a client-server architecture with a centralized backend API.
 
-The main backend service is implemented as a Java Spring REST API. It communicates with PostgreSQL for persistent storage, Redis for caching and rate limiting, Apache Kafka for asynchronous event streaming, and external services for payments and notifications.
+The main backend service is implemented as a Java Spring REST API. It communicates with PostgreSQL for persistent storage and shared authentication quotas, Redis for catalog caching, Apache Kafka for asynchronous event streaming, and external services for payments and notifications.
 
 <details>
 <summary><b>Context Diagram</b></summary>
@@ -525,3 +525,74 @@ SMS_RU_TEST_MODE=true
 
 Optional settings include `SMS_RU_SENDER`, `SMS_RU_CONNECT_TIMEOUT`, and
 `SMS_RU_READ_TIMEOUT`. The sender name must be approved by SMS.RU before use.
+
+## Public authentication protection
+
+Flyway migration `V12__protect_public_auth.sql` adds shared PostgreSQL quotas and
+retention metadata for authentication notifications. Restart the backend to apply
+it before using the updated authentication code.
+
+Every public authentication POST command has an IP quota, including malformed
+JSON and invalid DTOs. Valid commands also consume a quota for the normalized
+email, or the submitted code for activation/reset. Registration additionally
+limits equivalent `8…` / `+7…` phone numbers. Defaults are fixed windows:
+
+| Command | Per IP | Per email/code | Window |
+| --- | ---: | ---: | --- |
+| `login` | 60 | 20 | 15 minutes |
+| `register` | 10 | 3 | 1 hour |
+| `password-recovery` | 20 | 3 | 1 hour |
+| `resend-activation` | 20 | 3 | 1 hour |
+| `activate` | 30 | 10 | 15 minutes |
+| `password-reset` | 30 | 10 | 15 minutes |
+
+Registration, recovery and activation resend also share a budget of **3 attempts
+per email per hour**, including unknown accounts. Exceeding a quota returns `429`
+with `Retry-After`; unavailable quota storage returns a generic `503` and does
+not run the command. Counters commit independently of the business transaction,
+so failed login/code attempts still count. All backend replicas must use the same
+database and `AUTH_RATE_LIMIT_KEY` (at least 32 UTF-8 bytes; defaults to `JWT_SECRET`).
+Quota keys are HMAC digests rather than raw contacts, IP addresses or codes.
+Quota commits use a separate pool of at most two database connections per replica,
+with a two-second connection/query timeout, so business transactions holding the
+main pool cannot deadlock while waiting to record their authentication attempts.
+
+The `AUTH_<COMMAND>_IP_LIMIT`, `AUTH_<COMMAND>_ACCOUNT_LIMIT` and
+`AUTH_<COMMAND>_WINDOW` variables configure login/register/recovery/resend.
+Activation/reset use `AUTH_ACTIVATE_TOKEN_LIMIT` / `AUTH_RESET_TOKEN_LIMIT`
+instead of an account limit. `AUTH_MAIL_ACCOUNT_LIMIT` and `AUTH_MAIL_WINDOW`
+configure the shared email budget. Redis cache eviction cannot reset these limits.
+
+Registration returns the same `201` message for a new account and duplicate
+email/phone. Recovery and activation resend return the same `200` message for
+eligible, ineligible and missing accounts. Login uses one credentials error for
+missing, inactive and locked accounts and still performs BCrypt work for missing
+accounts. New registration/reset passwords are limited to **72 UTF-8 bytes**.
+Responses are marked `Cache-Control: no-store`, buffered until at least
+`AUTH_MINIMUM_RESPONSE_TIME` (default `400ms`, after transaction completion), and
+request bodies are limited by `AUTH_MAX_REQUEST_BYTES` (default `16384`). This
+reduces timing differences; it does not guarantee constant response times under load.
+
+Forwarded headers are not trusted by default (`server.forward-headers-strategy:
+none`). If using Nginx, set `AUTH_TRUSTED_PROXIES` to the explicit proxy IP/CIDR
+list and have that proxy **overwrite** `X-Real-IP` with `$remote_addr`. Only that
+header from an allowed direct peer is used; `X-Forwarded-For` is ignored. Keep the
+backend behind the proxy and share the HMAC key across replicas. Use consistent
+JVM time zones across replicas, preferably UTC; Hibernate stores timestamps in UTC.
+
+The retention job runs every `AUTH_CLEANUP_INTERVAL_MS` (default `60000`) using
+bounded batches and row locks safe for multiple replicas. Defaults:
+
+- Delete auth codes **24 hours after use or expiry** (`AUTH_TOKEN_RETENTION`).
+- Scrub secret notification bodies, subjects and delivery errors after code
+  use/expiry or a maximum message age of **24 hours**
+  (`AUTH_SECRET_BODY_RETENTION`). Notification history and IDs remain.
+- Preserve fresh in-flight deliveries. Expired stale deliveries become `UNKNOWN`
+  and are not automatically retried. Pending expired/used messages are not claimed.
+- Authentication messages cannot be manually requeued through the general
+  notification resend endpoint; request a fresh code through authentication instead.
+
+`AUTH_CLEANUP_BATCH_SIZE` defaults to `100`; `AUTH_CLEANUP_ENABLED` defaults to
+`true`. Cleanup is eventual, with delay depending on the interval and backlog.
+Active codes remain plaintext in `auth_tokens` and message bodies for delivery;
+this change bounds their retention and does not add encryption or hashing at rest.
