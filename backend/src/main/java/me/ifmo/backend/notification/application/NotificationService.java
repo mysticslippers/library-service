@@ -6,10 +6,13 @@ import me.ifmo.backend.notification.web.request.NotificationSearchRequest;
 import me.ifmo.backend.notification.web.request.UpdateNotificationStatusRequest;
 import me.ifmo.backend.notification.web.response.NotificationResponse;
 import org.springframework.data.domain.Pageable;
+import java.time.LocalDateTime;
 
 public interface NotificationService {
 
     NotificationResponse create(CreateNotificationRequest request);
+
+    NotificationResponse createAuth(CreateNotificationRequest request, Long authTokenId, LocalDateTime secretExpiresAt);
 
     NotificationResponse getNotificationById(Long actorUserId, Long id);
 
