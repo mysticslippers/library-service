@@ -1,8 +1,10 @@
 package me.ifmo.backend.authentication.exception;
 
+import lombok.Getter;
 import me.ifmo.backend.shared.exceptions.ApiException;
 import org.springframework.http.HttpStatus;
 
+@Getter
 public class AuthRateLimitExceededException extends ApiException {
 
     private final long retryAfter;
@@ -14,7 +16,4 @@ public class AuthRateLimitExceededException extends ApiException {
         this.retryAfter = Math.max(1, retryAfter);
     }
 
-    public long getRetryAfter() {
-        return retryAfter;
-    }
 }
