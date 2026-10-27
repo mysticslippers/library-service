@@ -58,7 +58,7 @@ public class AuthToken {
     public String toString() {
         return "AuthToken{"
                 + "id=" + id
-                + ", user=" + user
+                + ", userId=" + (user != null ? user.getId() : null)
                 + ", type=" + type
                 + ", expiresAt=" + expiresAt
                 + ", usedAt=" + usedAt
