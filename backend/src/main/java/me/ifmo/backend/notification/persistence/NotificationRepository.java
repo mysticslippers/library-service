@@ -18,8 +18,14 @@ import java.util.Optional;
 public interface NotificationRepository extends JpaRepository<Notification, Long>, JpaSpecificationExecutor<Notification> {
 
     @Query(value = """
-            SELECT * FROM notifications
+            SELECT * FROM notifications n
             WHERE status = 'PENDING' AND attempt_count < :maxAttempts
+                AND secret_purged_at IS NULL
+                AND (type NOT IN ('ACCOUNT_ACTIVATION', 'PASSWORD_RECOVERY')
+                    OR (secret_expires_at > timezone('UTC', clock_timestamp())
+                        AND (auth_token_id IS NULL OR EXISTS (
+                            SELECT 1 FROM auth_tokens t WHERE t.id = n.auth_token_id
+                                AND t.used_at IS NULL AND t.expires_at > timezone('UTC', clock_timestamp())))))
             ORDER BY created_at, id
             LIMIT 1
             FOR UPDATE SKIP LOCKED
