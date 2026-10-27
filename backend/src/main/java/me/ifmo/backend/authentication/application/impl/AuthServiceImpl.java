@@ -1,6 +1,15 @@
 package me.ifmo.backend.authentication.application.impl;
 
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.authentication.application.AuthService;
+import me.ifmo.backend.authentication.domain.AuthToken;
+import me.ifmo.backend.authentication.domain.enums.AuthTokenType;
+import me.ifmo.backend.authentication.persistence.AuthTokenRepository;
+import me.ifmo.backend.authentication.persistence.RegistrationStore;
+import me.ifmo.backend.authentication.security.AuthPasswordVerifier;
+import me.ifmo.backend.authentication.security.JwtService;
+import me.ifmo.backend.authentication.security.ratelimit.AuthAction;
+import me.ifmo.backend.authentication.security.ratelimit.AuthRequestLimiter;
 import me.ifmo.backend.authentication.web.request.ActivateAccountRequest;
 import me.ifmo.backend.authentication.web.request.LoginRequest;
 import me.ifmo.backend.authentication.web.request.PasswordRecoveryRequest;
@@ -9,35 +18,30 @@ import me.ifmo.backend.authentication.web.request.RegisterRequest;
 import me.ifmo.backend.authentication.web.request.ResendActivationRequest;
 import me.ifmo.backend.authentication.web.response.AuthMessageResponse;
 import me.ifmo.backend.authentication.web.response.AuthResponse;
+import me.ifmo.backend.notification.application.NotificationService;
+import me.ifmo.backend.notification.domain.enums.NotificationChannel;
+import me.ifmo.backend.notification.domain.enums.NotificationType;
 import me.ifmo.backend.notification.web.request.CreateNotificationRequest;
+import me.ifmo.backend.shared.exceptions.BusinessRuleException;
 import me.ifmo.backend.shared.exceptions.InvalidCredentialsException;
-import me.ifmo.backend.user.web.response.UserProfileResponse;
-import me.ifmo.backend.authentication.domain.AuthToken;
+import me.ifmo.backend.shared.exceptions.ResourceNotFoundException;
 import me.ifmo.backend.user.domain.Role;
 import me.ifmo.backend.user.domain.User;
 import me.ifmo.backend.user.domain.UserRole;
-import me.ifmo.backend.authentication.domain.enums.AuthTokenType;
-import me.ifmo.backend.notification.domain.enums.NotificationChannel;
-import me.ifmo.backend.notification.domain.enums.NotificationType;
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserStatus;
 import me.ifmo.backend.user.domain.id.UserRoleId;
-import me.ifmo.backend.shared.exceptions.BusinessRuleException;
-import me.ifmo.backend.shared.exceptions.DuplicateResourceException;
-import me.ifmo.backend.shared.exceptions.ResourceNotFoundException;
 import me.ifmo.backend.user.mapper.UserMapper;
-import me.ifmo.backend.authentication.persistence.AuthTokenRepository;
 import me.ifmo.backend.user.persistence.RoleRepository;
 import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
-import me.ifmo.backend.authentication.application.AuthService;
-import me.ifmo.backend.authentication.security.JwtService;
-import me.ifmo.backend.notification.application.NotificationService;
+import me.ifmo.backend.user.web.response.UserProfileResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -50,6 +54,7 @@ public class AuthServiceImpl implements AuthService {
 
     private static final short MAX_FAILED_ATTEMPTS = 5;
     private static final long LOCK_MINUTES = 15;
+    public static final String AUTH_INSTRUCTIONS_MESSAGE = "If the account is eligible, instructions will be sent.";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -59,6 +64,9 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final NotificationService notificationService;
+    private final AuthRequestLimiter requestLimiter;
+    private final AuthPasswordVerifier passwordVerifier;
+    private final RegistrationStore registrationStore;
 
     @Value("${security.auth.activation-token-expiration-minutes:1440}")
     private long activationTokenExpirationMinutes;
@@ -102,7 +110,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private AuthToken createToken(User user, AuthTokenType type, long expirationMinutes) {
-        // The caller holds the user row lock, or has just inserted this user in the same transaction.
         LocalDateTime now = LocalDateTime.now();
         authTokenRepository.findByUser_IdAndTypeAndUsedAtIsNull(user.getId(), type)
                 .forEach(token -> token.setUsedAt(now));
@@ -118,13 +125,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private LockedAuthToken findValidTokenForUpdate(String tokenValue, AuthTokenType type) {
-        // A scalar lookup avoids caching an unused token before waiting for the user row lock.
         Long userId = authTokenRepository.findUserIdByTokenAndType(tokenValue, type).orElseThrow(
                 () -> new BusinessRuleException("Invalid or expired token"));
         User user = userRepository.findByIdForUpdate(userId).orElseThrow(
                 () -> new BusinessRuleException("Invalid or expired token"));
 
-        // Consumption and reissue always lock the user before reading or updating tokens.
         AuthToken token = authTokenRepository.findByTokenAndType(tokenValue, type).orElseThrow(
                 () -> new BusinessRuleException("Invalid or expired token"));
 
@@ -137,8 +142,8 @@ public class AuthServiceImpl implements AuthService {
 
     private record LockedAuthToken(User user, AuthToken token) {}
 
-    private void sendActivationEmail(User user, String token) {
-        notificationService.create(new CreateNotificationRequest(
+    private void sendActivationEmail(User user, AuthToken token) {
+        notificationService.createAuth(new CreateNotificationRequest(
                 user.getId(),
                 null,
                 null,
@@ -146,12 +151,12 @@ public class AuthServiceImpl implements AuthService {
                 NotificationType.ACCOUNT_ACTIVATION,
                 NotificationChannel.EMAIL,
                 "Library account activation",
-                "Use this activation code to confirm your account: %s".formatted(token)
-        ));
+                "Use this activation code to confirm your account: %s".formatted(token.getToken())
+        ), token.getId(), token.getExpiresAt());
     }
 
-    private void sendPasswordRecoveryEmail(User user, String token) {
-        notificationService.create(new CreateNotificationRequest(
+    private void sendPasswordRecoveryEmail(User user, AuthToken token) {
+        notificationService.createAuth(new CreateNotificationRequest(
                 user.getId(),
                 null,
                 null,
@@ -159,8 +164,8 @@ public class AuthServiceImpl implements AuthService {
                 NotificationType.PASSWORD_RECOVERY,
                 NotificationChannel.EMAIL,
                 "Library password recovery",
-                "Use this password recovery code to reset your password: %s".formatted(token)
-        ));
+                "Use this password recovery code to reset your password: %s".formatted(token.getToken())
+        ), token.getId(), token.getExpiresAt());
     }
 
     private void rejectInvalidCredentials(User user) {
@@ -177,10 +182,15 @@ public class AuthServiceImpl implements AuthService {
 
     private void validate(User user) {
         if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now()))
-            throw new BusinessRuleException("User is temporarily locked");
+            throw new InvalidCredentialsException();
 
         if (user.getStatus() != UserStatus.ACTIVE)
-            throw new BusinessRuleException("User account is not active");
+            throw new InvalidCredentialsException();
+    }
+
+    private void validatePasswordLength(String password) {
+        if (password.getBytes(StandardCharsets.UTF_8).length > 72)
+            throw new BusinessRuleException("Password must not exceed 72 UTF-8 bytes");
     }
 
     @Override
@@ -194,12 +204,9 @@ public class AuthServiceImpl implements AuthService {
         String firstName = normalize(request.firstName(), "First name");
         String lastName = normalize(request.lastName(), "Last name");
         String middleName = normalize(request.middleName(), "Middle name");
-
-        if (userRepository.existsByEmail(email))
-            throw new DuplicateResourceException("User with email '%s' already exists".formatted(email));
-
-        if (userRepository.existsByPhone(phone))
-            throw new DuplicateResourceException("User with phone '%s' already exists".formatted(phone));
+        requestLimiter.account(AuthAction.REGISTER, email);
+        requestLimiter.registrationPhone(phone);
+        validatePasswordLength(request.password());
 
         User user = userMapper.toEntity(new RegisterRequest(email, phone, request.password(), request.passwordConfirmation(),
                 firstName, lastName, middleName));
@@ -210,25 +217,26 @@ public class AuthServiceImpl implements AuthService {
         user.setFailedLoginAttempts((short) 0);
         user.setLockedUntil(null);
 
-        User saved = userRepository.save(user);
+        User saved = registrationStore.insertIfAbsent(user).orElse(null);
+        if (saved == null) return new AuthMessageResponse(AUTH_INSTRUCTIONS_MESSAGE);
         assignDefaultReaderRole(saved);
         AuthToken token = createToken(saved, AuthTokenType.ACCOUNT_ACTIVATION, activationTokenExpirationMinutes);
-        sendActivationEmail(saved, token.getToken());
+        sendActivationEmail(saved, token);
 
-        return new AuthMessageResponse("Registration created. Check email for account activation code.");
+        return new AuthMessageResponse(AUTH_INSTRUCTIONS_MESSAGE);
     }
 
     @Override
     @Transactional(noRollbackFor = InvalidCredentialsException.class)
     public AuthResponse login(LoginRequest request) {
         String email = normalize(request.email(), "Email");
-
-        User user = userRepository.findByEmailForUpdate(email)
-                .orElseThrow(InvalidCredentialsException::new);
-
+        requestLimiter.account(AuthAction.LOGIN, email);
+        User user = userRepository.findByEmailForUpdate(email).orElse(null);
+        boolean passwordMatches = passwordVerifier.matches(request.password(), user == null ? null : user.getPasswordHash());
+        if (user == null) throw new InvalidCredentialsException();
         validate(user);
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash()))
+        if (!passwordMatches)
             rejectInvalidCredentials(user);
 
         user.setFailedLoginAttempts((short) 0);
@@ -243,6 +251,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthMessageResponse activate(ActivateAccountRequest request) {
+        requestLimiter.account(AuthAction.ACTIVATE, request.token());
         LockedAuthToken locked = findValidTokenForUpdate(request.token(), AuthTokenType.ACCOUNT_ACTIVATION);
         User user = locked.user();
         AuthToken token = locked.token();
@@ -267,39 +276,40 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthMessageResponse resendActivation(ResendActivationRequest request) {
         String email = normalize(request.email(), "Email");
-        User user = userRepository.findByEmailForUpdate(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User with email '%s' not found".formatted(email)));
-
-        if (user.getStatus() != UserStatus.PENDING_ACTIVATION)
-            throw new BusinessRuleException("Activation can be resent only for pending accounts");
+        requestLimiter.account(AuthAction.RESEND, email);
+        User user = userRepository.findByEmailForUpdate(email).orElse(null);
+        if (user == null || user.getStatus() != UserStatus.PENDING_ACTIVATION)
+            return new AuthMessageResponse(AUTH_INSTRUCTIONS_MESSAGE);
 
         AuthToken token = createToken(user, AuthTokenType.ACCOUNT_ACTIVATION, activationTokenExpirationMinutes);
-        sendActivationEmail(user, token.getToken());
+        sendActivationEmail(user, token);
 
-        return new AuthMessageResponse("Activation email has been sent.");
+        return new AuthMessageResponse(AUTH_INSTRUCTIONS_MESSAGE);
     }
 
     @Override
     @Transactional
     public AuthMessageResponse requestPasswordRecovery(PasswordRecoveryRequest request) {
         String email = normalize(request.email(), "Email");
-        User user = userRepository.findByEmailForUpdate(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User with email '%s' not found".formatted(email)));
-
-        if (user.getStatus() == UserStatus.ARCHIVED)
-            throw new BusinessRuleException("Password recovery is not available for archived accounts");
+        requestLimiter.account(AuthAction.RECOVERY, email);
+        User user = userRepository.findByEmailForUpdate(email).orElse(null);
+        if (user == null || user.getStatus() == UserStatus.ARCHIVED)
+            return new AuthMessageResponse(AUTH_INSTRUCTIONS_MESSAGE);
 
         AuthToken token = createToken(user, AuthTokenType.PASSWORD_RESET, passwordResetTokenExpirationMinutes);
-        sendPasswordRecoveryEmail(user, token.getToken());
+        sendPasswordRecoveryEmail(user, token);
 
-        return new AuthMessageResponse("Password recovery email has been sent.");
+        return new AuthMessageResponse(AUTH_INSTRUCTIONS_MESSAGE);
     }
 
     @Override
     @Transactional
     public AuthMessageResponse resetPassword(PasswordResetRequest request) {
+        requestLimiter.account(AuthAction.RESET, request.token());
         if (!request.newPassword().equals(request.newPasswordConfirmation()))
             throw new BusinessRuleException("Password confirmation does not match");
+
+        validatePasswordLength(request.newPassword());
 
         LockedAuthToken locked = findValidTokenForUpdate(request.token(), AuthTokenType.PASSWORD_RESET);
         User user = locked.user();
