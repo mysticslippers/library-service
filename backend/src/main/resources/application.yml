@@ -101,6 +101,7 @@ spring:
 
 server:
   port: ${SERVER_PORT}
+  forward-headers-strategy: none
 
 logging:
   pattern:
@@ -147,6 +148,42 @@ security:
   auth:
     activation-token-expiration-minutes: ${AUTH_ACTIVATION_TOKEN_EXPIRATION_MINUTES:1440}
     password-reset-token-expiration-minutes: ${AUTH_PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES:60}
+    protection:
+      key: ${AUTH_RATE_LIMIT_KEY:${security.jwt.secret}}
+      trusted-proxies: ${AUTH_TRUSTED_PROXIES:}
+      minimum-response-time: ${AUTH_MINIMUM_RESPONSE_TIME:400ms}
+      max-request-bytes: ${AUTH_MAX_REQUEST_BYTES:16384}
+      login:
+        ip: ${AUTH_LOGIN_IP_LIMIT:60}
+        account: ${AUTH_LOGIN_ACCOUNT_LIMIT:20}
+        window: ${AUTH_LOGIN_WINDOW:15m}
+      register:
+        ip: ${AUTH_REGISTER_IP_LIMIT:10}
+        account: ${AUTH_REGISTER_ACCOUNT_LIMIT:3}
+        window: ${AUTH_REGISTER_WINDOW:1h}
+      recovery:
+        ip: ${AUTH_RECOVERY_IP_LIMIT:20}
+        account: ${AUTH_RECOVERY_ACCOUNT_LIMIT:3}
+        window: ${AUTH_RECOVERY_WINDOW:1h}
+      resend:
+        ip: ${AUTH_RESEND_IP_LIMIT:20}
+        account: ${AUTH_RESEND_ACCOUNT_LIMIT:3}
+        window: ${AUTH_RESEND_WINDOW:1h}
+      activate:
+        ip: ${AUTH_ACTIVATE_IP_LIMIT:30}
+        account: ${AUTH_ACTIVATE_TOKEN_LIMIT:10}
+        window: ${AUTH_ACTIVATE_WINDOW:15m}
+      reset:
+        ip: ${AUTH_RESET_IP_LIMIT:30}
+        account: ${AUTH_RESET_TOKEN_LIMIT:10}
+        window: ${AUTH_RESET_WINDOW:15m}
+      mail-account-limit: ${AUTH_MAIL_ACCOUNT_LIMIT:3}
+      mail-window: ${AUTH_MAIL_WINDOW:1h}
+      token-retention: ${AUTH_TOKEN_RETENTION:24h}
+      secret-body-retention: ${AUTH_SECRET_BODY_RETENTION:24h}
+      cleanup-enabled: ${AUTH_CLEANUP_ENABLED:true}
+      cleanup-interval-ms: ${AUTH_CLEANUP_INTERVAL_MS:60000}
+      cleanup-batch-size: ${AUTH_CLEANUP_BATCH_SIZE:100}
 
 notification:
   delivery:
