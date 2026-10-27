@@ -1,6 +1,12 @@
 package me.ifmo.backend.authentication.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import me.ifmo.backend.authentication.configuration.AuthProtectionProperties;
+import me.ifmo.backend.authentication.security.ratelimit.AuthRequestLimiter;
+import me.ifmo.backend.authentication.web.filter.AuthRateLimitFilter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -26,10 +32,25 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
+    private final AuthRequestLimiter authRequestLimiter;
+    private final AuthClientAddress authClientAddress;
+    private final AuthProtectionProperties authProtectionProperties;
+    private final ObjectMapper objectMapper;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, HandlerMappingIntrospector introspector) throws Exception {
-        MvcRequestMatcher.Builder mvc = new MvcRequestMatcher.Builder(introspector).servletPath("/api");
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration() {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(jwtAuthenticationFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, HandlerMappingIntrospector introspector, @Value("${spring.mvc.servlet.path:/}") String servletPath) throws Exception {
+        MvcRequestMatcher.Builder mvc = new MvcRequestMatcher.Builder(introspector);
+
+        if (!servletPath.isBlank() && !servletPath.equals("/")) mvc.servletPath(servletPath);
+        AuthRateLimitFilter authLimits = new AuthRateLimitFilter(authRequestLimiter, authClientAddress,
+                authProtectionProperties, objectMapper, mvc);
 
         return http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -55,6 +76,7 @@ public class SecurityConfig {
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(authLimits, JwtAuthenticationFilter.class)
                 .build();
     }
 
