@@ -2,6 +2,11 @@ package me.ifmo.backend.authentication.application.impl;
 
 import jakarta.persistence.EntityManager;
 import me.ifmo.backend.authentication.application.AuthService;
+import me.ifmo.backend.authentication.protection.AuthProtectionConfiguration;
+import me.ifmo.backend.authentication.protection.AuthRequestLimiter;
+import me.ifmo.backend.authentication.protection.AuthRateLimitStore;
+import me.ifmo.backend.authentication.protection.AuthPasswordVerifier;
+import me.ifmo.backend.authentication.protection.RegistrationStore;
 import me.ifmo.backend.authentication.domain.enums.AuthTokenType;
 import me.ifmo.backend.authentication.security.JwtService;
 import me.ifmo.backend.authentication.security.JwtServiceImpl;
@@ -68,6 +73,8 @@ import static org.mockito.Mockito.doThrow;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 @Import({AuthServiceImpl.class, JwtServiceImpl.class, UserMapperImpl.class, RoleMapperImpl.class,
+        AuthProtectionConfiguration.class, AuthRequestLimiter.class, AuthRateLimitStore.class,
+        AuthPasswordVerifier.class, RegistrationStore.class,
         AuthConcurrencyIntegrationTest.PasswordConfiguration.class})
 @Testcontainers(disabledWithoutDocker = true)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -113,7 +120,7 @@ class AuthConcurrencyIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT locked_until IS NOT NULL FROM users WHERE id = ?",
                 Boolean.class, account.id())).isTrue();
         assertThatThrownBy(() -> login(account, OLD_PASSWORD))
-                .isInstanceOf(BusinessRuleException.class).hasMessage("User is temporarily locked");
+                .isInstanceOf(BusinessRuleException.class).hasMessage("Invalid email or password");
         assertThat(attempts(account)).isEqualTo(5);
         assertThat(lastLogin(account)).isNull();
     }
@@ -142,7 +149,7 @@ class AuthConcurrencyIntegrationTest {
 
         assertInvalid(outcomes.first());
         assertThat(outcomes.second().error()).isInstanceOf(BusinessRuleException.class)
-                .hasMessage("User is temporarily locked");
+                .hasMessage("Invalid email or password");
         assertThat(outcomes.second().result()).isNull();
         assertThat(attempts(account)).isEqualTo(5);
         assertThat(lastLogin(account)).isNull();
@@ -217,7 +224,7 @@ class AuthConcurrencyIntegrationTest {
 
         assertThat(outcomes.first().error()).isNull();
         assertThat(outcomes.second().error()).isInstanceOf(BusinessRuleException.class)
-                .hasMessage("User account is not active");
+                .hasMessage("Invalid email or password");
         assertThat(jdbc.queryForObject("SELECT status::text FROM users WHERE id = ?", String.class,
                 account.id())).isEqualTo("BLOCKED");
         assertThat(attempts(account)).isZero();
@@ -325,13 +332,15 @@ class AuthConcurrencyIntegrationTest {
             entityManager.flush();
             pause.hold();
             return result;
-        }, () -> issueCode(account, type), pause, true);
+        }, () -> type == AuthTokenType.ACCOUNT_ACTIVATION
+                ? auth.resendActivation(new ResendActivationRequest(account.email())) : issueCode(account, type), pause, true);
 
         assertThat(outcomes.first().error()).isNull();
         assertThat(codeUsed(oldCode)).isTrue();
         if (type == AuthTokenType.ACCOUNT_ACTIVATION) {
-            assertThat(outcomes.second().error()).isInstanceOf(BusinessRuleException.class)
-                    .hasMessage("Activation can be resent only for pending accounts");
+            assertThat(outcomes.second().error()).isNull();
+            assertThat(outcomes.second().result()).isEqualTo(
+                    new me.ifmo.backend.authentication.web.response.AuthMessageResponse(AuthServiceImpl.AUTH_INSTRUCTIONS_MESSAGE));
             assertThat(unusedCodeCount(account, type)).isZero();
         } else {
             assertThat(outcomes.second().error()).isNull();
@@ -390,7 +399,7 @@ class AuthConcurrencyIntegrationTest {
         Account account = account(type);
         String oldCode = code(account, type);
         doThrow(new IllegalStateException("Notification creation failed"))
-                .when(notifications).create(any(CreateNotificationRequest.class));
+                .when(notifications).createAuth(any(CreateNotificationRequest.class), any(), any());
 
         assertThatThrownBy(() -> issueCode(account, type)).isInstanceOf(IllegalStateException.class)
                 .hasMessage("Notification creation failed");
@@ -399,7 +408,7 @@ class AuthConcurrencyIntegrationTest {
         assertThat(unusedCodeCount(account, type)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM auth_tokens WHERE user_id = ?", Integer.class, account.id()))
                 .isEqualTo(1);
-        doReturn(null).when(notifications).create(any(CreateNotificationRequest.class));
+        doReturn(null).when(notifications).createAuth(any(CreateNotificationRequest.class), any(), any());
         assertThat(issueCode(account, type)).isNotEqualTo(oldCode);
         assertThat(codeUsed(oldCode)).isTrue();
         assertThat(unusedCodeCount(account, type)).isEqualTo(1);
@@ -437,7 +446,7 @@ class AuthConcurrencyIntegrationTest {
         doAnswer(invocation -> {
             pause.hold();
             return null;
-        }).doReturn(null).when(notifications).create(any(CreateNotificationRequest.class));
+        }).doReturn(null).when(notifications).createAuth(any(CreateNotificationRequest.class), any(), any());
         return pause;
     }
 
