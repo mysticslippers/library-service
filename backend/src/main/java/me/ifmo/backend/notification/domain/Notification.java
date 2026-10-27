@@ -96,6 +96,15 @@ public class Notification {
     @Column(name = "attempt_count", nullable = false)
     private Integer attemptCount = 0;
 
+    @Column(name = "auth_token_id")
+    private Long authTokenId;
+
+    @Column(name = "secret_expires_at")
+    private LocalDateTime secretExpiresAt;
+
+    @Column(name = "secret_purged_at")
+    private LocalDateTime secretPurgedAt;
+
     @Override
     public String toString() {
         return "Notification{" +
@@ -106,13 +115,10 @@ public class Notification {
                 ", fineId=" + (fine != null ? fine.getId() : null) +
                 ", type=" + type +
                 ", channel=" + channel +
-                ", subject='" + subject + '\'' +
                 ", status=" + status +
                 ", createdAt=" + createdAt +
                 ", sentAt=" + sentAt +
                 ", readAt=" + readAt +
-                ", externalMessageId='" + externalMessageId + '\'' +
-                ", errorMessage='" + errorMessage + '\'' +
                 ", attemptCount=" + attemptCount +
                 '}';
     }
