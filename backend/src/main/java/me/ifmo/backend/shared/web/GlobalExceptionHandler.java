@@ -3,6 +3,8 @@ package me.ifmo.backend.shared.web;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import me.ifmo.backend.authentication.exception.AuthProtectionUnavailableException;
+import me.ifmo.backend.authentication.exception.AuthRateLimitExceededException;
 import me.ifmo.backend.shared.exceptions.ApiException;
 import me.ifmo.backend.shared.web.response.ApiErrorResponse;
 import me.ifmo.backend.shared.web.response.FieldErrorResponse;
@@ -12,10 +14,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,8 +26,7 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private ResponseEntity<ApiErrorResponse> build(HttpStatus status, String code, String message,
-                                                   HttpServletRequest request, List<FieldErrorResponse> fieldErrors) {
+    private ResponseEntity<ApiErrorResponse> build(HttpStatus status, String code, String message, HttpServletRequest request, List<FieldErrorResponse> fieldErrors) {
 
         ApiErrorResponse response = new ApiErrorResponse(LocalDateTime.now(),
                 status.value(), code, message, request.getRequestURI(), fieldErrors);
@@ -37,6 +38,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleApiException(ApiException exception, HttpServletRequest request) {
         return build(exception.getStatus(), exception.getCode(),
                 exception.getMessage(), request, List.of());
+    }
+
+    @ExceptionHandler(AuthRateLimitExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthRateLimit(AuthRateLimitExceededException exception, HttpServletRequest request) {
+        var response = build(exception.getStatus(), exception.getCode(), exception.getMessage(), request, List.of());
+        return ResponseEntity.status(exception.getStatus()).header("Retry-After", Long.toString(exception.getRetryAfter()))
+                .body(response.getBody());
+    }
+
+    @ExceptionHandler(AuthProtectionUnavailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthProtectionUnavailable(AuthProtectionUnavailableException exception, HttpServletRequest request) {
+        var response = build(exception.getStatus(), exception.getCode(), exception.getMessage(), request, List.of());
+        return ResponseEntity.status(exception.getStatus()).header("Retry-After", "60").body(response.getBody());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
