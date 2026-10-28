@@ -1,0 +1,4 @@
+*
+!target/
+target/*
+!target/library-service-backend.jar
