@@ -1,0 +1,37 @@
+spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+      - optional:configtree:secrets/
+      - optional:configtree:../secrets/
+
+logging:
+  level:
+    me.ifmo.backend: DEBUG
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+
+security:
+  monitoring:
+    enabled: true
+
+cache:
+  catalog-search:
+    key-prefix: ${CACHE_KEY_PREFIX:library-service-backend:local:}
+
+storage:
+  covers:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    access-key: ${S3_ACCESS_KEY:minioadmin}
+    secret-key: ${S3_SECRET_KEY:minioadmin}
