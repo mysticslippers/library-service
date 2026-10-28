@@ -1,0 +1,24 @@
+spring:
+  config:
+    import: optional:configtree:/run/secrets/
+  mail:
+    host: ${MAIL_HOST}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8081}
+    address: 0.0.0.0
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+
+security:
+  monitoring:
+    enabled: true
+
+cache:
+  catalog-search:
+    key-prefix: ${CACHE_KEY_PREFIX:library-service-backend:prod:}
