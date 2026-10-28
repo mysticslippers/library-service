@@ -66,8 +66,6 @@ logs/
 backend/logs/
 
 # Spring Boot local config
-backend/src/main/resources/application-local.yml
-backend/src/main/resources/application-local.yaml
 backend/src/main/resources/application-dev-local.yml
 backend/src/main/resources/application-dev-local.yaml
 backend/src/main/resources/application-secret.yml
@@ -130,6 +128,7 @@ frontend/*.tsbuildinfo
 .env.*
 !.env.example
 !.env.template
+secrets/
 
 backend/.env
 backend/.env.*
