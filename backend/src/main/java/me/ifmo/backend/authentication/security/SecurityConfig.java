@@ -5,10 +5,13 @@ import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.authentication.configuration.AuthProtectionProperties;
 import me.ifmo.backend.authentication.security.ratelimit.AuthRequestLimiter;
 import me.ifmo.backend.authentication.web.filter.AuthRateLimitFilter;
+import me.ifmo.backend.shared.observability.security.ManagementSecurityConfiguration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -27,6 +30,7 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 @Configuration
 @EnableMethodSecurity
 @RequiredArgsConstructor
+@Import(ManagementSecurityConfiguration.class)
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -45,6 +49,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http, HandlerMappingIntrospector introspector, @Value("${spring.mvc.servlet.path:/}") String servletPath) throws Exception {
         MvcRequestMatcher.Builder mvc = new MvcRequestMatcher.Builder(introspector);
 
@@ -68,8 +73,6 @@ public class SecurityConfig {
                                 mvc.pattern("/auth/resend-activation"),
                                 mvc.pattern("/swagger-ui/**"),
                                 mvc.pattern("/v3/api-docs/**"),
-                                mvc.pattern("/actuator/health"),
-                                mvc.pattern("/actuator/prometheus"),
                                 mvc.pattern(HttpMethod.GET, "/materials/{id}/cover")
                         ).permitAll()
                         .anyRequest().authenticated()
