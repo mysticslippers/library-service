@@ -2,14 +2,6 @@ spring:
   application:
     name: library-service-backend
 
-  profiles:
-    active: local
-
-  config:
-    import:
-      - optional:file:.env[.properties]
-      - optional:file:../.env[.properties]
-
   jackson:
     time-zone: UTC
 
@@ -25,10 +17,10 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
-      connect-timeout: ${REDIS_CONNECT_TIMEOUT}
-      timeout: ${REDIS_COMMAND_TIMEOUT}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_COMMAND_TIMEOUT:2s}
       client-name: ${REDIS_CLIENT_NAME:library-service-cache}
       repositories:
         enabled: false
@@ -56,10 +48,10 @@ spring:
     baseline-on-migrate: true
 
   mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       "[mail.smtp.auth]": ${MAIL_SMTP_AUTH:true}
       "[mail.smtp.starttls.enable]": ${MAIL_SMTP_STARTTLS_ENABLE:true}
@@ -100,7 +92,7 @@ spring:
       max-request-size: ${COVER_MAX_REQUEST_SIZE:6MB}
 
 server:
-  port: ${SERVER_PORT}
+  port: ${SERVER_PORT:8080}
   forward-headers-strategy: none
 
 logging:
@@ -109,7 +101,7 @@ logging:
 
   level:
     root: INFO
-    me.ifmo.backend: DEBUG
+    me.ifmo.backend: INFO
     org.springframework.security: INFO
     org.hibernate.SQL: INFO
     org.hibernate.orm.jdbc.bind: INFO
@@ -117,8 +109,10 @@ logging:
 
 springdoc:
   api-docs:
+    enabled: false
     path: /v3/api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui
     operations-sorter: method
     tags-sorter: alpha
@@ -129,10 +123,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health
   endpoint:
     health:
-      show-details: always
+      show-details: never
+      show-components: never
   metrics:
     tags:
       application: ${spring.application.name}
@@ -142,6 +137,8 @@ management:
         library.operation: true
 
 security:
+  monitoring:
+    enabled: false
   jwt:
     secret: ${JWT_SECRET}
     access-token-expiration-ms: ${JWT_ACCESS_TOKEN_EXPIRATION_MS:3600000}
@@ -221,14 +218,14 @@ messaging:
 cache:
   catalog-search:
     ttl: ${CATALOG_SEARCH_CACHE_TTL:90s}
-    key-prefix: ${CACHE_KEY_PREFIX:library-service-backend:local:}
+    key-prefix: ${CACHE_KEY_PREFIX:library-service-backend:default:}
 
 storage:
   covers:
-    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    endpoint: ${S3_ENDPOINT}
     region: ${S3_REGION:us-east-1}
-    access-key: ${S3_ACCESS_KEY:minioadmin}
-    secret-key: ${S3_SECRET_KEY:minioadmin}
+    access-key: ${S3_ACCESS_KEY}
+    secret-key: ${S3_SECRET_KEY}
     bucket: ${S3_COVERS_BUCKET:library-covers}
     path-style-access: ${S3_PATH_STYLE_ACCESS:true}
     create-bucket: ${S3_CREATE_BUCKET:true}
