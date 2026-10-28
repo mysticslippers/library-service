@@ -464,13 +464,17 @@ the bucket outside the application.
 ## Prometheus and Grafana
 
 The backend exports Micrometer metrics through
-`GET /api/actuator/prometheus`. Prometheus scrapes this endpoint every five
+`GET /api/actuator/prometheus` in the explicitly selected `local` profile.
+Prometheus authenticates as the dedicated `prometheus` account using the shared
+file `secrets/security.monitoring.password` and scrapes this endpoint every five
 seconds, and Grafana automatically provisions both the Prometheus datasource and
 the `Library Service Overview` dashboard.
 
-Start the monitoring stack after the backend is running on port `1234`:
+Create the ignored monitoring secret once, select the `local` backend profile,
+and start the monitoring stack after the backend is running on port `1234`:
 
 ```shell
+pwsh -File scripts/create-monitoring-secret.ps1
 docker compose up -d prometheus grafana
 ```
 
@@ -496,9 +500,10 @@ The Prometheus scrape target is `host.docker.internal:1234`. If the backend
 `SERVER_PORT` changes, update the target in
 `observability/prometheus/prometheus.yml`.
 
-For production, keep `/api/actuator/prometheus` on an internal management
-network or protect it at the gateway; it is public in the local security
-configuration so the Dockerized Prometheus instance can scrape it.
+Application JWTs cannot access metrics. The monitoring credentials only read
+Prometheus metrics and do not authenticate business API requests. Health responses
+hide components and diagnostic details, including on component subpaths.
+Production uses a separate private management listener; see Deployment profiles below.
 
 The dashboard includes backend availability, HTTP throughput, 5xx rate and p95
 latency, JVM heap and CPU, HikariCP connections, observed business-operation
@@ -596,3 +601,102 @@ bounded batches and row locks safe for multiple replicas. Defaults:
 `true`. Cleanup is eventual, with delay depending on the interval and backlog.
 Active codes remain plaintext in `auth_tokens` and message bodies for delivery;
 this change bounds their retention and does not add encryption or hashing at rest.
+
+## Deployment profiles
+
+The default configuration exposes only a minimal health endpoint. Monitoring is
+disabled, health details/components are hidden, Swagger is disabled, and no local
+`.env` file is imported. Choose the deployment profile explicitly.
+
+For local development, run from the project root:
+
+```powershell
+./scripts/create-monitoring-secret.ps1
+$env:SPRING_PROFILES_ACTIVE = 'local'
+mvn -f backend/pom.xml spring-boot:run
+```
+
+In IntelliJ, set the active Spring profile to `local`. That profile imports `.env`
+from the working directory or its parent and imports the monitoring secret from
+`secrets/` or `../secrets/`. The script creates a random secret without printing it
+and preserves an existing file. The `secrets/` directory is ignored by Git.
+The tracked `application-local.yml` contains configuration, not private values;
+keep credentials in the ignored `.env` and secret files.
+
+After updating an existing local stack, recreate the containers whose published
+ports or secret mounts changed:
+
+```shell
+docker compose up -d --force-recreate library-db pgadmin prometheus
+```
+
+This recreates containers while retaining their named volumes. Database clients
+will need to reconnect. Local PostgreSQL and pgAdmin now bind only to `127.0.0.1`,
+as do the other published infrastructure ports.
+
+### Production configuration
+
+`docker-compose.prod.yml` is a standalone Compose file. Run it with `-f`; do not
+merge it with the local Compose file. It uses the separate `library-service-prod`
+project and separate named volumes.
+
+- Backend application: `127.0.0.1:8080` on the Docker host, for a host reverse proxy.
+- Actuator: `backend:8081/actuator` inside the monitoring network; no published port.
+- Prometheus: `http://backend:8081/actuator/prometheus`, with file-based Basic credentials.
+- PostgreSQL, Redis, Kafka, MinIO and Prometheus: no host port publication.
+- Grafana: `127.0.0.1:3000`, accessible through an administrative SSH tunnel.
+- pgAdmin is absent. Kafka has only private internal/controller listeners.
+
+The infrastructure and monitoring networks are internal Docker networks. The
+backend also joins an application network for outbound SMTP and other required
+connections. Application JWTs, including ADMIN, do not grant access to Actuator.
+The monitoring account cannot access `env`, `configprops`, `heapdump`, `info`,
+`metrics`, discovery links or application endpoints.
+
+Copy `production.env.example` to the ignored `.env.production` and fill in the
+required credentials. `JWT_SECRET` must be a Base64 signing key with at least
+64 random bytes; `AUTH_RATE_LIMIT_KEY` must contain at least 32 bytes and be shared
+across backend replicas. Database, storage, mail and Grafana passwords have no
+production fallback values.
+
+On Windows, create the monitoring secret with the PowerShell script. On a Linux
+server, create it before starting Compose:
+
+```shell
+install -d -m 700 secrets
+umask 077
+(
+  set -C
+  openssl rand -base64 32 | tr -d '\n' > secrets/security.monitoring.password
+)
+chmod 644 secrets/security.monitoring.password
+```
+
+Run the Linux generation commands only for a new secret; preserve an existing
+file. The private directory protects the host file, while the file's read
+permissions allow the different backend/Prometheus container users to read their
+explicitly granted mounts. Compose mounts the secret read-only. After rotation,
+restart backend and Prometheus together.
+
+Build and validate the deployment from the project root with Docker running:
+
+```shell
+mvn -f backend/pom.xml clean verify
+docker compose --env-file .env.production -f docker-compose.prod.yml config --quiet
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+```
+
+The Dockerfile packages the verified JAR and runs Java as an unprivileged user.
+Only the JAR is included in its build context; `.env` and monitoring secrets are
+not copied into the image. The production profile reads the monitoring secret
+from `/run/secrets/security.monitoring.password` and refuses enabled monitoring
+with a missing or unsupported password. Its HTTP port, management port and scrape
+path are independent of the local `SERVER_PORT` setting.
+
+Host Nginx can proxy application traffic to `127.0.0.1:8080`; keep management and
+infrastructure ports outside public proxy routes. When adding Nginx, configure
+`AUTH_TRUSTED_PROXIES` with its actual direct peer IP/CIDR as seen by the backend
+and have Nginx overwrite `X-Real-IP`, as described under Public authentication
+protection. The default trusts no proxy headers.
+TLS, a public domain, backup
+verification and deployment on an actual server are separate deployment steps.
