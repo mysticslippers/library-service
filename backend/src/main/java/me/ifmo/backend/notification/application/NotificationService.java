@@ -12,6 +12,8 @@ public interface NotificationService {
 
     NotificationResponse create(CreateNotificationRequest request);
 
+    NotificationResponse createManual(CreateNotificationRequest request);
+
     NotificationResponse createAuth(CreateNotificationRequest request, Long authTokenId, LocalDateTime secretExpiresAt);
 
     NotificationResponse getNotificationById(Long actorUserId, Long id);
