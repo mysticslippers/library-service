@@ -20,11 +20,11 @@ public interface LibraryRepository extends JpaRepository<Library, Long> {
 
     @Query("""
         SELECT library FROM Library library
-            WHERE (:status IS NULL OR library.status = :status)
+            WHERE library.status = COALESCE(:status, library.status)
               AND (
-                  :query IS NULL
-                  OR LOWER(library.name) LIKE LOWER(CONCAT('%', :query, '%'))
-                  OR LOWER(library.code) LIKE LOWER(CONCAT('%', :query, '%'))
+                  CAST(:query AS string) IS NULL
+                  OR LOWER(library.name) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%'))
+                  OR LOWER(library.code) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%'))
               )
     """)
     Page<Library> search(@Param("query") String query,
