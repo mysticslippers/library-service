@@ -700,3 +700,50 @@ and have Nginx overwrite `X-Real-IP`, as described under Public authentication
 protection. The default trusts no proxy headers.
 TLS, a public domain, backup
 verification and deployment on an actual server are separate deployment steps.
+
+## Authorization regression tests and CI
+
+`AccessSecurityIntegrationTest` runs HTTP requests through the real security
+filters, signed JWTs, controllers, services and PostgreSQL 16 with all Flyway
+migrations. S3 access and external notification delivery are replaced at their
+transport boundaries; no real messages are sent.
+
+`AccessEndpointCatalog` specifies the expected policy for all 117 business HTTP
+operations for anonymous, READER, LIBRARIAN and ADMIN requests. The suite checks
+that every controller and route has a case. Separate scenarios create committed
+records for two readers and check ownership, unfiltered search, pagination,
+foreign filters and commands, staff hierarchy and unchanged persisted state
+after denied requests.
+
+Account hierarchy violations return `403 ACCESS_DENIED`. Cancelling or expiring
+warnings and manually expiring blocks check the authenticated actor against the
+target's current roles. JWT checks cover signature, expiry, version, password
+reset, disabled/locked accounts and role revocation with an already issued token.
+The JWT filter also handles an account disappearing or a token expiring between
+validation and principal loading as an unauthenticated request.
+
+Activation and password recovery notifications remain excluded from search and
+their subject, body and delivery error are redacted in detail/read responses.
+The generic notification API cannot manually create, cancel or resend these
+messages, including for staff accounts; authentication commands manage their
+lifecycle. Ordinary notifications retain their existing manual operations.
+
+Run the focused security tests with Docker available:
+
+```shell
+mvn -f backend/pom.xml "-Dtest=AccessSecurityIntegrationTest,JwtAuthenticationFilterTest,NotificationServiceDeliveryStatusTest" test
+```
+
+`.github/workflows/backend.yml` runs on pushes and pull requests. It requires
+Docker, executes `mvn clean verify` including migration/OpenAPI tests and JaCoCo,
+checks that every integration suite executed without skips, and builds the
+backend image. Test and coverage reports are retained for seven days. To enforce
+this job on merges, select `verify` from the Backend workflow as a required status
+check in the repository's branch protection settings.
+
+The same report check can be run locally after the full build:
+
+```shell
+mvn -f backend/pom.xml clean verify
+python scripts/verify-test-reports.py
+```
