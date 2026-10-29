@@ -42,14 +42,14 @@ public class UserWarningController {
 
     @PostMapping("/{id}/cancel")
     @Operation(summary = "Cancel a user warning")
-    public UserWarningResponse cancel(@PathVariable Long id, @Valid @RequestBody CancelUserWarningRequest request) {
-        return service.cancel(id, request);
+    public UserWarningResponse cancel(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @Valid @RequestBody CancelUserWarningRequest request) {
+        return service.cancel(Long.valueOf(userDetails.getUsername()), id, request);
     }
 
     @PostMapping("/{id}/expire")
     @Operation(summary = "Mark a user warning as expired")
-    public UserWarningResponse expire(@PathVariable Long id) {
-        return service.expire(id);
+    public UserWarningResponse expire(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
+        return service.expire(Long.valueOf(userDetails.getUsername()), id);
     }
 
     @GetMapping
