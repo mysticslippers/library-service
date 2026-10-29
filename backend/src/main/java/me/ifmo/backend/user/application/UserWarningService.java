@@ -13,9 +13,9 @@ public interface UserWarningService {
 
     UserWarningResponse getUserWarningById(Long id);
 
-    UserWarningResponse cancel(Long id, CancelUserWarningRequest request);
+    UserWarningResponse cancel(Long actorUserId, Long id, CancelUserWarningRequest request);
 
-    UserWarningResponse expire(Long id);
+    UserWarningResponse expire(Long actorUserId, Long id);
 
     PageResponse<UserWarningResponse> search(Long userId, Long createdByUserId, UserWarningStatus status, Pageable pageable);
 }
