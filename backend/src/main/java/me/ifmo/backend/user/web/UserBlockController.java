@@ -48,8 +48,8 @@ public class UserBlockController {
 
     @PostMapping("/{id}/expire")
     @Operation(summary = "Mark a user block as expired")
-    public UserBlockResponse expire(@PathVariable Long id) {
-        return service.expire(id);
+    public UserBlockResponse expire(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id) {
+        return service.expire(Long.valueOf(userDetails.getUsername()), id);
     }
 
     @GetMapping
