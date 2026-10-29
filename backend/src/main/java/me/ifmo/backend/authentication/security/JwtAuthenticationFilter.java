@@ -1,5 +1,6 @@
 package me.ifmo.backend.authentication.security;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -34,22 +36,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(BEARER_PREFIX.length());
 
-        if (SecurityContextHolder.getContext().getAuthentication() == null && jwtService.isTokenValid(token)) {
-            String userId = jwtService.extract(token);
-            UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
-
-            if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
-                filterChain.doFilter(request, response);
-                return;
+        if (SecurityContextHolder.getContext().getAuthentication() == null)
+            try {
+                authenticate(token, request);
+            } catch (JwtException | IllegalArgumentException | UsernameNotFoundException exception) {
+                SecurityContextHolder.clearContext();
             }
 
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    userDetails, null, userDetails.getAuthorities());
-
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        }
-
         filterChain.doFilter(request, response);
+    }
+
+    private void authenticate(String token, HttpServletRequest request) {
+        if (!jwtService.isTokenValid(token))
+            return;
+
+        String userId = jwtService.extract(token);
+        UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
+
+        if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked())
+            return;
+
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
+
+        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }
