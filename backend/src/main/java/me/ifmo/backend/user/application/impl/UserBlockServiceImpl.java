@@ -28,6 +28,7 @@ import me.ifmo.backend.user.application.UserBlockService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,7 +67,7 @@ public class UserBlockServiceImpl implements UserBlockService {
         User user = findActiveUser(id, fieldName);
 
         if (maxRoleRank(user.getId()) < roleRank(RoleCode.LIBRARIAN))
-            throw new BusinessRuleException("%s must be library staff".formatted(fieldName));
+            throw new AccessDeniedException("Access is denied");
 
         return user;
     }
@@ -93,10 +94,10 @@ public class UserBlockServiceImpl implements UserBlockService {
 
     private void validateActorCanManageTarget(User actor, User target) {
         if (actor.getId().equals(target.getId()))
-            throw new BusinessRuleException("User cannot manage own account");
+            throw new AccessDeniedException("Access is denied");
 
         if (maxRoleRank(actor.getId()) <= maxRoleRank(target.getId()))
-            throw new BusinessRuleException("Insufficient access level for target user");
+            throw new AccessDeniedException("Access is denied");
     }
 
     private void notifyUser(User user, NotificationType type, String subject, String body) {
@@ -149,11 +150,11 @@ public class UserBlockServiceImpl implements UserBlockService {
         UserBlock block = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User block with id '%s' not found".formatted(id)));
 
-        if (block.getStatus() != UserBlockStatus.ACTIVE)
-            throw new BusinessRuleException("Only active user block can be cancelled");
-
         User unblockedByUser = findActiveStaff(unblockedByUserId, "Unblocked by user");
         validateActorCanManageTarget(unblockedByUser, block.getUser());
+
+        if (block.getStatus() != UserBlockStatus.ACTIVE)
+            throw new BusinessRuleException("Only active user block can be cancelled");
 
         String reason = normalize(request.reason(), "Cancellation reason");
 
@@ -173,9 +174,12 @@ public class UserBlockServiceImpl implements UserBlockService {
 
     @Override
     @Transactional
-    public UserBlockResponse expire(Long id) {
+    public UserBlockResponse expire(Long actorUserId, Long id) {
         UserBlock block = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User block with id '%s' not found".formatted(id)));
+
+        User actor = findActiveStaff(actorUserId, "Actor user");
+        validateActorCanManageTarget(actor, block.getUser());
 
         if (block.getStatus() != UserBlockStatus.ACTIVE)
             throw new BusinessRuleException("Only active user block can be expired");
@@ -189,7 +193,7 @@ public class UserBlockServiceImpl implements UserBlockService {
         activateUserIfBlocked(block.getUser());
 
         UserBlock saved = repository.save(block);
-        auditLogService.record(null, AuditEntityType.USER_BLOCK, saved.getId(), AuditAction.UNBLOCK,
+        auditLogService.record(actor.getId(), AuditEntityType.USER_BLOCK, saved.getId(), AuditAction.UNBLOCK,
                 Map.of("userId", block.getUser().getId(), "reason", "Block expired"));
         notifyUser(block.getUser(), NotificationType.USER_UNBLOCKED, "Library account unblocked",
                 "Your account has been unblocked because the block expired.");
