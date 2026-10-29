@@ -15,7 +15,7 @@ public interface UserBlockService {
 
     UserBlockResponse cancel(Long id, Long unblockedByUserId, CancelUserBlockRequest request);
 
-    UserBlockResponse expire(Long id);
+    UserBlockResponse expire(Long actorUserId, Long id);
 
     PageResponse<UserBlockResponse> search(Long userId, Long createdByUserId, UserBlockStatus status, Pageable pageable);
 }
