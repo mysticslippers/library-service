@@ -27,6 +27,7 @@ import me.ifmo.backend.user.application.UserWarningService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -84,7 +85,7 @@ public class UserWarningServiceImpl implements UserWarningService {
             throw new BusinessRuleException("Created by user must be active");
 
         if (maxRoleRank(user.getId()) < roleRank(RoleCode.LIBRARIAN))
-            throw new BusinessRuleException("Created by user must be library staff");
+            throw new AccessDeniedException("Access is denied");
 
         return user;
     }
@@ -106,10 +107,10 @@ public class UserWarningServiceImpl implements UserWarningService {
 
     private void validateActorCanManageTarget(User actor, User target) {
         if (actor.getId().equals(target.getId()))
-            throw new BusinessRuleException("User cannot manage own account");
+            throw new AccessDeniedException("Access is denied");
 
         if (maxRoleRank(actor.getId()) <= maxRoleRank(target.getId()))
-            throw new BusinessRuleException("Insufficient access level for target user");
+            throw new AccessDeniedException("Access is denied");
     }
 
     private void notifyUser(User user, String reason) {
@@ -154,9 +155,11 @@ public class UserWarningServiceImpl implements UserWarningService {
 
     @Override
     @Transactional
-    public UserWarningResponse cancel(Long id, CancelUserWarningRequest request) {
+    public UserWarningResponse cancel(Long actorUserId, Long id, CancelUserWarningRequest request) {
         UserWarning warning = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User warning with id '%s' not found".formatted(id)));
+
+        validateActorCanManageTarget(findActiveActor(actorUserId), warning.getUser());
 
         if (warning.getStatus() != UserWarningStatus.ACTIVE)
             throw new BusinessRuleException("Only active user warning can be cancelled");
@@ -172,9 +175,11 @@ public class UserWarningServiceImpl implements UserWarningService {
 
     @Override
     @Transactional
-    public UserWarningResponse expire(Long id) {
+    public UserWarningResponse expire(Long actorUserId, Long id) {
         UserWarning warning = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("User warning with id '%s' not found".formatted(id)));
+
+        validateActorCanManageTarget(findActiveActor(actorUserId), warning.getUser());
 
         if (warning.getStatus() != UserWarningStatus.ACTIVE)
             throw new BusinessRuleException("Only active user warning can be expired");
