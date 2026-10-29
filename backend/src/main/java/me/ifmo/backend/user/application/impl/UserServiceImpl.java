@@ -62,6 +62,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -189,22 +190,22 @@ public class UserServiceImpl implements UserService {
             throw new BusinessRuleException("Actor user must be active");
 
         if (maxRoleRank(actor.getId()) < roleRank(RoleCode.LIBRARIAN))
-            throw new BusinessRuleException("Actor user must be library staff");
+            throw new AccessDeniedException("Access is denied");
 
         return actor;
     }
 
     private void validateActorCanManageTarget(User actor, User target) {
         if (actor.getId().equals(target.getId()))
-            throw new BusinessRuleException("User cannot manage own account");
+            throw new AccessDeniedException("Access is denied");
 
         if (maxRoleRank(actor.getId()) <= maxRoleRank(target.getId()))
-            throw new BusinessRuleException("Insufficient access level for target user");
+            throw new AccessDeniedException("Access is denied");
     }
 
     private void validateActorCanAssignRole(User actor, RoleCode roleCode) {
         if (maxRoleRank(actor.getId()) <= roleRank(roleCode))
-            throw new BusinessRuleException("Insufficient access level for target role");
+            throw new AccessDeniedException("Access is denied");
     }
 
     private MaterialShortResponse toMaterialShortResponse(Material material) {
