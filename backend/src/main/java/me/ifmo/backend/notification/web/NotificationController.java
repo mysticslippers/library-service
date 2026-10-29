@@ -32,9 +32,9 @@ public class NotificationController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
-    @Operation(summary = "Create a notification")
+    @Operation(summary = "Create a notification", description = "Activation and password recovery messages are created only through authentication commands.")
     public NotificationResponse create(@Valid @RequestBody CreateNotificationRequest request) {
-        return service.create(request);
+        return service.createManual(request);
     }
 
     @GetMapping("/{id}")
@@ -45,7 +45,7 @@ public class NotificationController {
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('LIBRARIAN','ADMIN')")
-    @Operation(summary = "Cancel an unsent notification", description = "Only CANCELLED is accepted. Delivery statuses are managed internally.")
+    @Operation(summary = "Cancel an unsent notification", description = "Only CANCELLED is accepted. Authentication messages and delivery statuses are managed internally.")
     public NotificationResponse updateStatus(@PathVariable Long id, @Valid @RequestBody UpdateNotificationStatusRequest request) {
         return service.updateStatus(id, request);
     }
