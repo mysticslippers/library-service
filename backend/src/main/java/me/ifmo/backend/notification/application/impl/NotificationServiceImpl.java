@@ -201,6 +201,15 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
+    public NotificationResponse createManual(CreateNotificationRequest request) {
+        if (request.type().containsAuthSecret())
+            throw new BusinessRuleException("Request authentication messages through the authentication endpoints");
+
+        return create(request);
+    }
+
+    @Override
+    @Transactional
     public NotificationResponse create(CreateNotificationRequest request) {
         User user = userRepository.findById(request.userId()).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(request.userId())));
@@ -267,6 +276,9 @@ public class NotificationServiceImpl implements NotificationService {
     public NotificationResponse updateStatus(Long id, UpdateNotificationStatusRequest request) {
         Notification notification = repository.findByIdForUpdate(id).orElseThrow(
                 () -> new ResourceNotFoundException("Notification with id '%s' not found".formatted(id)));
+
+        if (notification.getType().containsAuthSecret())
+            throw new BusinessRuleException("Authentication message delivery is managed by the authentication workflow");
 
         if (request.status() != NotificationStatus.CANCELLED)
             throw new BusinessRuleException("Delivery statuses are managed by the delivery worker; only cancellation is allowed");
