@@ -6,6 +6,7 @@ import me.ifmo.backend.circulation.persistence.ReservationRepository;
 import me.ifmo.backend.fine.persistence.FineRepository;
 import me.ifmo.backend.notification.domain.Notification;
 import me.ifmo.backend.notification.domain.enums.NotificationStatus;
+import me.ifmo.backend.notification.domain.enums.NotificationType;
 import me.ifmo.backend.notification.mapper.NotificationMapper;
 import me.ifmo.backend.notification.persistence.NotificationRepository;
 import me.ifmo.backend.notification.persistence.NotificationTemplateRepository;
@@ -150,6 +151,6 @@ class NotificationServiceDeliveryStatusTest {
     }
 
     private Notification notification(NotificationStatus status, int attempts) {
-        return Notification.builder().id(1L).status(status).attemptCount(attempts).build();
+        return Notification.builder().id(1L).type(NotificationType.SYSTEM_MESSAGE).status(status).attemptCount(attempts).build();
     }
 }
