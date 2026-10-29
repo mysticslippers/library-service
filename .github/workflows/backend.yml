@@ -1,0 +1,54 @@
+name: Backend
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx1024m -XX:ActiveProcessorCount=2 -Dspring.test.context.cache.maxSize=4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Require Docker
+        run: docker info
+
+      - name: Verify backend, migrations and OpenAPI
+        run: mvn --batch-mode --no-transfer-progress --file backend/pom.xml clean verify
+
+      - name: Require complete test execution
+        if: always()
+        run: python3 scripts/verify-test-reports.py
+
+      - name: Build backend image
+        run: docker build --tag library-service-backend:ci backend
+
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-reports
+          path: |
+            backend/target/surefire-reports/
+            backend/target/site/jacoco/
+          retention-days: 7
+          if-no-files-found: warn
