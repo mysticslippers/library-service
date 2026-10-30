@@ -37,6 +37,8 @@ import me.ifmo.backend.fine.persistence.PaymentTransactionRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +50,8 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class FineServiceImpl implements FineService {
+
+    private static final String ACTIVE_LOAN_FINE_CONSTRAINT = "uq_fines_one_active_per_loan_reason";
 
     private final FineRepository repository;
     private final UserRepository userRepository;
@@ -145,8 +149,22 @@ public class FineServiceImpl implements FineService {
         Fine fine = fineMapper.toEntity(user, loan, copy, tariff, request.reason(), request.amount());
         fine.setStatus(FineStatus.ACTIVE);
 
-        Fine saved = repository.save(fine);
-        return fineMapper.toResponse(saved);
+        try {
+            Fine saved = repository.saveAndFlush(fine);
+            return fineMapper.toResponse(saved);
+        } catch (DataIntegrityViolationException exception) {
+            if (isActiveLoanFineDuplicate(exception))
+                throw new DuplicateResourceException("Active fine for loan id '%s' and reason '%s' already exists".formatted(request.loanId(), request.reason()));
+            throw exception;
+        }
+    }
+
+    private boolean isActiveLoanFineDuplicate(DataIntegrityViolationException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause())
+            if (cause instanceof ConstraintViolationException violation && ACTIVE_LOAN_FINE_CONSTRAINT.equals(violation.getConstraintName()))
+                return true;
+
+        return false;
     }
 
     @Override
