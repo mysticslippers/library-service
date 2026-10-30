@@ -747,3 +747,24 @@ The same report check can be run locally after the full build:
 mvn -f backend/pom.xml clean verify
 python scripts/verify-test-reports.py
 ```
+
+## Active fine uniqueness
+
+Flyway migration `V13__prevent_duplicate_active_fines.sql` permits one ACTIVE fine
+per `(loan_id, reason)` when `loan_id` is present. Different reasons, different
+loans, fines without a loan and closed fine history remain independent.
+
+Before upgrading, run `scripts/database/check_active_fine_duplicates.sql` against
+the target database. An empty result means no existing duplicates were found.
+V13 also checks this under a table lock before creating the unique index. If
+duplicates exist, migration stops without deleting fines or changing payments;
+review and reconcile those records before retrying startup.
+
+Concurrent creation conflicts return `409 DUPLICATE_RESOURCE`, matching the
+existing duplicate precheck. Other database constraint failures retain their
+existing handling. `FineCreationIntegrationTest` checks concurrent inserts after
+both service prechecks, rollback, index scope, direct SQL and upgrades from V12.
+
+```shell
+mvn -f backend/pom.xml "-Dtest=FineCreationIntegrationTest,FineServiceImplTest" test
+```
