@@ -30,14 +30,30 @@ The main goal of the project is to automate common library workflows and provide
 
 * User registration and authentication
 * Catalog search with filtering and sorting
-* Material reservation and waiting queue
+* Material reservation
+* Waiting queue (planned)
 * Book loan processing
 * Book return processing
-* Fine calculation for overdue materials
-* Fine payment through an external payment service
+* Fine management and manual payment recording
+* Automatic fine calculation for overdue materials (planned)
+* Fine payment through an external payment service (planned integration)
 * Email/SMS notifications
 * Audit logging for critical operations
-* Basic reporting and monitoring support
+* Monitoring dashboards
+* Reporting (planned)
+
+## Use Case Model
+
+The diagram summarizes the 13 use cases from the [SRS](docs/srs.pdf), including
+planned functionality. Actor associations show participation; individual operations
+remain subject to role and branch permissions.
+
+<details>
+<summary><b>Use Case Diagram</b></summary>
+
+![Use Case Diagram](docs/img/UseCase.png)
+
+</details>
 
 ## Tech Stack
 
@@ -60,7 +76,7 @@ The main goal of the project is to automate common library workflows and provide
 * REST API
 * JSON
 * Micrometer, Prometheus and Grafana
-* External payment service integration
+* External payment service integration (planned)
 * External email/SMS notification service integration
 
 ### Planned Client Applications
@@ -73,58 +89,69 @@ The main goal of the project is to automate common library workflows and provide
 
 The system follows a client-server architecture with a centralized backend API.
 
-The main backend service is implemented as a Java Spring REST API. It communicates with PostgreSQL for persistent storage and shared authentication quotas, Redis for catalog caching, Apache Kafka for asynchronous event streaming, and external services for payments and notifications.
+The main backend service is implemented as a Java Spring REST API. It communicates
+with PostgreSQL for persistent storage and shared authentication quotas, Redis for
+catalog caching, Apache Kafka for asynchronous event streaming, S3-compatible
+storage for cover images, and external notification providers. Payment-provider
+integration is planned.
+
+The context and container diagrams include the planned client applications and
+payment-provider integration. The component diagram shows the implemented backend,
+and the class diagram summarizes its core domain model. The fine payment sequence
+describes the target online payment flow from the SRS.
 
 <details>
-<summary><b>Context Diagram</b></summary>
+<summary><b>System Context Diagram</b></summary>
 
-![Context Diagram](docs/diagrams/context.png)
+![System Context Diagram](docs/img/System%20Context%20Diagram.png)
 
 </details>
 
 <details>
 <summary><b>Container Diagram</b></summary>
 
-![Container Diagram](docs/diagrams/containers.png)
+![Container Diagram](docs/img/Container%20Diagram.png)
 
 </details>
 
 <details>
 <summary><b>Component Diagram</b></summary>
 
-![Component Diagram](docs/diagrams/components.png)
+![Component Diagram](docs/img/Component%20Diagram.png)
 
 </details>
 
 <details>
 <summary><b>Class Diagram</b></summary>
 
-![Class Diagram](docs/diagrams/class-diagram.png)
+![Class Diagram](docs/img/Class%20Diagram.png)
 
 </details>
 
 <details>
-<summary><b>Sequence Diagram</b></summary>
+<summary><b>Fine Payment Sequence Diagram</b></summary>
 
-![Sequence Diagram](docs/diagrams/sequence-fine-payment.png)
+![Fine Payment Sequence Diagram](docs/img/Fine%20Payment%20Sequence%20Diagram.png)
 
 </details>
 
 ## Core Business Processes
 
-The project includes BPMN diagrams for the main library workflows.
+The BPMN diagrams describe the target book loan and return workflows from the
+[SRS](docs/srs.pdf). Some automated steps, including fine calculation and waiting
+queue processing, remain planned features.
 
 <details>
 <summary><b>Book Loan Process</b></summary>
 
-![Book Loan Process](docs/diagrams/bpmn/book-loan-process.png)
+![Book Loan Process](docs/img/Book%20Loan%20Process.png)
 
 </details>
 
 <details>
 <summary><b>Book Return Process</b></summary>
 
-![Book Return Process](docs/diagrams/bpmn/book-return-process.png)
+![Book Return Process](docs/img/Book%20Return%20Process.png)
 
 </details>
 
