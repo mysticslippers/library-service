@@ -39,6 +39,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -114,7 +115,7 @@ class FineServiceImplTest {
         when(fineRepository.findByLoan_IdAndReasonAndStatus(LOAN_ID, ViolationType.OVERDUE, FineStatus.ACTIVE)).thenReturn(Optional.empty());
         when(fineTariffRepository.findById(TARIFF_ID)).thenReturn(Optional.of(tariff));
         when(fineMapper.toEntity(user, loan, copy, tariff, ViolationType.OVERDUE, amount)).thenReturn(fine);
-        when(fineRepository.save(fine)).thenReturn(fine);
+        when(fineRepository.saveAndFlush(fine)).thenReturn(fine);
         when(fineMapper.toResponse(fine)).thenReturn(response);
 
         FineResponse result = service.create(STAFF_ID, new CreateFineRequest(USER_ID, LOAN_ID, null, TARIFF_ID, ViolationType.OVERDUE, amount));
@@ -133,7 +134,7 @@ class FineServiceImplTest {
                 .isInstanceOf(AccessDeniedException.class).hasMessage("Access is denied");
 
         verify(userRepository, never()).findById(anyLong());
-        verify(fineRepository, never()).save(any());
+        verify(fineRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -162,7 +163,22 @@ class FineServiceImplTest {
         assertThatThrownBy(() -> service.create(STAFF_ID, new CreateFineRequest(USER_ID, LOAN_ID, null, null, ViolationType.OVERDUE, BigDecimal.TEN)))
                 .isInstanceOf(DuplicateResourceException.class).hasMessageContaining("Active fine for loan id");
 
-        verify(fineRepository, never()).save(any());
+        verify(fineRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void createPreservesUnrelatedDatabaseFailures() {
+        User user = activeUser();
+        Fine fine = Fine.builder().user(user).reason(ViolationType.OTHER).amount(BigDecimal.TEN).build();
+        DataIntegrityViolationException failure = new DataIntegrityViolationException("Other constraint failed");
+        grantStaff();
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(fineMapper.toEntity(user, null, null, null, ViolationType.OTHER, BigDecimal.TEN)).thenReturn(fine);
+        when(fineRepository.saveAndFlush(fine)).thenThrow(failure);
+
+        assertThatThrownBy(() -> service.create(STAFF_ID,
+                new CreateFineRequest(USER_ID, null, null, null, ViolationType.OTHER, BigDecimal.TEN)))
+                .isSameAs(failure);
     }
 
     @Test
@@ -175,7 +191,7 @@ class FineServiceImplTest {
         assertThatThrownBy(() -> service.create(STAFF_ID, new CreateFineRequest(USER_ID, null, null, null, ViolationType.DAMAGE, BigDecimal.TEN)))
                 .isInstanceOf(BusinessRuleException.class).hasMessage("Damage or loss fine must be linked to material copy");
 
-        verify(fineRepository, never()).save(any());
+        verify(fineRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -191,7 +207,7 @@ class FineServiceImplTest {
         assertThatThrownBy(() -> service.create(STAFF_ID, new CreateFineRequest(USER_ID, null, null, TARIFF_ID, ViolationType.OTHER, BigDecimal.TEN)))
                 .isInstanceOf(BusinessRuleException.class).hasMessage("Archived fine tariff cannot be used");
 
-        verify(fineRepository, never()).save(any());
+        verify(fineRepository, never()).saveAndFlush(any());
     }
 
     @Test
