@@ -1,5 +1,7 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import me.ifmo.backend.user.application.UserBlockExpiration;
+
 import jakarta.persistence.EntityManager;
 import me.ifmo.backend.circulation.application.CirculationLocks;
 import me.ifmo.backend.circulation.web.request.CreateLoanRequest;
@@ -97,6 +99,8 @@ class LoanServiceImplTest {
     @Mock private CirculationLocks circulationLocks;
     @Mock private EntityManager entityManager;
     @Spy private Clock clock = Clock.systemDefaultZone();
+
+    @Mock private UserBlockExpiration blockExpiration;
 
     @InjectMocks
     private LoanServiceImpl service;
@@ -380,6 +384,7 @@ class LoanServiceImplTest {
     private void allowBorrowing(User user) {
         when(userBlockRepository.existsByUser_IdAndStatus(user.getId(), UserBlockStatus.ACTIVE)).thenReturn(false);
         when(fineRepository.countByUser_IdAndStatus(user.getId(), FineStatus.ACTIVE)).thenReturn(0L);
-        when(loanRepository.countByUser_IdAndStatusIn(eq(user.getId()), anyCollection())).thenReturn(0L);
+        when(loanRepository.existsBlockingLoan(eq(user.getId()), anyCollection(), eq(LoanStatus.ACTIVE), any(LocalDateTime.class)))
+                .thenReturn(false);
     }
 }
