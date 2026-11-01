@@ -1,5 +1,7 @@
 package me.ifmo.backend.shared.observability.security;
 
+import me.ifmo.backend.user.application.UserBlockExpiration;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import me.ifmo.backend.authentication.configuration.AuthProtectionConfiguration;
@@ -98,6 +100,8 @@ abstract class ManagementHttpTestSupport {
     @Autowired TestRestTemplate client;
     @Autowired JwtService jwt;
     @LocalServerPort int apiPort;
+    @MockitoBean
+    private UserBlockExpiration blockExpiration;
     @MockitoBean UserRepository users;
     @MockitoBean UserRoleRepository roles;
     @MockitoBean AuthRequestLimiter authLimiter;
