@@ -27,6 +27,7 @@ import me.ifmo.backend.shared.exceptions.InvalidCredentialsException;
 import me.ifmo.backend.shared.exceptions.ResourceNotFoundException;
 import me.ifmo.backend.user.domain.Role;
 import me.ifmo.backend.user.domain.User;
+import me.ifmo.backend.user.application.UserBlockExpiration;
 import me.ifmo.backend.user.domain.UserRole;
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserStatus;
@@ -67,6 +68,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthRequestLimiter requestLimiter;
     private final AuthPasswordVerifier passwordVerifier;
     private final RegistrationStore registrationStore;
+    private final UserBlockExpiration blockExpiration;
 
     @Value("${security.auth.activation-token-expiration-minutes:1440}")
     private long activationTokenExpirationMinutes;
@@ -233,7 +235,11 @@ public class AuthServiceImpl implements AuthService {
         requestLimiter.account(AuthAction.LOGIN, email);
         User user = userRepository.findByEmailForUpdate(email).orElse(null);
         boolean passwordMatches = passwordVerifier.matches(request.password(), user == null ? null : user.getPasswordHash());
-        if (user == null) throw new InvalidCredentialsException();
+
+        if (user == null)
+            throw new InvalidCredentialsException();
+
+        blockExpiration.expireForLockedUser(user);
         validate(user);
 
         if (!passwordMatches)
