@@ -1,5 +1,8 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import me.ifmo.backend.user.application.UserBlockExpiration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
 import me.ifmo.backend.circulation.application.CirculationLocks;
 import me.ifmo.backend.circulation.configuration.CirculationTimeConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -72,6 +75,8 @@ class ReservationLoanIntegrationTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @MockitoBean
+    private UserBlockExpiration blockExpiration;
     @MockitoSpyBean
     private LoanMapper mapper;
 
