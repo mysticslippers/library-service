@@ -25,6 +25,8 @@ import me.ifmo.backend.user.persistence.UserRoleRepository;
 import me.ifmo.backend.audit.application.AuditLogService;
 import me.ifmo.backend.notification.application.NotificationService;
 import me.ifmo.backend.user.application.UserBlockService;
+import me.ifmo.backend.user.application.UserBlockExpiration;
+import me.ifmo.backend.user.application.UserSanctionLocks;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -33,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.Map;
 
 @Service
@@ -45,6 +48,9 @@ public class UserBlockServiceImpl implements UserBlockService {
     private final UserBlockMapper userBlockMapper;
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
+    private final UserSanctionLocks locks;
+    private final UserBlockExpiration expiration;
+    private final Clock clock;
 
     private String normalize(String value, String fieldName) {
         if (value == null || value.strip().isBlank())
@@ -108,7 +114,11 @@ public class UserBlockServiceImpl implements UserBlockService {
     @Override
     @Transactional
     public UserBlockResponse create(Long createdByUserId, CreateUserBlockRequest request) {
-        User user = findActiveUser(request.userId(), "User");
+        User user = locks.user(request.userId());
+        expiration.expireForLockedUser(user);
+        if (user.getStatus() != UserStatus.ACTIVE)
+            throw new BusinessRuleException("User must be active");
+
         User createdByUser = findActiveStaff(createdByUserId, "Created by user");
         validateActorCanManageTarget(createdByUser, user);
 
@@ -117,7 +127,7 @@ public class UserBlockServiceImpl implements UserBlockService {
 
         String reason = normalize(request.reason(), "Block reason");
 
-        if (request.expiresAt() != null && !request.expiresAt().isAfter(LocalDateTime.now()))
+        if (request.expiresAt() != null && !request.expiresAt().isAfter(LocalDateTime.now(clock)))
             throw new BusinessRuleException("Block expiresAt must be in the future");
 
         CreateUserBlockRequest normalizedRequest = new CreateUserBlockRequest(user.getId(), reason, request.expiresAt());
@@ -147,8 +157,7 @@ public class UserBlockServiceImpl implements UserBlockService {
     @Override
     @Transactional
     public UserBlockResponse cancel(Long id, Long unblockedByUserId, CancelUserBlockRequest request) {
-        UserBlock block = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("User block with id '%s' not found".formatted(id)));
+        UserBlock block = locks.block(id);
 
         User unblockedByUser = findActiveStaff(unblockedByUserId, "Unblocked by user");
         validateActorCanManageTarget(unblockedByUser, block.getUser());
@@ -161,7 +170,7 @@ public class UserBlockServiceImpl implements UserBlockService {
         block.setStatus(UserBlockStatus.CANCELLED);
         block.setUnblockedByUser(unblockedByUser);
         block.setUnblockReason(reason);
-        block.setUnblockedAt(LocalDateTime.now());
+        block.setUnblockedAt(LocalDateTime.now(clock));
         activateUserIfBlocked(block.getUser());
 
         UserBlock saved = repository.save(block);
@@ -175,8 +184,7 @@ public class UserBlockServiceImpl implements UserBlockService {
     @Override
     @Transactional
     public UserBlockResponse expire(Long actorUserId, Long id) {
-        UserBlock block = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("User block with id '%s' not found".formatted(id)));
+        UserBlock block = locks.block(id);
 
         User actor = findActiveStaff(actorUserId, "Actor user");
         validateActorCanManageTarget(actor, block.getUser());
@@ -184,20 +192,11 @@ public class UserBlockServiceImpl implements UserBlockService {
         if (block.getStatus() != UserBlockStatus.ACTIVE)
             throw new BusinessRuleException("Only active user block can be expired");
 
-        if (block.getExpiresAt() == null || block.getExpiresAt().isAfter(LocalDateTime.now()))
+        if (block.getExpiresAt() == null || block.getExpiresAt().isAfter(LocalDateTime.now(clock)))
             throw new BusinessRuleException("User block has not expired yet");
 
-        block.setStatus(UserBlockStatus.EXPIRED);
-        block.setUnblockReason("Block expired");
-        block.setUnblockedAt(LocalDateTime.now());
-        activateUserIfBlocked(block.getUser());
-
-        UserBlock saved = repository.save(block);
-        auditLogService.record(actor.getId(), AuditEntityType.USER_BLOCK, saved.getId(), AuditAction.UNBLOCK,
-                Map.of("userId", block.getUser().getId(), "reason", "Block expired"));
-        notifyUser(block.getUser(), NotificationType.USER_UNBLOCKED, "Library account unblocked",
-                "Your account has been unblocked because the block expired.");
-        return userBlockMapper.toResponse(saved);
+        expiration.expireLockedBlock(block, actor.getId());
+        return userBlockMapper.toResponse(block);
     }
 
     @Override
