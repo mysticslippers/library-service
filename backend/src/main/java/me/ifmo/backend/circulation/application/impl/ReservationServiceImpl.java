@@ -27,6 +27,7 @@ import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserBlockStatus;
 import me.ifmo.backend.user.domain.enums.UserStatus;
 import me.ifmo.backend.user.domain.User;
+import me.ifmo.backend.user.application.UserBlockExpiration;
 import me.ifmo.backend.user.persistence.UserBlockRepository;
 import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
@@ -91,6 +92,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final CirculationLocks circulationLocks;
     private final EntityManager entityManager;
     private final Clock clock;
+    private final UserBlockExpiration blockExpiration;
 
     private String normalize(String value) {
         if (value == null || value.strip().isBlank())
@@ -143,7 +145,12 @@ public class ReservationServiceImpl implements ReservationService {
         if (fineRepository.countByUser_IdAndStatus(user.getId(), FineStatus.ACTIVE) > 0)
             throw new BusinessRuleException("User has unpaid fines");
 
-        if (loanRepository.countByUser_IdAndStatusIn(user.getId(), Set.of(LoanStatus.OVERDUE, LoanStatus.LOST)) > 0)
+        validateLoanDeadlines(user);
+    }
+
+    private void validateLoanDeadlines(User user) {
+        if (loanRepository.existsBlockingLoan(user.getId(), Set.of(LoanStatus.OVERDUE, LoanStatus.LOST),
+                LoanStatus.ACTIVE, LocalDateTime.now(clock)))
             throw new BusinessRuleException("User has overdue or lost loans");
     }
 
@@ -194,6 +201,8 @@ public class ReservationServiceImpl implements ReservationService {
 
         User user = userRepository.findByIdForUpdate(request.userId()).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(request.userId())));
+        entityManager.refresh(user);
+        blockExpiration.expireForLockedUser(user);
 
         if (user.getStatus() != UserStatus.ACTIVE)
             throw new BusinessRuleException("Reservation can be created only for active user");
@@ -230,6 +239,7 @@ public class ReservationServiceImpl implements ReservationService {
                 || loanRepository.findByCopy_IdAndStatusIn(copy.getId(),
                         Set.of(LoanStatus.ACTIVE, LoanStatus.OVERDUE, LoanStatus.LOST)).isPresent())
             throw new ResourceInUseException("Material copy has active operations");
+        validateLoanDeadlines(user);
         LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime expiresAt = now.plusDays(rule.getReservationTtlDays());
 
@@ -322,6 +332,18 @@ public class ReservationServiceImpl implements ReservationService {
 
         Reservation saved = saveTransition(reservation);
         return toResponse(saved);
+    }
+
+    @Transactional(timeout = 10)
+    @InvalidateCatalogSearch
+    public boolean expireDue(Long id) {
+        Reservation reservation = circulationLocks.reservation(id);
+        if (!ACTIVE_RESERVATION_STATUSES.contains(reservation.getStatus()) || reservation.getExpiresAt().isAfter(LocalDateTime.now(clock)))
+            return false;
+
+        reservation.setStatus(ReservationStatus.EXPIRED);
+        saveTransition(reservation);
+        return true;
     }
 
     @Override
