@@ -99,6 +99,8 @@ import me.ifmo.backend.shared.messaging.KafkaMessagingProperties;
         me.ifmo.backend.shared.messaging.outbox.OutboxService.class,
         me.ifmo.backend.shared.observability.OperationLoggingAspect.class,
         me.ifmo.backend.shared.web.GlobalExceptionHandler.class,
+        me.ifmo.backend.user.application.UserBlockExpiration.class,
+        me.ifmo.backend.user.application.UserSanctionLocks.class,
         me.ifmo.backend.user.application.impl.RoleServiceImpl.class,
         me.ifmo.backend.user.application.impl.UserBlockServiceImpl.class,
         me.ifmo.backend.user.application.impl.UserServiceImpl.class,
