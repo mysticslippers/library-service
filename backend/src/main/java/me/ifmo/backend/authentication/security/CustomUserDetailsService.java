@@ -2,6 +2,7 @@ package me.ifmo.backend.authentication.security;
 
 import lombok.RequiredArgsConstructor;
 import me.ifmo.backend.user.domain.User;
+import me.ifmo.backend.user.application.UserBlockExpiration;
 import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserStatus;
 import me.ifmo.backend.user.persistence.UserRepository;
@@ -21,11 +22,15 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
+    private final UserBlockExpiration blockExpiration;
 
     @Override
     public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
         User user = userRepository.findById(Long.valueOf(userId)).orElseThrow(
                 () -> new UsernameNotFoundException("User not found"));
+
+        if (user.getStatus() == UserStatus.BLOCKED)
+            user = blockExpiration.refreshBlockedUser(user.getId());
 
         List<SimpleGrantedAuthority> authorities = userRoleRepository.findRoleCodesByUser_Id(user.getId()).stream()
                 .map(RoleCode::name)
