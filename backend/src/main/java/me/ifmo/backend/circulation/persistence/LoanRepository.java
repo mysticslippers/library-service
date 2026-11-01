@@ -12,9 +12,23 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 import java.util.Collection;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface LoanRepository extends JpaRepository<Loan, Long>, JpaSpecificationExecutor<Loan> {
+
+    @Query("SELECT loan.id FROM Loan loan WHERE loan.status = :status AND loan.dueAt <= :now ORDER BY loan.dueAt, loan.id")
+    List<Long> findDueIds(@Param("status") LoanStatus status, @Param("now") LocalDateTime now, Pageable pageable);
+
+    @Query("""
+            SELECT (COUNT(loan) > 0) FROM Loan loan
+            WHERE loan.user.id = :userId AND (
+                loan.status IN :blockingStatuses
+                OR (loan.status = :activeStatus AND loan.dueAt <= :now)
+            )
+            """)
+    boolean existsBlockingLoan(@Param("userId") Long userId, @Param("blockingStatuses") Collection<LoanStatus> blockingStatuses, @Param("activeStatus") LoanStatus activeStatus, @Param("now") LocalDateTime now);
 
     @Query("SELECT loan.copy.id FROM Loan loan WHERE loan.id = :id")
     Optional<Long> findCopyIdById(@Param("id") Long id);
