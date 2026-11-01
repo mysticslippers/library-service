@@ -22,6 +22,7 @@ import me.ifmo.backend.user.domain.enums.RoleCode;
 import me.ifmo.backend.user.domain.enums.UserBlockStatus;
 import me.ifmo.backend.user.domain.enums.UserStatus;
 import me.ifmo.backend.user.domain.User;
+import me.ifmo.backend.user.application.UserBlockExpiration;
 import me.ifmo.backend.user.persistence.UserBlockRepository;
 import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
@@ -78,6 +79,7 @@ public class LoanServiceImpl implements LoanService {
     private final CirculationLocks circulationLocks;
     private final EntityManager entityManager;
     private final Clock clock;
+    private final UserBlockExpiration blockExpiration;
 
     private boolean isStaff(Long actorUserId) {
         return userRoleRepository.findRoleCodesByUser_Id(actorUserId).stream()
@@ -116,7 +118,12 @@ public class LoanServiceImpl implements LoanService {
         if (fineRepository.countByUser_IdAndStatus(user.getId(), FineStatus.ACTIVE) > 0)
             throw new BusinessRuleException("User has unpaid fines");
 
-        if (repository.countByUser_IdAndStatusIn(user.getId(), Set.of(LoanStatus.OVERDUE, LoanStatus.LOST)) > 0)
+        validateLoanDeadlines(user);
+    }
+
+    private void validateLoanDeadlines(User user) {
+        if (repository.existsBlockingLoan(user.getId(), Set.of(LoanStatus.OVERDUE, LoanStatus.LOST),
+                LoanStatus.ACTIVE, LocalDateTime.now(clock)))
             throw new BusinessRuleException("User has overdue or lost loans");
     }
 
@@ -149,6 +156,8 @@ public class LoanServiceImpl implements LoanService {
 
         User user = userRepository.findByIdForUpdate(request.userId()).orElseThrow(
                 () -> new ResourceNotFoundException("User with id '%s' not found".formatted(request.userId())));
+        entityManager.refresh(user);
+        blockExpiration.expireForLockedUser(user);
 
         if (user.getStatus() != UserStatus.ACTIVE)
             throw new BusinessRuleException("User must be active");
@@ -217,6 +226,7 @@ public class LoanServiceImpl implements LoanService {
                 throw new ResourceInUseException("Material copy is not available for loan");
         }
 
+        validateLoanDeadlines(user);
         LocalDateTime now = LocalDateTime.now(clock);
 
         LocalDateTime dueAt = request.dueAt() != null ? request.dueAt() : now.plusDays(rule.getDefaultLoanDays());
@@ -340,6 +350,17 @@ public class LoanServiceImpl implements LoanService {
 
         Loan saved = repository.save(loan);
         return loanMapper.toResponse(saved);
+    }
+
+    @Transactional(timeout = 10)
+    public boolean markOverdueIfDue(Long id) {
+        Loan loan = circulationLocks.loan(id);
+        if (loan.getStatus() != LoanStatus.ACTIVE || loan.getDueAt().isAfter(LocalDateTime.now(clock)))
+            return false;
+
+        loan.setStatus(LoanStatus.OVERDUE);
+        repository.saveAndFlush(loan);
+        return true;
     }
 
     @Override
