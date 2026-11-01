@@ -1,5 +1,8 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import me.ifmo.backend.user.application.UserBlockExpiration;
+import me.ifmo.backend.circulation.domain.enums.LoanStatus;
+
 import jakarta.persistence.EntityManager;
 import me.ifmo.backend.circulation.application.CirculationLocks;
 import me.ifmo.backend.catalog.web.response.MaterialShortResponse;
@@ -115,6 +118,8 @@ class ReservationServiceImplTest {
     @Mock private EntityManager entityManager;
     @Spy private Clock clock = Clock.systemDefaultZone();
 
+    @Mock private UserBlockExpiration blockExpiration;
+
     @InjectMocks
     private ReservationServiceImpl service;
 
@@ -125,7 +130,8 @@ class ReservationServiceImplTest {
     private void allowReservations(User user) {
         when(userBlockRepository.existsByUser_IdAndStatus(user.getId(), UserBlockStatus.ACTIVE)).thenReturn(false);
         when(fineRepository.countByUser_IdAndStatus(user.getId(), FineStatus.ACTIVE)).thenReturn(0L);
-        when(loanRepository.countByUser_IdAndStatusIn(eq(user.getId()), anyCollection())).thenReturn(0L);
+        when(loanRepository.existsBlockingLoan(eq(user.getId()), anyCollection(), eq(LoanStatus.ACTIVE), any(LocalDateTime.class)))
+                .thenReturn(false);
     }
 
     private void stubResponse(Reservation reservation, ReservationResponse response) {
