@@ -24,6 +24,7 @@ import me.ifmo.backend.user.persistence.UserWarningRepository;
 import me.ifmo.backend.audit.application.AuditLogService;
 import me.ifmo.backend.notification.application.NotificationService;
 import me.ifmo.backend.user.application.UserWarningService;
+import me.ifmo.backend.user.application.UserSanctionLocks;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -32,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.Map;
 
 @Service
@@ -44,6 +46,8 @@ public class UserWarningServiceImpl implements UserWarningService {
     private final UserWarningMapper userWarningMapper;
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
+    private final UserSanctionLocks locks;
+    private final Clock clock;
 
     private String normalize(String value, String fieldName) {
         if(fieldName.equals("Comment")){
@@ -129,7 +133,7 @@ public class UserWarningServiceImpl implements UserWarningService {
         String reason = normalizeReason(request.reason());
         String comment = normalize(request.comment(), "Comment");
 
-        if (request.expiresAt() != null && !request.expiresAt().isAfter(LocalDateTime.now()))
+        if (request.expiresAt() != null && !request.expiresAt().isAfter(LocalDateTime.now(clock)))
             throw new BusinessRuleException("Warning expiresAt must be in the future");
 
         CreateUserWarningRequest normalizedRequest = new CreateUserWarningRequest(user.getId(), reason, comment, request.expiresAt());
@@ -156,8 +160,7 @@ public class UserWarningServiceImpl implements UserWarningService {
     @Override
     @Transactional
     public UserWarningResponse cancel(Long actorUserId, Long id, CancelUserWarningRequest request) {
-        UserWarning warning = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("User warning with id '%s' not found".formatted(id)));
+        UserWarning warning = locks.warning(id);
 
         validateActorCanManageTarget(findActiveActor(actorUserId), warning.getUser());
 
@@ -176,21 +179,31 @@ public class UserWarningServiceImpl implements UserWarningService {
     @Override
     @Transactional
     public UserWarningResponse expire(Long actorUserId, Long id) {
-        UserWarning warning = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("User warning with id '%s' not found".formatted(id)));
+        UserWarning warning = locks.warning(id);
 
         validateActorCanManageTarget(findActiveActor(actorUserId), warning.getUser());
 
         if (warning.getStatus() != UserWarningStatus.ACTIVE)
             throw new BusinessRuleException("Only active user warning can be expired");
 
-        if (warning.getExpiresAt() == null || warning.getExpiresAt().isAfter(LocalDateTime.now()))
+        if (warning.getExpiresAt() == null || warning.getExpiresAt().isAfter(LocalDateTime.now(clock)))
             throw new BusinessRuleException("User warning has not expired yet");
 
         warning.setStatus(UserWarningStatus.EXPIRED);
 
         UserWarning saved = repository.save(warning);
         return userWarningMapper.toResponse(saved);
+    }
+
+    @Transactional(timeout = 10)
+    public boolean expireDue(Long id) {
+        UserWarning warning = locks.warning(id);
+        if (warning.getStatus() != UserWarningStatus.ACTIVE || warning.getExpiresAt() == null || warning.getExpiresAt().isAfter(LocalDateTime.now(clock)))
+            return false;
+
+        warning.setStatus(UserWarningStatus.EXPIRED);
+        repository.saveAndFlush(warning);
+        return true;
     }
 
     @Override
