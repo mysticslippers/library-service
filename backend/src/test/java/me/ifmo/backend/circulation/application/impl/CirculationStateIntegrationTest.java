@@ -1,5 +1,7 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import me.ifmo.backend.user.application.UserBlockExpiration;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
@@ -104,6 +106,8 @@ class CirculationStateIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactions;
     @Autowired private EntityManager entityManager;
+    @MockitoBean
+    private UserBlockExpiration blockExpiration;
     @MockitoBean private MaterialMapper materialMapper;
     @MockitoBean private Clock clock;
     @MockitoSpyBean private ObjectMapper objectMapper;

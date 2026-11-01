@@ -1,5 +1,7 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import me.ifmo.backend.user.application.UserBlockExpiration;
+
 import me.ifmo.backend.circulation.application.CirculationLocks;
 import me.ifmo.backend.circulation.configuration.CirculationTimeConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -73,6 +75,8 @@ class CirculationLimitsIntegrationTest {
     @Autowired private LoanService loans;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactionManager;
+    @MockitoBean
+    private UserBlockExpiration blockExpiration;
     @MockitoBean private MaterialMapper materialMapper;
     @MockitoBean private ReservationEventPublisher eventPublisher;
 

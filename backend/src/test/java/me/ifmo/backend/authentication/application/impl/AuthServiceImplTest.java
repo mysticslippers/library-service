@@ -1,5 +1,7 @@
 package me.ifmo.backend.authentication.application.impl;
 
+import me.ifmo.backend.user.application.UserBlockExpiration;
+
 import me.ifmo.backend.authentication.domain.AuthToken;
 import me.ifmo.backend.authentication.domain.enums.AuthTokenType;
 import me.ifmo.backend.authentication.persistence.AuthTokenRepository;
@@ -80,6 +82,8 @@ class AuthServiceImplTest {
     @Mock private AuthRequestLimiter requestLimiter;
     @Mock private AuthPasswordVerifier passwordVerifier;
     @Mock private RegistrationStore registrationStore;
+
+    @Mock private UserBlockExpiration blockExpiration;
 
     @InjectMocks
     private AuthServiceImpl service;

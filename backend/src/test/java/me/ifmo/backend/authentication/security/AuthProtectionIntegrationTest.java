@@ -99,7 +99,9 @@ class AuthProtectionIntegrationTest {
     @EnableAutoConfiguration
     @EntityScan("me.ifmo.backend")
     @EnableJpaRepositories("me.ifmo.backend")
-    @Import({AuthServiceImpl.class, AuthController.class, SecurityConfig.class, JwtAuthenticationFilter.class,
+    @Import({me.ifmo.backend.user.application.UserBlockExpiration.class,
+            me.ifmo.backend.user.application.UserSanctionLocks.class,
+            me.ifmo.backend.circulation.configuration.CirculationTimeConfiguration.class, AuthServiceImpl.class, AuthController.class, SecurityConfig.class, JwtAuthenticationFilter.class,
             CustomUserDetailsService.class, RestAuthenticationEntryPoint.class, JwtServiceImpl.class,
             AuthProtectionConfiguration.class, AuthRequestLimiter.class, AuthRateLimitStore.class,
             AuthPasswordVerifier.class, RegistrationStore.class, AuthClientAddress.class, AuthDataRetention.class,

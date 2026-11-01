@@ -1,5 +1,7 @@
 package me.ifmo.backend.authentication.application.impl;
 
+import me.ifmo.backend.user.application.UserBlockExpiration;
+
 import jakarta.persistence.EntityManager;
 import me.ifmo.backend.authentication.application.AuthService;
 import me.ifmo.backend.authentication.configuration.AuthProtectionConfiguration;
@@ -105,6 +107,8 @@ class AuthConcurrencyIntegrationTest {
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private EntityManager entityManager;
     // Credential hashing, JWTs, repositories and transactions are real; no messages are sent.
+    @MockitoBean
+    private UserBlockExpiration blockExpiration;
     @MockitoBean private NotificationService notifications;
     @MockitoSpyBean private PasswordEncoder encoder;
 

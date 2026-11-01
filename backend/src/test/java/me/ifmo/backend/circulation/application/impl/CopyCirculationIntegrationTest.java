@@ -1,5 +1,7 @@
 package me.ifmo.backend.circulation.application.impl;
 
+import me.ifmo.backend.user.application.UserBlockExpiration;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.ifmo.backend.catalog.application.MaterialCopyService;
 import me.ifmo.backend.catalog.application.impl.MaterialCopyServiceImpl;
@@ -84,6 +86,8 @@ class CopyCirculationIntegrationTest {
     @Autowired private MaterialCopyService copies;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactions;
+    @MockitoBean
+    private UserBlockExpiration blockExpiration;
     @MockitoBean private MaterialMapper materialMapper;
     @MockitoBean private ReservationEventPublisher events;
 
