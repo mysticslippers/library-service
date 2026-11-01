@@ -12,9 +12,14 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 import java.util.Collection;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long>, JpaSpecificationExecutor<Reservation> {
+
+    @Query("SELECT reservation.id FROM Reservation reservation WHERE reservation.status IN :statuses AND reservation.expiresAt <= :now ORDER BY reservation.expiresAt, reservation.id")
+    List<Long> findDueIds(@Param("statuses") Collection<ReservationStatus> statuses, @Param("now") LocalDateTime now, Pageable pageable);
 
     @Query("SELECT reservation.copy.id FROM Reservation reservation WHERE reservation.id = :id")
     Optional<Long> findCopyIdById(@Param("id") Long id);
