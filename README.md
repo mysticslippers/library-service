@@ -795,3 +795,44 @@ both service prechecks, rollback, index scope, direct SQL and upgrades from V12.
 ```shell
 mvn -f backend/pom.xml "-Dtest=FineCreationIntegrationTest,FineServiceImplTest" test
 ```
+
+## Deadline processing
+
+The backend automatically expires ACTIVE/READY_FOR_PICKUP reservations, marks
+ACTIVE loans overdue and expires temporary user blocks and warnings. Reservation
+expiry releases its copy through the existing circulation triggers and evicts
+catalog search cache after commit. Permanent blocks and warnings are preserved;
+an archived account is never reactivated by block expiry.
+
+Configuration, also forwarded by `docker-compose.prod.yml`:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `DEADLINE_PROCESSING_ENABLED` | `true` | Enable the background job |
+| `DEADLINE_POLL_INTERVAL_MS` | `60000` | Delay before the first run and between completed runs; minimum 1000 ms |
+| `DEADLINE_BATCH_SIZE` | `100` | Maximum candidates per entity type in one run; range 1–1000 |
+
+Each candidate runs in its own transaction with a ten-second timeout. Workers
+lock in the same order as manual commands and recheck the current status and
+deadline after waiting. Concurrent instances and repeated runs therefore cannot
+repeat a committed transition or its notification. A failed item is rolled back
+and retried on a later run; other candidates continue independently.
+
+Borrowing and reservation checks also inspect the due date of ACTIVE loans, so
+delayed background processing does not allow an overdue reader to create a new
+operation. The combined status/date check runs again after acquiring the copy
+and reservation locks. Expired blocks can be completed during login, JWT user loading or a
+new borrowing/reservation operation without waiting for the job. These checks
+remain enabled when the background job is disabled. Automatic changes use a
+system actor (`actor_user_id = NULL`); manual block expiry retains its staff actor.
+Unblock notifications are queued transactionally; delivery still uses the existing
+notification processing mechanism.
+
+Flyway applies `V14__index_pending_deadlines.sql` on startup to index pending
+deadlines. No existing migrations are modified.
+
+Focused verification with Docker available:
+
+```shell
+mvn -f backend/pom.xml "-Dtest=DeadlineProcessingIntegrationTest,LoanServiceImplTest,ReservationServiceImplTest,AuthServiceImplTest" test
+```
