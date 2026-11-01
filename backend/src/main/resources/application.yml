@@ -215,6 +215,12 @@ messaging:
       publish-timeout: ${KAFKA_OUTBOX_PUBLISH_TIMEOUT:5s}
       retry-delay: ${KAFKA_OUTBOX_RETRY_DELAY:5s}
 
+maintenance:
+  deadlines:
+    enabled: ${DEADLINE_PROCESSING_ENABLED:true}
+    batch-size: ${DEADLINE_BATCH_SIZE:100}
+    poll-interval-ms: ${DEADLINE_POLL_INTERVAL_MS:60000}
+
 cache:
   catalog-search:
     ttl: ${CATALOG_SEARCH_CACHE_TTL:90s}
