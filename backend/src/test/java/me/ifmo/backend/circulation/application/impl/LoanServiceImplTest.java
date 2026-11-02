@@ -161,6 +161,7 @@ class LoanServiceImplTest {
         var savedLoan = org.mockito.ArgumentCaptor.forClass(Loan.class);
         verify(loanRepository).saveAndFlush(savedLoan.capture());
         assertThat(savedLoan.getValue().getStatus()).isEqualTo(LoanStatus.ACTIVE);
+        assertThat(copy.getStatus()).isEqualTo(CopyStatus.LOANED);
         assertThat(savedLoan.getValue().getRenewalCount()).isZero();
         assertThat(savedLoan.getValue().getDueAt()).isAfterOrEqualTo(before.plusDays(14));
     }
@@ -226,7 +227,8 @@ class LoanServiceImplTest {
 
         service.create(STAFF_ID, new CreateLoanRequest(READER_ID, COPY_ID, 30L, BRANCH_ID, STAFF_ID, null));
 
-        verify(entityManager, org.mockito.Mockito.times(2)).refresh(reservation);
+        verify(entityManager).refresh(reservation);
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.USED);
         verify(entityManager, org.mockito.Mockito.times(2)).refresh(copy);
         assertThat(loan.getStatus()).isEqualTo(LoanStatus.ACTIVE);
     }

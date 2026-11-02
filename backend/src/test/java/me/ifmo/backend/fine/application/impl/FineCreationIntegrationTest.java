@@ -60,7 +60,8 @@ import static org.mockito.Mockito.doAnswer;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 @ImportAutoConfiguration(JacksonAutoConfiguration.class)
-@Import({FineServiceImpl.class, PaymentLocks.class, FineMapperImpl.class, MaterialCopyMapperImpl.class,
+@Import({me.ifmo.backend.shared.time.ApplicationTimeConfiguration.class,
+        FineServiceImpl.class, PaymentLocks.class, FineMapperImpl.class, MaterialCopyMapperImpl.class,
         UserMapperImpl.class, RoleMapperImpl.class, BranchMapperImpl.class, LibraryMapperImpl.class,
         BranchAddressJsonMapper.class})
 @Testcontainers
@@ -266,11 +267,15 @@ class FineCreationIntegrationTest {
         long copy = database.queryForObject("""
                 INSERT INTO material_copies(material_id, branch_id, inventory_number) VALUES (?, ?, ?) RETURNING id
                 """, Long.class, material, branch, "fine-test-" + SEQUENCE.incrementAndGet());
-        long loan = database.queryForObject("""
+        long loan = new TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(database.getDataSource())).execute(transaction -> {
+            long id = database.queryForObject("""
                 INSERT INTO loans(user_id, copy_id, branch_id, issued_by_user_id, loaned_at, due_at)
                 VALUES (?, ?, ?, ?, timezone('UTC', clock_timestamp()), timezone('UTC', clock_timestamp()) + INTERVAL '14 days')
                 RETURNING id
                 """, Long.class, reader, copy, branch, staff);
+            database.update("UPDATE material_copies SET status = 'LOANED' WHERE id = ?", copy);
+            return id;
+        });
         return new FineCreationFixture(reader, staff, loan, copy);
     }
 

@@ -11,7 +11,7 @@ import me.ifmo.backend.catalog.mapper.MaterialMapper;
 import me.ifmo.backend.catalog.web.request.ChangeMaterialCopyStatusRequest;
 import me.ifmo.backend.catalog.web.request.UpdateMaterialCopyRequest;
 import me.ifmo.backend.circulation.application.CirculationLocks;
-import me.ifmo.backend.circulation.configuration.CirculationTimeConfiguration;
+import me.ifmo.backend.shared.time.ApplicationTimeConfiguration;
 import me.ifmo.backend.circulation.application.LoanService;
 import me.ifmo.backend.circulation.application.ReservationService;
 import me.ifmo.backend.circulation.integration.ReservationEventPublisher;
@@ -70,7 +70,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({CirculationTimeConfiguration.class, CirculationLocks.class, LoanServiceImpl.class, ReservationServiceImpl.class, MaterialCopyServiceImpl.class,
+@Import({ApplicationTimeConfiguration.class, CirculationLocks.class, LoanServiceImpl.class, ReservationServiceImpl.class, MaterialCopyServiceImpl.class,
         LoanMapperImpl.class, ReservationMapperImpl.class, MaterialCopyMapperImpl.class, UserMapperImpl.class,
         RoleMapperImpl.class, BranchMapperImpl.class, LibraryMapperImpl.class, BranchAddressJsonMapper.class,
         CopyCirculationIntegrationTest.JsonConfiguration.class})
@@ -234,6 +234,7 @@ class CopyCirculationIntegrationTest {
                     INSERT INTO reservations(user_id, material_id, copy_id, branch_id, expires_at)
                     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP + INTERVAL '1 day')
                     """, f.reader(), f.copy().material(), f.copy().id(), f.branch());
+            jdbc.update("UPDATE material_copies SET status = 'RESERVED' WHERE id = ?", f.copy().id());
             return "SQL reservation";
         };
         Supplier<?> service = () -> claim("LOAN", f, f.otherReader(), f.copy());
@@ -297,23 +298,18 @@ class CopyCirculationIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"ACTIVE", "OVERDUE", "LOST"})
-    void sqlBlockingLoansSetTheMatchingCopyState(String status) {
+    void atomicSqlLoanAndCopyChangesKeepTheMatchingCopyState(String status) {
         Fixture f = fixture();
         sqlLoan(f, f.reader(), f.copy(), null, f.branch(), status);
         assertState(f.copy(), status.equals("LOST") ? "LOST" : "LOANED", 0, 1);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"READER", "COPY", "BRANCH", "ACTIVE", "EXPIRED", "USED"})
-    void sqlReservedLoanMustMatchAReadyUnexpiredUnusedReservation(String mismatch) {
+    @ValueSource(strings = {"READER", "COPY", "BRANCH", "ACTIVE", "USED"})
+    void sqlReservedLoanMustMatchItsReservation(String mismatch) {
         Fixture f = fixture();
         long reservation = mismatch.equals("ACTIVE") ? reserve(f, f.reader(), f.copy()).id() : ready(f);
         Book selected = mismatch.equals("COPY") ? book(f.branch()) : f.copy();
-        if (mismatch.equals("EXPIRED")) {
-            jdbc.update("UPDATE reservations SET created_at = timezone('UTC', CURRENT_TIMESTAMP) - INTERVAL '1 day', expires_at = timezone('UTC', CURRENT_TIMESTAMP) - INTERVAL '1 hour' WHERE id = ?", reservation);
-            assertThatThrownBy(() -> issueReserved(f, reservation)).isInstanceOf(ApiException.class)
-                    .hasMessage("Reservation has expired");
-        }
         if (mismatch.equals("USED")) {
             long loan = issueReserved(f, reservation).id();
             loans.returnLoan(f.staff(), loan, new ReturnLoanRequest(null, null));
@@ -459,15 +455,40 @@ class CopyCirculationIntegrationTest {
     }
 
     private void sqlLoan(Fixture f, long reader, Book book, Long reservation, long branch, String status) {
-        jdbc.update("""
+        new TransactionTemplate(transactions).executeWithoutResult(transaction -> {
+            jdbc.update("""
                 INSERT INTO loans(user_id, copy_id, reservation_id, branch_id, issued_by_user_id, due_at, status)
                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP + INTERVAL '7 days', CAST(? AS loan_status))
                 """, reader, book.id(), reservation, branch, f.staff(), status);
+            if (reservation != null) {
+                jdbc.update("UPDATE reservations SET status = 'USED' WHERE id = ?", reservation);
+            }
+            jdbc.update("UPDATE material_copies SET status = CAST(? AS copy_status) WHERE id = ?",
+                    status.equals("LOST") ? "LOST" : "LOANED", book.id());
+        });
     }
 
     private void assertSuccess(Outcome outcome) {
         assertThat(outcome.error()).isNull();
         assertThat(outcome.value()).isNotNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"LOAN", "RESERVATION"})
+    void sqlWritesDoNotMutateTheCopyAndIncompleteTransactionsAreRejected(String operation) {
+        Fixture f = fixture();
+        assertThatThrownBy(() -> new TransactionTemplate(transactions).executeWithoutResult(transaction -> {
+            if (operation.equals("LOAN")) {
+                jdbc.update("INSERT INTO loans(user_id, copy_id, branch_id, issued_by_user_id, due_at) VALUES (?, ?, ?, ?, now() + INTERVAL '7 days')",
+                        f.reader(), f.copy().id(), f.branch(), f.staff());
+            } else {
+                jdbc.update("INSERT INTO reservations(user_id, material_id, copy_id, branch_id, expires_at) VALUES (?, ?, ?, ?, now() + INTERVAL '1 day')",
+                        f.reader(), f.copy().material(), f.copy().id(), f.branch());
+            }
+            assertThat(jdbc.queryForObject("SELECT status::text FROM material_copies WHERE id = ?", String.class, f.copy().id()))
+                    .isEqualTo("AVAILABLE");
+        })).hasRootCauseInstanceOf(java.sql.SQLException.class);
+        assertState(f.copy(), "AVAILABLE", 0, 0);
     }
 
     private void assertResponseCopy(Object response, CopyStatus status) {

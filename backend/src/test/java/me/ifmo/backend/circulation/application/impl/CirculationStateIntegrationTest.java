@@ -10,7 +10,7 @@ import me.ifmo.backend.catalog.mapper.MaterialMapper;
 import me.ifmo.backend.circulation.application.CirculationLocks;
 import me.ifmo.backend.circulation.application.LoanService;
 import me.ifmo.backend.circulation.application.ReservationService;
-import me.ifmo.backend.circulation.configuration.CirculationTimeConfiguration;
+import me.ifmo.backend.shared.time.ApplicationTimeConfiguration;
 import me.ifmo.backend.circulation.domain.enums.LoanStatus;
 import me.ifmo.backend.circulation.domain.enums.ReservationStatus;
 import me.ifmo.backend.circulation.integration.KafkaReservationEventPublisher;
@@ -90,7 +90,7 @@ import static org.mockito.Mockito.when;
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({CirculationTimeConfiguration.class, CirculationLocks.class, LoanServiceImpl.class, ReservationServiceImpl.class,
+@Import({ApplicationTimeConfiguration.class, CirculationLocks.class, LoanServiceImpl.class, ReservationServiceImpl.class,
         LoanMapperImpl.class, ReservationMapperImpl.class, MaterialCopyMapperImpl.class, UserMapperImpl.class,
         RoleMapperImpl.class, BranchMapperImpl.class, LibraryMapperImpl.class, BranchAddressJsonMapper.class,
         KafkaReservationEventPublisher.class, OutboxService.class, CirculationStateIntegrationTest.EventConfiguration.class})
@@ -282,10 +282,16 @@ class CirculationStateIntegrationTest {
             case LOST -> to == LoanStatus.RETURNED;
             default -> false;
         };
-        Runnable update = () -> jdbc.update("""
+        Runnable update = () -> new TransactionTemplate(transactions).executeWithoutResult(transaction -> {
+            jdbc.update("""
                 UPDATE loans SET status = CAST(? AS loan_status),
                     returned_at = CASE WHEN ? = 'RETURNED' THEN COALESCE(returned_at, ?) ELSE returned_at END WHERE id = ?
                 """, to.name(), to.name(), dbNow(), id);
+            if (from != to) {
+                jdbc.update("UPDATE material_copies SET status = CAST(? AS copy_status) WHERE id = ?",
+                        to == LoanStatus.LOST ? "LOST" : to == LoanStatus.RETURNED || to == LoanStatus.CANCELLED ? "AVAILABLE" : "LOANED", f.copy());
+            }
+        });
 
         if (allowed) {
             update.run();
@@ -317,12 +323,13 @@ class CirculationStateIntegrationTest {
                     ReservationStatus.CANCELLED_BY_USER, ReservationStatus.CANCELLED_BY_LIBRARIAN).contains(to);
             default -> false;
         };
-        Runnable update = () -> {
+        Runnable update = () -> new TransactionTemplate(transactions).executeWithoutResult(transaction -> {
             if (from == ReservationStatus.READY_FOR_PICKUP && to == ReservationStatus.USED) {
                 jdbc.update("""
                         INSERT INTO loans(user_id, copy_id, reservation_id, branch_id, issued_by_user_id, loaned_at, due_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?)
                         """, f.reader(), f.copy(), id, f.branch(), f.staff(), dbNow(), dbNow().plusDays(7));
+                jdbc.update("UPDATE reservations SET status = 'USED' WHERE id = ?", id);
             } else {
                 jdbc.update("""
                         UPDATE reservations SET status = CAST(? AS reservation_status),
@@ -332,7 +339,12 @@ class CirculationStateIntegrationTest {
                         WHERE id = ?
                         """, to.name(), to.name(), dbNow(), to.name(), dbNow(), to.name(), id);
             }
-        };
+            if (from != to) {
+                String copyState = to == ReservationStatus.USED ? "LOANED"
+                        : to == ReservationStatus.READY_FOR_PICKUP || to == ReservationStatus.ACTIVE ? "RESERVED" : "AVAILABLE";
+                jdbc.update("UPDATE material_copies SET status = CAST(? AS copy_status) WHERE id = ?", copyState, f.copy());
+            }
+        });
 
         if (allowed) {
             update.run();
@@ -662,6 +674,21 @@ class CirculationStateIntegrationTest {
         };
     }
 
+    @Test
+    void reservationAndLoanBusinessDatesUseOneClockWithoutASqlWallClockDecision() {
+        Fixture f = fixture();
+        long reservation = reservation(f, "READY_FOR_PICKUP", dbNow().minusHours(1));
+        time.set(time.get().minusSeconds(7200));
+        LocalDateTime expectedLoanedAt = LocalDateTime.now(clock);
+        LoanResponse response = loans.create(f.staff(), new CreateLoanRequest(f.reader(), f.copy(), reservation,
+                f.branch(), f.staff(), null));
+        assertThat(response.loanedAt()).isEqualTo(expectedLoanedAt);
+        assertThat(reservationStatus(reservation)).isEqualTo("USED");
+        assertThat(copyStatus(f)).isEqualTo("LOANED");
+        assertThat(jdbc.queryForObject("SELECT loaned_at FROM loans WHERE id = ?", LocalDateTime.class, response.id()))
+                .isEqualTo(dbNow());
+    }
+
     private Object reservationCommand(String command, Fixture f, long id) {
         return switch (command) {
             case "READY" -> reservations.markReadyForPickup(f.staff(), id);
@@ -736,21 +763,34 @@ class CirculationStateIntegrationTest {
     private long events(long id) { return jdbc.queryForObject("SELECT count(*) FROM outbox_events WHERE aggregate_id = ? AND event_type = 'reservation.ready-for-pickup'", Long.class, Long.toString(id)); }
 
     private long loan(Fixture f, String state, LocalDateTime due, int renewals) {
-        return jdbc.queryForObject("""
+        return new TransactionTemplate(transactions).execute(transaction -> {
+            long id = jdbc.queryForObject("""
                 INSERT INTO loans(user_id, copy_id, branch_id, issued_by_user_id, loaned_at, due_at, renewal_count, status, returned_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS loan_status), ?) RETURNING id
                 """, Long.class, f.reader(), f.copy(), f.branch(), f.staff(), dbNow().minusDays(2), due, renewals, state,
                 state.equals("RETURNED") ? dbNow().minusDays(1) : null);
+            if (Set.of("ACTIVE", "OVERDUE", "LOST").contains(state)) {
+                jdbc.update("UPDATE material_copies SET status = CAST(? AS copy_status) WHERE id = ?",
+                        state.equals("LOST") ? "LOST" : "LOANED", f.copy());
+            }
+            return id;
+        });
     }
 
     private long reservation(Fixture f, String state, LocalDateTime expires) {
         boolean cancelled = state.startsWith("CANCELLED");
-        return jdbc.queryForObject("""
+        return new TransactionTemplate(transactions).execute(transaction -> {
+            long id = jdbc.queryForObject("""
                 INSERT INTO reservations(user_id, material_id, copy_id, branch_id, status, created_at, expires_at, ready_at, cancelled_at, cancellation_reason)
                 VALUES (?, ?, ?, ?, CAST(? AS reservation_status), ?, ?, ?, ?, ?) RETURNING id
                 """, Long.class, f.reader(), f.material(), f.copy(), f.branch(), state, dbNow().minusDays(2), expires,
                 state.equals("READY_FOR_PICKUP") || state.equals("USED") ? dbNow().minusDays(1) : null,
                 cancelled ? dbNow().minusDays(1) : null, cancelled ? "matrix" : null);
+            if (Set.of("ACTIVE", "READY_FOR_PICKUP").contains(state)) {
+                jdbc.update("UPDATE material_copies SET status = 'RESERVED' WHERE id = ?", f.copy());
+            }
+            return id;
+        });
     }
 
     private Fixture fixture() {

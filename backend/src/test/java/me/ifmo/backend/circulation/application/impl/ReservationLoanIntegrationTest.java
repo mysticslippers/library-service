@@ -4,7 +4,7 @@ import me.ifmo.backend.user.application.UserBlockExpiration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import me.ifmo.backend.circulation.application.CirculationLocks;
-import me.ifmo.backend.circulation.configuration.CirculationTimeConfiguration;
+import me.ifmo.backend.shared.time.ApplicationTimeConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.ifmo.backend.catalog.mapper.MaterialCopyMapperImpl;
 import me.ifmo.backend.circulation.application.LoanService;
@@ -34,6 +34,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -50,7 +52,7 @@ import static org.mockito.Mockito.doThrow;
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({CirculationTimeConfiguration.class, CirculationLocks.class, LoanServiceImpl.class, LoanMapperImpl.class, UserMapperImpl.class, RoleMapperImpl.class,
+@Import({ApplicationTimeConfiguration.class, CirculationLocks.class, LoanServiceImpl.class, LoanMapperImpl.class, UserMapperImpl.class, RoleMapperImpl.class,
         MaterialCopyMapperImpl.class, BranchMapperImpl.class, LibraryMapperImpl.class,
         BranchAddressJsonMapper.class, ReservationLoanIntegrationTest.JsonConfiguration.class})
 @Testcontainers(disabledWithoutDocker = true)
@@ -74,6 +76,8 @@ class ReservationLoanIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired private PlatformTransactionManager transactionManager;
 
     @MockitoBean
     private UserBlockExpiration blockExpiration;
@@ -175,11 +179,14 @@ class ReservationLoanIntegrationTest {
         Long copyId = jdbc.queryForObject("""
                 INSERT INTO material_copies (material_id, branch_id, inventory_number) VALUES (?, ?, ?) RETURNING id
                 """, Long.class, materialId, branchId, "copy-" + sequence);
-        // Insert ACTIVE first so the production reservation trigger reserves the copy.
-        Long reservationId = jdbc.queryForObject("""
+        Long reservationId = new TransactionTemplate(transactionManager).execute(status -> {
+            Long id = jdbc.queryForObject("""
                 INSERT INTO reservations (user_id, material_id, copy_id, branch_id, expires_at)
                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP + INTERVAL '1 day') RETURNING id
                 """, Long.class, readerId, materialId, copyId, branchId);
+            jdbc.update("UPDATE material_copies SET status = 'RESERVED' WHERE id = ?", copyId);
+            return id;
+        });
         jdbc.update("UPDATE reservations SET status = 'READY_FOR_PICKUP', ready_at = CURRENT_TIMESTAMP WHERE id = ?",
                 reservationId);
         return new Fixture(readerId, staffId, branchId, copyId, reservationId);

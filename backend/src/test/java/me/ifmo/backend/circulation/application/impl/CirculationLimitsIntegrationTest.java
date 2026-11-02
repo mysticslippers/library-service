@@ -3,7 +3,7 @@ package me.ifmo.backend.circulation.application.impl;
 import me.ifmo.backend.user.application.UserBlockExpiration;
 
 import me.ifmo.backend.circulation.application.CirculationLocks;
-import me.ifmo.backend.circulation.configuration.CirculationTimeConfiguration;
+import me.ifmo.backend.shared.time.ApplicationTimeConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.ifmo.backend.catalog.mapper.MaterialCopyMapperImpl;
 import me.ifmo.backend.catalog.mapper.MaterialMapper;
@@ -53,7 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({CirculationTimeConfiguration.class, CirculationLocks.class, ReservationServiceImpl.class, LoanServiceImpl.class, ReservationMapperImpl.class, LoanMapperImpl.class,
+@Import({ApplicationTimeConfiguration.class, CirculationLocks.class, ReservationServiceImpl.class, LoanServiceImpl.class, ReservationMapperImpl.class, LoanMapperImpl.class,
         UserMapperImpl.class, RoleMapperImpl.class, MaterialCopyMapperImpl.class, BranchMapperImpl.class,
         LibraryMapperImpl.class, BranchAddressJsonMapper.class, CirculationLimitsIntegrationTest.JsonConfiguration.class})
 @Testcontainers(disabledWithoutDocker = true)

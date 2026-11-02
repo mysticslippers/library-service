@@ -74,7 +74,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=validate")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({PaymentLocks.class, PaymentTransactionServiceImpl.class, FineServiceImpl.class,
+@Import({me.ifmo.backend.shared.time.ApplicationTimeConfiguration.class,
+        PaymentLocks.class, PaymentTransactionServiceImpl.class, FineServiceImpl.class,
         PaymentTransactionMapperImpl.class, FineMapperImpl.class, MaterialCopyMapperImpl.class,
         UserMapperImpl.class, RoleMapperImpl.class, BranchMapperImpl.class, LibraryMapperImpl.class,
         BranchAddressJsonMapper.class, PaymentConsistencyIntegrationTest.JsonConfiguration.class})
@@ -200,7 +201,13 @@ class PaymentConsistencyIntegrationTest {
         Map<String, Object> before = paymentRow(id), fine = fineRow(f);
         long audit = audits();
         if (allowed(from, to)) {
-            int changed = jdbc.update("UPDATE payment_transactions SET status = CAST(? AS payment_status) WHERE id = ?", to.name(), id);
+            int changed = new TransactionTemplate(transactions).execute(transaction -> {
+                int updated = jdbc.update("UPDATE payment_transactions SET status = CAST(? AS payment_status) WHERE id = ?", to.name(), id);
+                if (from != to && to == PaymentStatus.SUCCESS) {
+                    sqlClose(f, FineStatus.PAID);
+                }
+                return updated;
+            });
             assertThat(changed).isEqualTo(from == to ? 0 : 1);
             assertThat(paymentStatus(id)).isEqualTo(to.name());
             assertThat(fineStatus(f)).isEqualTo(to == PaymentStatus.SUCCESS ? "PAID" : "ACTIVE");
@@ -596,11 +603,48 @@ class PaymentConsistencyIntegrationTest {
                     cancellation_reason = CASE WHEN ? = 'CANCELLED' THEN 'Mistake' ELSE NULL END WHERE id = ?
                 """, target.name(), target.name(), target.name(), target.name(), f.fine());
     }
+
+    @Test
+    void sqlSuccessDoesNotChangeTheFineAndCannotCommitWithoutItsPaidState() {
+        Fixture f = fixture();
+        long id = create(f, external()).id();
+        assertThatThrownBy(() -> new TransactionTemplate(transactions).executeWithoutResult(transaction -> {
+            jdbc.update("UPDATE payment_transactions SET status = 'SUCCESS' WHERE id = ?", id);
+            assertThat(fineStatus(f)).isEqualTo("ACTIVE");
+        })).hasRootCauseInstanceOf(java.sql.SQLException.class);
+        assertThat(paymentStatus(id)).isEqualTo("CREATED");
+        assertThat(fineStatus(f)).isEqualTo("ACTIVE");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"UTC", "Europe/Moscow"})
+    void ormAndSqlMetadataStayUtcWhenTheDatabaseSessionZoneChanges(String databaseZone) {
+        new TransactionTemplate(transactions).executeWithoutResult(transaction -> {
+            jdbc.queryForObject("SELECT set_config('TimeZone', ?, true)", String.class, databaseZone);
+            Fixture f = fixture();
+            long id = create(f, external()).id();
+            var response = update(f, id, PaymentStatus.PENDING, null);
+            LocalDateTime databaseUtc = jdbc.queryForObject("SELECT timezone('UTC', clock_timestamp())", LocalDateTime.class);
+            LocalDateTime rawUpdatedAt = jdbc.queryForObject("SELECT updated_at FROM payment_transactions WHERE id = ?", LocalDateTime.class, id);
+            assertThat(java.time.Duration.between(rawUpdatedAt, databaseUtc).abs()).isLessThan(java.time.Duration.ofSeconds(10));
+            LocalDateTime expectedLocal = rawUpdatedAt.atOffset(java.time.ZoneOffset.UTC)
+                    .atZoneSameInstant(java.time.ZoneId.systemDefault()).toLocalDateTime();
+            assertThat(response.updatedAt()).isEqualTo(expectedLocal);
+            LocalDateTime rawRegisteredAt = jdbc.queryForObject("SELECT registered_at FROM users WHERE id = ?", LocalDateTime.class, f.reader());
+            assertThat(java.time.Duration.between(rawRegisteredAt, databaseUtc).abs()).isLessThan(java.time.Duration.ofSeconds(10));
+        });
+    }
     private long sqlPayment(Fixture f, PaymentStatus state, String external) {
-        return jdbc.queryForObject("""
+        return new TransactionTemplate(transactions).execute(transaction -> {
+            long id = jdbc.queryForObject("""
                 INSERT INTO payment_transactions(fine_id, amount, status, external_payment_id)
                 VALUES (?, ?, CAST(? AS payment_status), ?) RETURNING id
                 """, Long.class, f.fine(), AMOUNT, state.name(), external);
+            if (state == PaymentStatus.SUCCESS) {
+                sqlClose(f, FineStatus.PAID);
+            }
+            return id;
+        });
     }
     private Map<String, Object> paymentRow(long id) { return jdbc.queryForMap("SELECT * FROM payment_transactions WHERE id = ?", id); }
     private Map<String, Object> fineRow(Fixture f) { return jdbc.queryForMap("SELECT * FROM fines WHERE id = ?", f.fine()); }

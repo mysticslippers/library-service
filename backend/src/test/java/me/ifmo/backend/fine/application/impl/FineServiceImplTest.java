@@ -33,6 +33,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -86,6 +87,8 @@ class FineServiceImplTest {
 
     @InjectMocks
     private FineServiceImpl service;
+
+    @Spy private java.time.Clock clock = java.time.Clock.systemDefaultZone();
 
     private void grantStaff() {
         when(userRoleRepository.findRoleCodesByUser_Id(FineServiceImplTest.STAFF_ID)).thenReturn(List.of(RoleCode.LIBRARIAN));
