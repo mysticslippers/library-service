@@ -1,6 +1,7 @@
 package me.ifmo.backend.shared.observability.security;
 
 import me.ifmo.backend.authentication.security.ratelimit.AuthRequestLimiter;
+import me.ifmo.backend.user.application.UserBlockExpiration;
 import me.ifmo.backend.user.persistence.UserRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,7 @@ class ManagementDefaultIntegrationTest {
     @MockitoBean UserRepository users;
     @MockitoBean UserRoleRepository roles;
     @MockitoBean AuthRequestLimiter authLimiter;
+    @MockitoBean UserBlockExpiration blockExpiration;
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
