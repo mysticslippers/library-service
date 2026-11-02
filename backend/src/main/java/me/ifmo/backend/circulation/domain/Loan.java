@@ -8,7 +8,6 @@ import me.ifmo.backend.library.domain.Branch;
 import jakarta.persistence.*;
 import lombok.*;
 import me.ifmo.backend.circulation.domain.enums.LoanStatus;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
@@ -48,7 +47,6 @@ public class Loan {
     @JoinColumn(name = "issued_by_user_id", nullable = false)
     private User issuedByUser;
 
-    @CreationTimestamp
     @Column(name = "loaned_at", nullable = false, updatable = false)
     private LocalDateTime loanedAt;
 
