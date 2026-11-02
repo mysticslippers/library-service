@@ -229,18 +229,15 @@ renewal and pickup readiness. Copy status/branch edits use the same copy lock.
 Automatic selection uses `FOR UPDATE SKIP LOCKED`, choosing another available copy
 or returning the existing unavailable-copy error when no unlocked copy is available.
 
-V9 enforces matching copy/material/branch on reservations. Unreserved loans require
-an available copy without an active reservation; reserved loans require the matching
-reader, copy, branch and an unexpired `READY_FOR_PICKUP` reservation. These conditions
-also apply to initial `ACTIVE`, `OVERDUE` and `LOST` loans, keeping their copy status
-consistent. Expiration is compared in UTC, matching Hibernate's timestamp binding. Insert
-triggers lock parents before foreign-key checks and unique-index insertion can
-invert the copy lock order. Copy status/branch guards also protect direct updates.
+Services check matching copy/material/branch and availability under the row locks.
+Reserved loans require the matching reader, copy, branch and an unexpired
+`READY_FOR_PICKUP` reservation. Insert guards retain the parent lock order before
+foreign-key checks and unique-index insertion.
 
-SQL owns copy transitions on creation/closing and reservation consumption. Services
-flush and refresh trigger-managed entities before returning responses. A return's
-requested physical condition is applied after SQL closes the loan, in the same
-transaction.
+Since V15, services own copy transitions, reservation consumption and a return's
+requested physical condition. Related changes commit atomically. Database guards
+check the final state at commit; they do not update another business entity.
+Direct SQL must therefore update the operation and its copy in one transaction.
 
 V10 validates status changes on existing loans and reservations, freezes their
 reader/copy/branch associations, and prevents changes to closed records. A loan
@@ -250,9 +247,11 @@ An active reservation can become ready, cancelled or expired; a ready reservatio
 can also become `USED`, provided its matching loan exists in the same transaction.
 Renewal must increase both the due date and its counter once while the loan stays
 active. Deadline and library-rule checks remain in the services under the row locks.
-Circulation uses an injectable `Clock`, defaulting to the server's system zone,
+Circulation and fine/payment transitions share the injectable `Clock` from
+`shared.time.ApplicationTimeConfiguration`, defaulting to the server's system zone,
 so deadline equality and requests crossing a deadline can be tested deterministically.
-V9 and V10 are new migrations; earlier migration files remain unchanged.
+V15 replaces the V9 state-changing triggers; the V10 transition guards remain.
+Applied migration files remain unchanged.
 
 Renewal uses the current rules of the loan's branch. Omitting `renewalDays` adds
 the rule's full `renewalPeriodDays`; an explicit value must be between 1 and that
@@ -304,11 +303,13 @@ lock and refresh the payment. Different fines remain independent. Manual payment
 and cancellation are rejected while a payment is `CREATED` or `PENDING`; finish
 or cancel that payment first.
 
-V11 makes the SQL trigger responsible for settling a fine on payment success,
-including direct SQL inserts. Services flush and refresh trigger-managed values.
+Since V15, `PaymentTransactionServiceImpl` settles the fine on payment success in
+the same transaction. Manual fine closure also uses the shared Clock; closure
+time cannot precede persisted creation/update timestamps. The database rejects a
+committed SUCCESS payment whose fine is not PAID. Direct SQL must update both rows.
 Database guards validate transitions, amounts and immutable associations, and
 prevent changes to closed fines and final payments. Identical SQL updates skip
-the write itself. Native insert defaults and payment update/settlement timestamps
+the write itself. Native insert defaults and technical update timestamps
 use UTC, matching Hibernate's timestamp binding. Applied migrations remain unchanged.
 Creation, update and closure timestamps remain ordered when the JVM and database
 clocks differ.
@@ -826,7 +827,7 @@ mvn -f backend/pom.xml "-Dtest=FineCreationIntegrationTest,FineServiceImplTest" 
 
 The backend automatically expires ACTIVE/READY_FOR_PICKUP reservations, marks
 ACTIVE loans overdue and expires temporary user blocks and warnings. Reservation
-expiry releases its copy through the existing circulation triggers and evicts
+expiry releases its copy through the reservation service and evicts
 catalog search cache after commit. Permanent blocks and warnings are preserved;
 an archived account is never reactivated by block expiry.
 
@@ -862,3 +863,38 @@ Focused verification with Docker available:
 ```shell
 mvn -f backend/pom.xml "-Dtest=DeadlineProcessingIntegrationTest,LoanServiceImplTest,ReservationServiceImplTest,AuthServiceImplTest" test
 ```
+
+## Business transition ownership
+
+V15 removes the five circulation/payment triggers that changed related business
+rows. Responsibilities after the migration:
+
+| Operation | Owner | Related state changed in the same transaction |
+| --- | --- | --- |
+| Create a reservation | `ReservationServiceImpl` | Reservation ACTIVE, copy RESERVED |
+| Cancel or expire a reservation | `ReservationServiceImpl` | Reservation closed, copy AVAILABLE |
+| Issue a loan | `LoanServiceImpl` | Loan ACTIVE, copy LOANED, linked reservation USED |
+| Mark lost or return | `LoanServiceImpl` | Loan status and resulting physical copy status |
+| Confirm successful payment | `PaymentTransactionServiceImpl` | Payment SUCCESS, fine PAID and paidAt |
+| Manually pay/cancel a fine | `FineServiceImpl` | Fine status and closure metadata |
+| Technical timestamps and audit snapshots | Database | UTC metadata and sanitized audit rows |
+
+The database retains keys, uniqueness, immutable associations, transition guards
+and deferred consistency checks. It rejects incomplete transactions without
+silently completing them. A reservation can be consumed by only one loan,
+including loan history. Final consistency checks also protect direct SQL;
+availability, deadline and library-rule decisions belong to services.
+
+Reservation creation time, loan issue time and lifecycle deadlines use the shared
+Clock. SQL does not independently decide whether a reservation deadline passed.
+The existing LocalDateTime contract uses the JVM/application zone; Hibernate binds
+timestamps in UTC. SQL defaults and technical update timestamps are explicitly
+UTC even when a PostgreSQL session uses another zone. Production already sets
+`TZ=UTC`; keep the same JVM zone across replicas. Existing stored dates are not
+shifted by the migration.
+
+Stop all older backend instances before applying V15, then start the updated
+backend so Flyway migrates the schema before it serves requests. Old instances
+depend on the removed trigger side effects and must not run against the new
+schema. V15 checks existing circulation/payment consistency and fails on invalid
+data without repairing records or changing financial history.
