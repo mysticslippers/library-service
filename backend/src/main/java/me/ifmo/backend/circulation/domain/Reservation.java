@@ -9,7 +9,6 @@ import me.ifmo.backend.library.domain.Branch;
 import jakarta.persistence.*;
 import lombok.*;
 import me.ifmo.backend.circulation.domain.enums.ReservationStatus;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
@@ -51,7 +50,6 @@ public class Reservation {
     @Column(name = "status", nullable = false, columnDefinition = "reservation_status")
     private ReservationStatus status = ReservationStatus.ACTIVE;
 
-    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
