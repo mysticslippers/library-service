@@ -45,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.Set;
 
 @Service
@@ -63,6 +64,12 @@ public class FineServiceImpl implements FineService {
     private final PaymentLocks paymentLocks;
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final EntityManager entityManager;
+    private final Clock clock;
+
+    private LocalDateTime closureTime(Fine fine) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        return fine.getCreatedAt() != null && fine.getCreatedAt().isAfter(now) ? fine.getCreatedAt() : now;
+    }
 
     private void validateNoPendingPayment(Long fineId) {
         if (paymentTransactionRepository.existsByFine_IdAndStatusIn(fineId, Set.of(PaymentStatus.CREATED, PaymentStatus.PENDING)))
@@ -192,7 +199,7 @@ public class FineServiceImpl implements FineService {
         String reason = normalize(request.reason());
 
         fine.setStatus(FineStatus.CANCELLED);
-        fine.setCancelledAt(LocalDateTime.now());
+        fine.setCancelledAt(closureTime(fine));
         fine.setCancellationReason(reason);
 
         Fine saved = repository.saveAndFlush(fine);
@@ -213,7 +220,7 @@ public class FineServiceImpl implements FineService {
         validateNoPendingPayment(id);
 
         fine.setStatus(FineStatus.PAID);
-        fine.setPaidAt(LocalDateTime.now());
+        fine.setPaidAt(closureTime(fine));
 
         Fine saved = repository.saveAndFlush(fine);
         entityManager.refresh(saved);
