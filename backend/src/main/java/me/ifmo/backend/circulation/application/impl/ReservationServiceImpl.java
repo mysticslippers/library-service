@@ -155,6 +155,12 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private Reservation saveTransition(Reservation reservation) {
+        if (ACTIVE_RESERVATION_STATUSES.contains(reservation.getStatus()))
+            reservation.getCopy().setStatus(CopyStatus.RESERVED);
+
+        else if (reservation.getStatus() != ReservationStatus.USED)
+            reservation.getCopy().setStatus(CopyStatus.AVAILABLE);
+
         Reservation saved = repository.saveAndFlush(reservation);
         entityManager.refresh(saved.getCopy());
         return saved;
@@ -245,6 +251,7 @@ public class ReservationServiceImpl implements ReservationService {
 
         Reservation reservation = reservationMapper.toEntity(user, material, copy, branch, expiresAt);
         reservation.setStatus(ReservationStatus.ACTIVE);
+        reservation.setCreatedAt(now);
 
         Reservation saved = saveTransition(reservation);
         return toResponse(saved);
