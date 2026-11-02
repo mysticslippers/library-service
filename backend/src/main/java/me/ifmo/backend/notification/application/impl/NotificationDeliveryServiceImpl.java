@@ -66,8 +66,10 @@ public class NotificationDeliveryServiceImpl implements NotificationDeliveryServ
         }
 
         int processed = sent + failed + undelivered + unknown;
-        auditLogService.record(actorUserId, AuditEntityType.NOTIFICATION, null, AuditAction.UPDATE,
-                Map.of("action", "PROCESS_PENDING", "processed", processed, "createdAt", LocalDateTime.now().toString()));
+        if (actorUserId != null || processed > 0 || recovered > 0)
+            auditLogService.record(actorUserId, AuditEntityType.NOTIFICATION, null, AuditAction.UPDATE,
+                    Map.of("action", "PROCESS_PENDING", "processed", processed, "createdAt", LocalDateTime.now().toString()));
+
         return new NotificationDeliveryBatchResponse(processed, sent, failed, undelivered, unknown);
     }
 }
