@@ -236,13 +236,16 @@ public class LoanServiceImpl implements LoanService {
 
         Loan loan = loanMapper.toEntity(user, copy, reservation, branch, issuedByUser, dueAt);
         loan.setStatus(LoanStatus.ACTIVE);
+        loan.setLoanedAt(now);
         loan.setRenewalCount(0);
 
+        copy.setStatus(CopyStatus.LOANED);
         Loan saved = repository.saveAndFlush(loan);
+        if (reservation != null) {
+            reservation.setStatus(ReservationStatus.USED);
+            entityManager.flush();
+        }
         entityManager.refresh(copy);
-
-        if (reservation != null)
-            entityManager.refresh(reservation);
 
         return loanMapper.toResponse(saved);
     }
@@ -278,11 +281,8 @@ public class LoanServiceImpl implements LoanService {
 
         loan.setStatus(LoanStatus.RETURNED);
         loan.setReturnedAt(LocalDateTime.now(clock));
-        Loan saved = repository.saveAndFlush(loan);
-        entityManager.refresh(loan.getCopy());
-
         loan.getCopy().setStatus(resultingCopyStatus);
-        entityManager.flush();
+        Loan saved = repository.saveAndFlush(loan);
         entityManager.refresh(loan.getCopy());
         return loanMapper.toResponse(saved);
     }
@@ -381,6 +381,7 @@ public class LoanServiceImpl implements LoanService {
             throw new BusinessRuleException("Only active or overdue loan can be marked as lost");
 
         loan.setStatus(LoanStatus.LOST);
+        loan.getCopy().setStatus(CopyStatus.LOST);
         Loan saved = repository.saveAndFlush(loan);
         entityManager.refresh(loan.getCopy());
         return loanMapper.toResponse(saved);
