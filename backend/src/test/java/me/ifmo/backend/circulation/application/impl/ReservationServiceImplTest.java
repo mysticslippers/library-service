@@ -217,6 +217,7 @@ class ReservationServiceImplTest {
         assertThat(result).isSameAs(response);
         verify(entityManager, org.mockito.Mockito.times(2)).refresh(copy);
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.ACTIVE);
+        assertThat(copy.getStatus()).isEqualTo(CopyStatus.RESERVED);
         ArgumentCaptor<LocalDateTime> expiration = ArgumentCaptor.forClass(LocalDateTime.class);
         verify(reservationMapper).toEntity(eq(user), eq(material), eq(copy), eq(branch), expiration.capture());
         assertThat(expiration.getValue()).isAfterOrEqualTo(before.plusDays(3));
