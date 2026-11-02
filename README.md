@@ -341,8 +341,28 @@ MAIL_SMTP_SSL_ENABLE=false
 ```
 
 For a local SMTP catcher, the defaults are `localhost:1025` with authentication and
-STARTTLS disabled. Pending notifications are processed through
-`POST /api/notifications/process-pending`.
+STARTTLS disabled. Pending notifications are processed automatically in batches
+of up to 50. By default, the first batch starts ten seconds after startup and the
+next batch starts ten seconds after the previous one completes.
+`POST /api/notifications/process-pending` remains a staff-only manual fallback.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `NOTIFICATION_DELIVERY_SCHEDULER_ENABLED` | `true` | Enable background delivery |
+| `NOTIFICATION_DELIVERY_BATCH_SIZE` | `50` | Maximum notifications per batch; range 1–100 |
+| `NOTIFICATION_DELIVERY_POLL_INTERVAL_MS` | `10000` | Delay between completed batches; minimum 1000 ms |
+| `NOTIFICATION_DELIVERY_INITIAL_DELAY_MS` | `10000` | Delay before the first batch; minimum 0 ms |
+
+These variables are also forwarded by `docker-compose.prod.yml`. Configure the
+SMTP connection before enabling delivery; use
+`NOTIFICATION_DELIVERY_SCHEDULER_ENABLED=false` when working without an SMTP server.
+The manual endpoint remains available when background delivery is disabled.
+
+Delivery uses a dedicated scheduler thread, so SMTP waits do not occupy the
+default scheduler used by outbox, auth cleanup and deadline processing. Batch
+failures are logged by exception class without recipient addresses or provider
+responses, and processing resumes on the next poll. Empty automatic polls do not
+create audit entries; manual invocations retain their staff actor even when empty.
 
 Each notification is claimed as `SENDING` in its own committed transaction before
 contacting SMTP. Concurrent workers skip claimed rows. Delivery results are committed
@@ -361,9 +381,15 @@ Set this timeout above the maximum expected duration of a delivery attempt.
 `PATCH /api/notifications/{id}/status` accepts only `CANCELLED` for unsent
 notifications. Sending, retry counts and delivery results are managed internally.
 
-With Docker running, `NotificationDeliveryIntegrationTest` checks concurrent workers,
-per-message commits, database and audit failures, and interrupted attempts against an
-isolated PostgreSQL container. It does not contact SMTP or SMS providers.
+With Docker running, `NotificationDeliveryIntegrationTest` checks concurrent scheduled
+and manual workers, bounded batches, per-message commits, database and audit failures,
+and interrupted attempts against an isolated PostgreSQL container. It does not
+contact SMTP or SMS providers. `NotificationDeliverySchedulerTest` checks actual
+scheduled execution, recovery after failure, thread isolation and disabling delivery.
+
+```shell
+mvn -f backend/pom.xml "-Dtest=NotificationDeliverySchedulerTest,NotificationDeliveryIntegrationTest" test
+```
 
 ## Redis catalog cache
 
@@ -825,8 +851,8 @@ and reservation locks. Expired blocks can be completed during login, JWT user lo
 new borrowing/reservation operation without waiting for the job. These checks
 remain enabled when the background job is disabled. Automatic changes use a
 system actor (`actor_user_id = NULL`); manual block expiry retains its staff actor.
-Unblock notifications are queued transactionally; delivery still uses the existing
-notification processing mechanism.
+Unblock notifications are queued transactionally and delivered by the notification
+scheduler described above.
 
 Flyway applies `V14__index_pending_deadlines.sql` on startup to index pending
 deadlines. No existing migrations are modified.
