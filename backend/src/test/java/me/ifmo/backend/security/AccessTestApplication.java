@@ -56,7 +56,7 @@ import me.ifmo.backend.shared.messaging.KafkaMessagingProperties;
         me.ifmo.backend.circulation.application.CirculationLocks.class,
         me.ifmo.backend.circulation.application.impl.LoanServiceImpl.class,
         me.ifmo.backend.circulation.application.impl.ReservationServiceImpl.class,
-        me.ifmo.backend.circulation.configuration.CirculationTimeConfiguration.class,
+        me.ifmo.backend.shared.time.ApplicationTimeConfiguration.class,
         me.ifmo.backend.circulation.integration.KafkaReservationEventPublisher.class,
         me.ifmo.backend.circulation.mapper.LoanMapperImpl.class,
         me.ifmo.backend.circulation.mapper.ReservationMapperImpl.class,
