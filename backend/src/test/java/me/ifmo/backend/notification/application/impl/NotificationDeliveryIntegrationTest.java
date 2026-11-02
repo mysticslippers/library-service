@@ -6,6 +6,9 @@ import me.ifmo.backend.audit.application.AuditLogService;
 import me.ifmo.backend.notification.application.NotificationDeliveryClient;
 import me.ifmo.backend.notification.application.NotificationDeliveryResult;
 import me.ifmo.backend.notification.application.NotificationDeliveryTask;
+import me.ifmo.backend.notification.application.delivery.NotificationDeliveryScheduler;
+import me.ifmo.backend.notification.configuration.NotificationDeliverySchedulingConfiguration;
+import me.ifmo.backend.shared.scheduling.SchedulingConfiguration;
 import me.ifmo.backend.notification.domain.Notification;
 import me.ifmo.backend.notification.domain.enums.NotificationChannel;
 import me.ifmo.backend.notification.domain.enums.NotificationType;
@@ -15,6 +18,8 @@ import me.ifmo.backend.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.task.TaskSchedulingAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
@@ -42,6 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -49,11 +55,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-@DataJpaTest(showSql = false, properties = "spring.jpa.hibernate.ddl-auto=validate")
+@DataJpaTest(showSql = false, properties = {"spring.jpa.hibernate.ddl-auto=validate",
+        "notification.delivery.scheduler.batch-size=2",
+        "notification.delivery.scheduler.poll-interval-ms=3600000",
+        "notification.delivery.scheduler.initial-delay-ms=3600000"})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({NotificationDeliveryServiceImpl.class, NotificationDeliveryStateService.class})
-@Testcontainers(disabledWithoutDocker = true)
+@ImportAutoConfiguration(TaskSchedulingAutoConfiguration.class)
+@Import({NotificationDeliveryServiceImpl.class, NotificationDeliveryStateService.class,
+        SchedulingConfiguration.class, NotificationDeliverySchedulingConfiguration.class})
+@Testcontainers
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class NotificationDeliveryIntegrationTest {
 
@@ -69,6 +80,7 @@ class NotificationDeliveryIntegrationTest {
     }
 
     @Autowired private NotificationDeliveryServiceImpl service;
+    @Autowired private NotificationDeliveryScheduler scheduler;
     @Autowired private NotificationRepository repository;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactionManager;
@@ -83,7 +95,7 @@ class NotificationDeliveryIntegrationTest {
     }
 
     @Test
-    void concurrentBatchesSendOnceAndCommitTheClaimBeforeCallingTheProvider() throws Exception {
+    void scheduledAndManualBatchesSendOnceAndCommitTheClaimBeforeCallingTheProvider() throws Exception {
         Long id = pending();
         CountDownLatch sending = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
@@ -98,11 +110,11 @@ class NotificationDeliveryIntegrationTest {
         });
         var executor = Executors.newSingleThreadExecutor();
         try {
-            var first = executor.submit(() -> service.processPending(null, 10));
+            var first = executor.submit(scheduler::deliverPending);
             assertThat(sending.await(10, TimeUnit.SECONDS)).isTrue();
             assertThat(service.processPending(null, 10).processed()).isZero();
             release.countDown();
-            assertThat(first.get(10, TimeUnit.SECONDS).sent()).isEqualTo(1);
+            first.get(10, TimeUnit.SECONDS);
             assertState(id, "SENT", 1);
             verify(client, times(1)).send(any());
         } finally {
@@ -169,7 +181,7 @@ class NotificationDeliveryIntegrationTest {
 
         assertThatThrownBy(() -> service.processPending(null, 10)).hasMessage("Audit failed");
         assertState(id, "SENT", 1);
-        assertThatThrownBy(() -> service.processPending(null, 10)).hasMessage("Audit failed");
+        assertThat(service.processPending(null, 10).processed()).isZero();
         verify(client, times(1)).send(any());
     }
 
@@ -178,10 +190,9 @@ class NotificationDeliveryIntegrationTest {
         Long id = pending();
         when(client.send(any())).thenReturn(NotificationDeliveryResult.unknown("message-id", "SMTP response timed out"));
 
-        var response = service.processPending(null, 10);
-        assertThat(response.processed()).isEqualTo(1);
-        assertThat(response.unknown()).isEqualTo(1);
+        scheduler.deliverPending();
         assertState(id, "UNKNOWN", 1);
+        scheduler.deliverPending();
         assertThat(service.processPending(null, 10).processed()).isZero();
         verify(client, times(1)).send(any());
     }
@@ -192,8 +203,33 @@ class NotificationDeliveryIntegrationTest {
         stateService.claimNext().orElseThrow();
         jdbc.update("UPDATE notifications SET sending_started_at = CURRENT_TIMESTAMP - INTERVAL '1 day' WHERE id = ?", id);
 
-        assertThat(service.processPending(null, 10).processed()).isZero();
+        scheduler.deliverPending();
         assertState(id, "UNKNOWN", 1);
+        verifyNoInteractions(client);
+    }
+
+    @Test
+    void scheduledBatchesRespectTheConfiguredLimitAndDoNotAuditEmptyPolls() {
+        Long first = pending();
+        Long second = pending();
+        Long third = pending();
+        when(client.send(any())).thenReturn(NotificationDeliveryResult.sent("message-id"));
+
+        scheduler.deliverPending();
+        assertState(first, "SENT", 1);
+        assertState(second, "SENT", 1);
+        assertState(third, "PENDING", 0);
+        scheduler.deliverPending();
+        assertState(third, "SENT", 1);
+        scheduler.deliverPending();
+        verify(client, times(3)).send(any());
+        verify(auditLogService, times(2)).record(isNull(), any(), isNull(), any(), any());
+    }
+
+    @Test
+    void emptyManualBatchesStillRecordTheStaffActor() {
+        assertThat(service.processPending(42L, 2).processed()).isZero();
+        verify(auditLogService).record(eq(42L), any(), isNull(), any(), any());
         verifyNoInteractions(client);
     }
 
