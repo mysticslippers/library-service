@@ -18,6 +18,7 @@ import me.ifmo.backend.shared.exceptions.DuplicateResourceException;
 import me.ifmo.backend.shared.exceptions.ResourceNotFoundException;
 import me.ifmo.backend.fine.mapper.PaymentTransactionMapper;
 import me.ifmo.backend.fine.persistence.PaymentTransactionRepository;
+import me.ifmo.backend.fine.persistence.FineRepository;
 import me.ifmo.backend.user.persistence.UserRoleRepository;
 import me.ifmo.backend.fine.application.PaymentTransactionService;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.util.stream.Stream;
 import java.util.Objects;
 import java.util.Set;
 
@@ -46,6 +50,8 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
     private final PaymentTransactionMapper paymentTransactionMapper;
     private final PaymentLocks paymentLocks;
     private final EntityManager entityManager;
+    private final FineRepository fineRepository;
+    private final Clock clock;
 
     private String normalize(String value) {
         if (value == null || value.strip().isBlank()) {
@@ -199,7 +205,12 @@ public class PaymentTransactionServiceImpl implements PaymentTransactionService 
         paymentTransactionMapper.updateStatus(new UpdatePaymentStatusRequest(targetStatus, externalPayment), transaction);
         PaymentTransaction saved = repository.saveAndFlush(transaction);
         entityManager.refresh(saved);
-        entityManager.refresh(fine);
+        if (targetStatus == PaymentStatus.SUCCESS) {
+            LocalDateTime paidAt = Stream.of(LocalDateTime.now(clock), fine.getCreatedAt(), saved.getCreatedAt(), saved.getUpdatedAt()).filter(Objects::nonNull).max(LocalDateTime::compareTo).orElseThrow();
+            fine.setStatus(FineStatus.PAID);
+            fine.setPaidAt(paidAt);
+            fineRepository.saveAndFlush(fine);
+        }
         return paymentTransactionMapper.toResponse(saved);
     }
 
