@@ -17,6 +17,7 @@ import me.ifmo.backend.shared.messaging.KafkaMessagingProperties;
 @Import({
         me.ifmo.backend.audit.application.AuditDetailsSanitizer.class,
         me.ifmo.backend.audit.application.impl.AuditLogServiceImpl.class,
+        me.ifmo.backend.audit.configuration.AuditTransactionConfiguration.class,
         me.ifmo.backend.audit.mapper.AuditDetailsJsonMapper.class,
         me.ifmo.backend.audit.mapper.AuditLogMapperImpl.class,
         me.ifmo.backend.audit.web.AuditLogController.class,
