@@ -208,6 +208,25 @@ an audited field requires updating both policies; PostgreSQL integration tests
 check their agreement for every audit entity type and exercise migration from V7.
 HTTP tests also check legacy data filtering and the controller's ADMIN restriction.
 
+Automatic audit rows now take their actor from the authenticated Spring Security
+principal when each JPA transaction begins. `AuditTransactionConfiguration`
+registers a listener that executes the parameterized
+`SELECT set_config('app.current_user_id', ?, true)` on the transaction's own
+connection, before business SQL. The actor remains fixed through flush and commit;
+joined calls share it, while `REQUIRES_NEW` gets an independent actor and connection.
+PostgreSQL discards this local setting after either commit or rollback, so pooled
+connections do not pass the previous request's actor to later work.
+
+Scheduled jobs, anonymous work and auth operations before authentication have no
+automatic actor. Manual business events retain their explicitly supplied actor.
+Only authenticated `UserDetails` principals with a positive numeric user ID are
+accepted; request parameters and headers do not supply an audit actor. If setting
+the actor fails, the transaction is rolled back before the business method runs.
+Direct SQL outside Spring-managed JPA transactions has no application actor.
+No schema migration is needed: the existing sanitized audit triggers already read
+this setting. The transaction-local lifetime follows PostgreSQL's
+[set_config contract](https://www.postgresql.org/docs/16/functions-admin.html#FUNCTIONS-ADMIN-SET).
+
 ## Reservation pickup
 
 Issue a reserved copy with `POST /api/loans`, providing `reservationId` along with
