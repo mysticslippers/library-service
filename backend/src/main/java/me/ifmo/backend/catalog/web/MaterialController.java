@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/materials")
@@ -100,12 +101,13 @@ public class MaterialController {
                     schema = @Schema(type = "string", format = "binary")
             )
     )
-    public ResponseEntity<InputStreamResource> getCover(@PathVariable Long id) {
-        var cover = coverService.getPublic(id);
+    public ResponseEntity<InputStreamResource> getCover(@PathVariable Long id, @RequestParam(required = false) UUID v) {
+        var cover = coverService.getPublic(id, v);
         var response = ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(cover.contentType()))
                 .contentLength(cover.contentLength())
-                .cacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable());
+                .cacheControl(v == null ? CacheControl.noCache()
+                        : CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable());
 
         if (cover.etag() != null)
             response.eTag(quotedEtag(cover.etag()));
