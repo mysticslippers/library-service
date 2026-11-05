@@ -44,7 +44,7 @@ class AccessTestData {
 
     void reset() {
         jdbc.execute("TRUNCATE users, libraries, roles, materials, authors, genres, fine_tariffs, "
-                + "notification_templates, outbox_events, processed_events, auth_rate_limits RESTART IDENTITY CASCADE");
+                + "notification_templates, outbox_events, processed_events, auth_rate_limits, cover_cleanup RESTART IDENTITY CASCADE");
         jdbc.execute("INSERT INTO roles(code, name) VALUES ('READER', 'Reader'), ('LIBRARIAN', 'Librarian'), ('ADMIN', 'Admin')");
         sequence = 0;
         reader = user(RoleCode.READER);
@@ -136,7 +136,7 @@ class AccessTestData {
         for (String table : List.of("users", "user_roles", "user_blocks", "user_warnings", "reservations", "loans",
                 "material_copies", "fines", "payment_transactions", "notifications", "notification_preferences",
                 "auth_tokens", "audit_logs", "outbox_events", "materials", "authors", "genres", "libraries",
-                "branches", "library_rules", "fine_tariffs", "notification_templates")) {
+                "branches", "library_rules", "fine_tariffs", "notification_templates", "cover_cleanup")) {
             state.put(table, jdbc.queryForObject("SELECT COALESCE(jsonb_agg(to_jsonb(item) ORDER BY to_jsonb(item)::text), "
                     + "'[]'::jsonb)::text FROM " + table + " item", String.class));
         }
