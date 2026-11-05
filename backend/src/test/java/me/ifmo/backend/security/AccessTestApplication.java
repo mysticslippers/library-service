@@ -13,7 +13,9 @@ import me.ifmo.backend.shared.messaging.KafkaMessagingProperties;
 @EnableAutoConfiguration
 @EntityScan("me.ifmo.backend")
 @EnableJpaRepositories("me.ifmo.backend")
-@EnableConfigurationProperties({KafkaMessagingProperties.class, me.ifmo.backend.catalog.storage.CoverStorageProperties.class})
+@EnableConfigurationProperties({KafkaMessagingProperties.class,
+        me.ifmo.backend.catalog.storage.CoverStorageProperties.class,
+        me.ifmo.backend.catalog.configuration.CoverCleanupProperties.class})
 @Import({
         me.ifmo.backend.audit.application.AuditDetailsSanitizer.class,
         me.ifmo.backend.audit.application.impl.AuditLogServiceImpl.class,
@@ -36,6 +38,8 @@ import me.ifmo.backend.shared.messaging.KafkaMessagingProperties;
         me.ifmo.backend.authentication.security.ratelimit.AuthRequestLimiter.class,
         me.ifmo.backend.authentication.web.AuthController.class,
         me.ifmo.backend.catalog.application.cover.CoverImageValidator.class,
+        me.ifmo.backend.catalog.application.cover.CoverCleanupService.class,
+        me.ifmo.backend.catalog.application.MaterialLocks.class,
         me.ifmo.backend.catalog.application.impl.AuthorServiceImpl.class,
         me.ifmo.backend.catalog.application.impl.GenreServiceImpl.class,
         me.ifmo.backend.catalog.application.impl.MaterialCopyServiceImpl.class,
