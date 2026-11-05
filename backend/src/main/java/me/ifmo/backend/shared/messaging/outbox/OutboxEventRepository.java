@@ -1,22 +1,17 @@
 package me.ifmo.backend.shared.messaging.outbox;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
-import java.time.Instant;
-import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> {
 
-    @Query("""
-            SELECT event
-            FROM OutboxEvent event
-            WHERE event.publishedAt IS NULL
-              AND (event.nextAttemptAt IS NULL OR event.nextAttemptAt <= :now)
-            ORDER BY event.occurredAt, event.createdAt
-            """)
-    List<OutboxEvent> findReadyForPublishing(@Param("now") Instant now, Pageable pageable);
+    @Query(value = """
+            SELECT * FROM outbox_events
+            WHERE published_at IS NULL
+                AND (next_attempt_at IS NULL OR next_attempt_at <= clock_timestamp())
+            ORDER BY occurred_at, created_at, id LIMIT 1 FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    Optional<OutboxEvent> findNextReadyForPublishing();
 }
