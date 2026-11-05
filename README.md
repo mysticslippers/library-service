@@ -454,6 +454,22 @@ delivers that row to Kafka, and the `library-notification` consumer group create
 an idempotent `RESERVATION_READY` notification. Failed consumer records are
 retried and then moved to a dead-letter topic.
 
+Each outbox publication locks one due row with `FOR UPDATE SKIP LOCKED` in its
+own transaction, holds that lock while waiting for Kafka acknowledgement, and
+commits the outcome before selecting the next row. Multiple backend instances
+can publish different events without concurrently sending the same locked row.
+Failures use exponential backoff; an error on one row does not roll back earlier
+publications in the batch. Stored errors and logs contain exception types, without
+provider messages or event payloads.
+
+A process failure after Kafka acknowledgement but before the PostgreSQL commit
+can still replay the same event ID. Delivery is at least once. The notification
+handler records `(consumer_name, event_id)` and creates the notification in the
+same transaction, so replay and concurrent consumers do not create another
+notification. A rolled-back consumer transaction can be retried. This follows
+Kafka's [delivery semantics](https://kafka.apache.org/40/design/design/#semantics);
+producer idempotence does not make PostgreSQL and Kafka one atomic transaction.
+
 Useful local checks:
 
 ```shell
@@ -526,8 +542,57 @@ Cover endpoints:
 * `DELETE /api/materials/{id}/cover` — librarian/admin only
 
 Uploads are limited to JPEG, PNG and WebP. The backend validates the actual file
-signature, creates the private bucket on demand in the local environment, and
-removes replaced objects only after the PostgreSQL transaction commits.
+signature and creates the private bucket on demand in the local environment.
+Cover uploads/deletions and material edits/status changes lock and refresh the
+same material row. An edit that waited for an upload reads the new reference and
+cannot restore an obsolete key from its persistence context.
+
+Public downloads hold a shared material lock until S3 opens the response stream;
+parallel readers can proceed together, and replacement waits for that step.
+The optional `v` query parameter must match the current cover version: an obsolete
+version returns 404. Only a matching versioned URL receives the immutable one-year
+cache policy. Requests without `v` use `Cache-Control: no-cache` for revalidation.
+
+V16 adds the persistent `cover_cleanup` queue. Before calling S3, an upload
+registers its unique key in a separate committed transaction, then opens the
+material transaction and locks that queue row until it finishes. Successful attachment removes
+this entry and queues the old key atomically with the new reference. On rollback,
+upload failure or process termination, the new entry remains available for
+cleanup. Deleting a cover queues its key in the same transaction as clearing the
+reference; rollback keeps both the reference and the object.
+
+Cleanup runs in its own scheduler thread, initially after 30 seconds and then
+30 seconds after each batch, up to 25 objects per batch. Each object uses a
+separate transaction and `FOR UPDATE SKIP LOCKED`. The worker checks that no
+material references the key before deleting it. Failed deletes remain queued
+with exponential backoff; repeated deletes also handle a crash after S3 deletion
+but before database commit. Logs include the exception class without provider
+payloads. Existing bucket objects without a queue entry are not scanned or deleted.
+
+An upload has one configured grace period to acquire its locks and start. Before
+calling S3, it must still have a full grace period plus three S3 API call timeouts
+left until cleanup. Expired registrations are rejected before storage access, even
+when the worker has not deleted the row yet. Unfinished uploads become eligible
+after two grace periods plus three API call timeouts: 10 minutes 30 seconds with
+the defaults. The delay can be increased for the storage provider's latency.
+The SDK [API call timeout](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/timeouts.html)
+bounds the client's wait including retries. A normal HTTP upload registers its
+cleanup before opening the material transaction and also works with a one-connection
+pool. A programmatic caller wrapping upload in an existing transaction needs
+additional pool capacity for the `REQUIRES_NEW` registration.
+Flyway applies V16 on application startup; stop old backend instances before
+switching to this version so all writers use the same lock and cleanup protocol.
+
+Cleanup settings are also forwarded by production Compose:
+
+```dotenv
+COVER_CLEANUP_ENABLED=true
+COVER_CLEANUP_GRACE_PERIOD=5m
+COVER_CLEANUP_RETRY_DELAY=30s
+COVER_CLEANUP_BATCH_SIZE=25
+COVER_CLEANUP_POLL_INTERVAL_MS=30000
+COVER_CLEANUP_INITIAL_DELAY_MS=30000
+```
 
 The bundled single-node MinIO container is intended for local development. For
 production, use a managed or replicated S3-compatible store, separate
