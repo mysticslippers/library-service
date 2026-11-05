@@ -16,6 +16,12 @@ import java.util.List;
 
 public interface MaterialRepository extends JpaRepository<Material, Long> {
 
+    @Query(value = "SELECT * FROM materials WHERE id = :id FOR NO KEY UPDATE", nativeQuery = true)
+    Optional<Material> findByIdForUpdate(@Param("id") Long id);
+
+    @Query(value = "SELECT * FROM materials WHERE id = :id FOR SHARE", nativeQuery = true)
+    Optional<Material> findByIdForRead(@Param("id") Long id);
+
     Optional<Material> findByIsbn(String isbn);
 
     boolean existsByIsbn(String isbn);
