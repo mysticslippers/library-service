@@ -42,6 +42,7 @@ import me.ifmo.backend.shared.exceptions.ResourceNotFoundException;
 import me.ifmo.backend.shared.cache.InvalidateCatalogSearch;
 import me.ifmo.backend.catalog.mapper.MaterialMapper;
 import me.ifmo.backend.catalog.application.MaterialService;
+import me.ifmo.backend.catalog.application.MaterialLocks;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -78,6 +79,7 @@ public class MaterialServiceImpl implements MaterialService {
     );
 
     private final MaterialRepository repository;
+    private final MaterialLocks materialLocks;
     private final AuthorRepository authorRepository;
     private final GenreRepository genreRepository;
     private final MaterialAuthorRepository materialAuthorRepository;
@@ -343,8 +345,7 @@ public class MaterialServiceImpl implements MaterialService {
     @Transactional
     @InvalidateCatalogSearch
     public MaterialResponse update(Long id, UpdateMaterialRequest request) {
-        Material material = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(id)));
+        Material material = materialLocks.lock(id);
 
         if (material.getStatus() == MaterialStatus.REMOVED)
             throw new BusinessRuleException("Removed material cannot be updated");
@@ -401,8 +402,7 @@ public class MaterialServiceImpl implements MaterialService {
     @Transactional
     @InvalidateCatalogSearch
     public MaterialResponse changeStatus(Long id, ChangeMaterialStatusRequest request) {
-        Material material = repository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(id)));
+        Material material = materialLocks.lock(id);
 
         MaterialStatus status = request.status();
 
