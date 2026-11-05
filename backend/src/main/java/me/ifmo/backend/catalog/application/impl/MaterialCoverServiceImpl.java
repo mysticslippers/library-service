@@ -2,10 +2,12 @@ package me.ifmo.backend.catalog.application.impl;
 
 import io.micrometer.observation.annotation.Observed;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import me.ifmo.backend.catalog.application.MaterialCoverService;
+import me.ifmo.backend.catalog.application.MaterialLocks;
+import me.ifmo.backend.catalog.application.cover.CoverCleanupService;
 import me.ifmo.backend.catalog.application.cover.CoverImageValidator;
 import me.ifmo.backend.catalog.application.cover.MaterialCoverContent;
+import me.ifmo.backend.catalog.application.cover.ValidatedCover;
 import me.ifmo.backend.catalog.domain.Material;
 import me.ifmo.backend.catalog.domain.enums.MaterialStatus;
 import me.ifmo.backend.catalog.mapper.MaterialCoverUrlFactory;
@@ -18,24 +20,24 @@ import me.ifmo.backend.shared.exceptions.ResourceNotFoundException;
 import me.ifmo.backend.shared.observability.LoggableOperation;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MaterialCoverServiceImpl implements MaterialCoverService {
 
     private final MaterialRepository materialRepository;
+    private final MaterialLocks materialLocks;
+    private final CoverCleanupService cleanup;
     private final CoverObjectStorage storage;
     private final CoverImageValidator imageValidator;
     private final MaterialCoverUrlFactory coverUrlFactory;
+    private final TransactionTemplate transactions;
 
     @Override
-    @Transactional
     @InvalidateCatalogSearch
     @LoggableOperation("material-cover.upload")
     @Observed(
@@ -44,48 +46,49 @@ public class MaterialCoverServiceImpl implements MaterialCoverService {
             lowCardinalityKeyValues = {"domain", "catalog", "operation", "material-cover.upload"}
     )
     public MaterialCoverResponse upload(Long materialId, MultipartFile file) {
-        Material material = findMaterial(materialId);
-        if (material.getStatus() == MaterialStatus.ARCHIVED || material.getStatus() == MaterialStatus.REMOVED)
-            throw new BusinessRuleException("Archived or removed material cannot receive a cover");
+        Material material = materialRepository.findById(materialId).orElseThrow(
+                () -> new ResourceNotFoundException("Material with id '%s' not found".formatted(materialId)));
+        validateUploadAllowed(material);
 
         var cover = imageValidator.validate(file);
         UUID version = UUID.randomUUID();
-        String newObjectKey = "materials/%d/covers/%s.%s"
-                .formatted(materialId, version, cover.extension());
+        String newObjectKey = "materials/%d/covers/%s.%s".formatted(materialId, version, cover.extension());
+        cleanup.registerUpload(newObjectKey);
+        return transactions.execute(status -> replaceCover(materialId, cover, version, newObjectKey));
+    }
+
+    private MaterialCoverResponse replaceCover(Long materialId, ValidatedCover cover, UUID version, String newObjectKey) {
+        Material material = materialLocks.lock(materialId);
+        validateUploadAllowed(material);
+
         String oldObjectKey = material.getCoverObjectKey();
-        boolean cleanupScheduled = false;
+        cleanup.lockUpload(newObjectKey);
 
-        try {
-            var stored = storage.put(newObjectKey, cover.content(), cover.contentType());
-            material.setCoverObjectKey(newObjectKey);
-            material.setCoverVersion(version);
-            materialRepository.saveAndFlush(material);
-            scheduleReplacementCleanup(newObjectKey, oldObjectKey);
-            cleanupScheduled = true;
+        var stored = storage.put(newObjectKey, cover.content(), cover.contentType());
+        material.setCoverObjectKey(newObjectKey);
+        material.setCoverVersion(version);
+        materialRepository.saveAndFlush(material);
+        cleanup.enqueue(oldObjectKey);
+        cleanup.completeUpload(newObjectKey);
 
-            return new MaterialCoverResponse(
-                    coverUrlFactory.create(materialId, version),
-                    stored.contentType(),
-                    stored.contentLength(),
-                    stored.etag()
-            );
-        } catch (RuntimeException exception) {
-            if (!cleanupScheduled)
-                safeDelete(newObjectKey);
-            throw exception;
-        }
+        return new MaterialCoverResponse(
+                coverUrlFactory.create(materialId, version),
+                stored.contentType(),
+                stored.contentLength(),
+                stored.etag()
+        );
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     @Observed(
             name = "library.operation",
             contextualName = "material-cover.get",
             lowCardinalityKeyValues = {"domain", "catalog", "operation", "material-cover.get"}
     )
-    public MaterialCoverContent getPublic(Long materialId) {
-        Material material = findMaterial(materialId);
-        if (material.getStatus() != MaterialStatus.ACTIVE || material.getCoverObjectKey() == null)
+    public MaterialCoverContent getPublic(Long materialId, UUID requestedVersion) {
+        Material material = materialLocks.lockForRead(materialId);
+        if (material.getStatus() != MaterialStatus.ACTIVE || material.getCoverObjectKey() == null || (requestedVersion != null && !requestedVersion.equals(material.getCoverVersion())))
             throw coverNotFound(materialId);
 
         var stored = storage.get(material.getCoverObjectKey());
@@ -108,7 +111,7 @@ public class MaterialCoverServiceImpl implements MaterialCoverService {
             lowCardinalityKeyValues = {"domain", "catalog", "operation", "material-cover.delete"}
     )
     public void delete(Long materialId) {
-        Material material = findMaterial(materialId);
+        Material material = materialLocks.lock(materialId);
         String objectKey = material.getCoverObjectKey();
         if (objectKey == null)
             return;
@@ -116,13 +119,7 @@ public class MaterialCoverServiceImpl implements MaterialCoverService {
         material.setCoverObjectKey(null);
         material.setCoverVersion(null);
         materialRepository.saveAndFlush(material);
-        scheduleDeleteAfterCommit(objectKey);
-    }
-
-    private Material findMaterial(Long materialId) {
-        return materialRepository.findById(materialId).orElseThrow(
-                () -> new ResourceNotFoundException(
-                        "Material with id '%s' not found".formatted(materialId)));
+        cleanup.enqueue(objectKey);
     }
 
     private ResourceNotFoundException coverNotFound(Long materialId) {
@@ -130,45 +127,8 @@ public class MaterialCoverServiceImpl implements MaterialCoverService {
                 "Cover for material with id '%s' not found".formatted(materialId));
     }
 
-    private void scheduleReplacementCleanup(String newObjectKey, String oldObjectKey) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            safeDelete(oldObjectKey);
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status == STATUS_COMMITTED)
-                    safeDelete(oldObjectKey);
-                else
-                    safeDelete(newObjectKey);
-            }
-        });
-    }
-
-    private void scheduleDeleteAfterCommit(String objectKey) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            safeDelete(objectKey);
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                safeDelete(objectKey);
-            }
-        });
-    }
-
-    private void safeDelete(String objectKey) {
-        if (objectKey == null)
-            return;
-
-        try {
-            storage.delete(objectKey);
-        } catch (RuntimeException exception) {
-            log.warn("Unable to clean up cover object '{}'", objectKey, exception);
-        }
+    private void validateUploadAllowed(Material material) {
+        if (material.getStatus() == MaterialStatus.ARCHIVED || material.getStatus() == MaterialStatus.REMOVED)
+            throw new BusinessRuleException("Archived or removed material cannot receive a cover");
     }
 }
