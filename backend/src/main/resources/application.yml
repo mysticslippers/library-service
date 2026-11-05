@@ -242,3 +242,10 @@ storage:
     create-bucket: ${S3_CREATE_BUCKET:true}
     api-call-timeout: ${S3_API_CALL_TIMEOUT:10s}
     max-file-size: ${COVER_MAX_FILE_SIZE:5MB}
+    cleanup:
+      enabled: ${COVER_CLEANUP_ENABLED:true}
+      grace-period: ${COVER_CLEANUP_GRACE_PERIOD:5m}
+      retry-delay: ${COVER_CLEANUP_RETRY_DELAY:30s}
+      batch-size: ${COVER_CLEANUP_BATCH_SIZE:25}
+      poll-interval-ms: ${COVER_CLEANUP_POLL_INTERVAL_MS:30000}
+      initial-delay-ms: ${COVER_CLEANUP_INITIAL_DELAY_MS:30000}
