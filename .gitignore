@@ -156,6 +156,7 @@ docker-data/
 postgres-data/
 pgdata/
 data/
+backups/
 
 !scripts/
 !scripts/**/*.sql
