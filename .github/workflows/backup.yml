@@ -1,0 +1,47 @@
+name: Backup restore drill
+
+on:
+  push:
+    paths:
+      - 'scripts/backup.py'
+      - 'scripts/verify-backup.py'
+      - 'scripts/backup/**'
+      - 'docker-compose.backup.yml'
+      - 'backend/pom.xml'
+      - 'backend/src/main/resources/database/migration/**'
+      - '.github/workflows/backup.yml'
+  pull_request:
+    paths:
+      - 'scripts/backup.py'
+      - 'scripts/verify-backup.py'
+      - 'scripts/backup/**'
+      - 'docker-compose.backup.yml'
+      - 'backend/pom.xml'
+      - 'backend/src/main/resources/database/migration/**'
+      - '.github/workflows/backup.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  restore-drill:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx512m -XX:ActiveProcessorCount=2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Back up and restore synthetic PostgreSQL and S3 data
+        run: python3 scripts/verify-backup.py

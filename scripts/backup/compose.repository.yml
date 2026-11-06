@@ -1,0 +1,24 @@
+services:
+  repository:
+    image: library-service-backup:local
+    build:
+      context: ./scripts/backup
+    user: "${BACKUP_UID:-0}:${BACKUP_GID:-0}"
+    environment:
+      BACKUP_SOURCE_ID: ${BACKUP_SOURCE_ID:?Use scripts/backup.py}
+    volumes:
+      - type: bind
+        source: ${BACKUP_DIRECTORY:?Use scripts/backup.py}
+        target: /repository
+      - /work
+    secrets: [backup_password]
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+secrets:
+  backup_password:
+    file: ${BACKUP_PASSWORD_FILE:?Use scripts/backup.py}

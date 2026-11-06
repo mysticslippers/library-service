@@ -1,0 +1,37 @@
+services:
+  backup:
+    image: library-service-backup:local
+    build:
+      context: ./scripts/backup
+    profiles: [maintenance]
+    user: "${BACKUP_UID:-0}:${BACKUP_GID:-0}"
+    environment:
+      PGHOST: library-db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:?POSTGRES_DB is required}
+      PGUSER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+      S3_COVERS_BUCKET: ${S3_COVERS_BUCKET:-library-covers}
+      BACKUP_SOURCE_ID: ${BACKUP_SOURCE_ID:?Use scripts/backup.py}
+    volumes:
+      - type: bind
+        source: ${BACKUP_DIRECTORY:?Use scripts/backup.py}
+        target: /repository
+      - /work
+    secrets:
+      - backup_password
+    networks:
+      - infrastructure
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+secrets:
+  backup_password:
+    file: ${BACKUP_PASSWORD_FILE:?Use scripts/backup.py}
