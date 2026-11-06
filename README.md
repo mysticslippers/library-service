@@ -836,8 +836,32 @@ infrastructure ports outside public proxy routes. When adding Nginx, configure
 `AUTH_TRUSTED_PROXIES` with its actual direct peer IP/CIDR as seen by the backend
 and have Nginx overwrite `X-Real-IP`, as described under Public authentication
 protection. The default trusts no proxy headers.
-TLS, a public domain, backup
-verification and deployment on an actual server are separate deployment steps.
+TLS, a public domain, off-site backup configuration and recovery verification on
+the actual server are separate deployment steps.
+
+## Encrypted backups and recovery verification
+
+`scripts/backup.py` creates an encrypted Restic snapshot containing a consistent
+PostgreSQL dump and the cover bucket. Stop backend writers before `backup`;
+the command rejects a running backend in the selected Compose project. A separate
+`restore-check` creates isolated PostgreSQL/MinIO containers and compares restored
+table contents, sequences, object bytes, metadata and database cover references.
+
+```shell
+python scripts/backup.py init
+docker compose --env-file .env.production -f docker-compose.prod.yml stop backend
+python scripts/backup.py --env-file .env.production backup
+docker compose --env-file .env.production -f docker-compose.prod.yml start backend
+python scripts/backup.py restore-check
+```
+
+The repository and recovery password default to ignored `backups/` and
+`secrets/backup.password`. Preserve the password independently. Configure off-site
+copies, maintenance scheduling and retention for the actual server before production.
+The isolated drill is available as `python scripts/verify-backup.py` and in a
+separate CI workflow. See [the backup and recovery runbook](docs/operations/backup-restore.md)
+for stopping/restarting writers, path overrides, recovery limits and Kafka/outbox
+considerations. Production data is never an automatic restore target.
 
 ## Authorization regression tests and CI
 
