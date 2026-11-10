@@ -12,11 +12,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  secret-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan Git history for secrets
+        run: |
+          docker run --rm --network none \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/.git,target=/repo/.git,readonly" \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/.gitleaksignore,target=/repo/.gitleaksignore,readonly" \
+            --workdir /repo \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+            "$GITLEAKS_IMAGE" git --log-opts=--all --redact=100 --verbose --no-banner --no-color \
+            --ignore-gitleaks-allow --gitleaks-ignore-path /repo/.gitleaksignore /repo
+
   verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       JAVA_TOOL_OPTIONS: -Xms64m -Xmx1024m -XX:ActiveProcessorCount=2 -Dspring.test.context.cache.maxSize=4
+      GRYPE_IMAGE: anchore/grype:v0.121.3@sha256:13113eeceab017260370cf540e1d25442c59665fd07d1b09b66d63bb0c282887
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,7 +64,17 @@ jobs:
       - name: Build backend image
         run: docker build --tag library-service-backend:ci backend
 
-      - name: Upload test and coverage reports
+      - name: Scan backend image and runtime dependencies
+        shell: bash
+        run: |
+          docker image save --output "$RUNNER_TEMP/backend-image.tar" library-service-backend:ci
+          docker run --rm \
+            --mount "type=bind,source=$RUNNER_TEMP/backend-image.tar,target=/image.tar,readonly" \
+            -e GRYPE_CHECK_FOR_APP_UPDATE=false -e GRYPE_EXTERNAL_SOURCES_ENABLE=false \
+            "$GRYPE_IMAGE" docker-archive:/image.tar --output table \
+            | tee backend/target/grype-report.txt
+
+      - name: Upload verification reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -50,5 +82,6 @@ jobs:
           path: |
             backend/target/surefire-reports/
             backend/target/site/jacoco/
+            backend/target/grype-report.txt
           retention-days: 7
           if-no-files-found: warn
