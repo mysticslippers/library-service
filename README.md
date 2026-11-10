@@ -899,9 +899,23 @@ mvn -f backend/pom.xml "-Dtest=AccessSecurityIntegrationTest,JwtAuthenticationFi
 `.github/workflows/backend.yml` runs on pushes and pull requests. It requires
 Docker, executes `mvn clean verify` including migration/OpenAPI tests and JaCoCo,
 checks that every integration suite executed without skips, and builds the
-backend image. Test and coverage reports are retained for seven days. To enforce
-this job on merges, select `verify` from the Backend workflow as a required status
-check in the repository's branch protection settings.
+backend image. Test, coverage and vulnerability reports are retained for seven days. To enforce
+the workflow on merges, select `verify` and `secret-scan` as required status
+checks in the repository's branch protection settings.
+
+The same workflow runs a separate `secret-scan` job on pushes and pull requests.
+Gitleaks scans the fetched Git history in a container with networking disabled.
+It fails on detected secrets and masks their values in the logs. The
+`.gitleaksignore` entry identifies a single synthetic JWT key from an integration
+test. Use the reported file and commit to investigate new findings.
+[Gitleaks CLI documentation](https://github.com/gitleaks/gitleaks/tree/v8.30.1#usage)
+
+After the backend image builds, Grype scans its Alpine packages and the Java
+dependencies packaged inside `app.jar`. It reads a Docker image archive through
+a read-only mount. The `backend-reports` artifact includes `grype-report.txt`
+with the findings and available fixes. CI saves vulnerability findings for review.
+A scanner error or a failed database download fails the scan step. Review the
+report before release. [Grype scan targets](https://oss.anchore.com/docs/guides/vulnerability/scan-targets/)
 
 The same report check can be run locally after the full build:
 
